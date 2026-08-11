@@ -3540,9 +3540,10 @@ let rhModeInscription = false;
 // nouvelle version, tant qu'on change CHANGELOG_VERSION (et la liste) en
 // même temps qu'on livre une mise à jour.
 // ============================================================
-const CHANGELOG_VERSION = '2026-08-11-9';
+const CHANGELOG_VERSION = '2026-08-11-10';
 const CHANGELOG_ITEMS = [
-  "Correction : l'icône installée sur ordinateur ouvrait une page blanche (adresse du manifest corrigée)",
+  "Nouveau : lien ?demande=1 pour partager directement l'accès « Demander un accès »",
+  "Nouveau : choix du rôle (admin/superviseur/lecture seule) directement à l'approbation d'une demande",
 ];
 function _verifierNouveautes(){
   try{
@@ -3760,6 +3761,14 @@ function _verifierLienRecuperationMdp(){
   }
 }
 document.addEventListener('DOMContentLoaded', _verifierLienRecuperationMdp);
+// Lien spécial à partager pour orienter directement quelqu'un vers "Demander
+// un accès" (ex: gestion-rh-pro.vercel.app/?demande=1), sans avoir à cliquer
+// sur le lien en bas de l'écran de connexion.
+document.addEventListener('DOMContentLoaded', ()=>{
+  if(new URLSearchParams(location.search).get('demande')==='1'){
+    setTimeout(()=>rhBasculerMode(true), 100);
+  }
+});
 
 async function rhValider() {
   const email = (document.getElementById('rhEmail').value || '').trim();
@@ -3928,19 +3937,45 @@ async function rhOuvrirPanneauEmployes() {
   if (enAttente.length === 0) {
     conteneur.innerHTML = '<p style="color:rgba(255,255,255,.4);font-style:italic;text-align:center;padding:20px 0;">Aucune demande en attente pour l\'instant.</p>';
   } else {
-    conteneur.innerHTML = enAttente.map(emp => `
-      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,.1);padding:10px 0;">
-        <div>
-          <div style="font-size:.85rem;font-weight:700;">${emp.email}</div>
-          <div style="font-size:.72rem;color:#FBBF24;">⏳ En attente</div>
-        </div>
-        <div style="display:flex;gap:6px;">
+    const zones = [...new Set(employes.map(e=>e.site).filter(Boolean))].sort();
+    conteneur.innerHTML = enAttente.map((emp,i) => `
+      <div style="border-bottom:1px solid rgba(255,255,255,.1);padding:10px 0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div>
+            <div style="font-size:.85rem;font-weight:700;">${emp.email}</div>
+            <div style="font-size:.72rem;color:#FBBF24;">⏳ En attente</div>
+          </div>
           <button class="lock-btn" style="width:auto;padding:6px 12px;font-size:.75rem;background:#e74c3c;" onclick="rhAnnulerDemande('${emp.email}')">Annuler</button>
-          <button class="lock-btn" style="width:auto;padding:6px 12px;font-size:.75rem;" onclick="rhApprouverEmploye('${emp.email}',true)">Approuver</button>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          <select id="roleApprobation_${i}" style="padding:5px;border-radius:5px;font-size:.72rem;flex:1;min-width:140px;" onchange="document.getElementById('zoneApprobation_${i}').style.display=(this.value==='superviseur')?'block':'none';">
+            <option value="admin">🔑 Accès complet (admin)</option>
+            <option value="superviseur">🧑‍💼 Superviseur — une zone</option>
+            <option value="lecteur_presence">👁️ Lecture seule — Présence</option>
+          </select>
+          <select id="zoneApprobation_${i}" style="display:none;padding:5px;border-radius:5px;font-size:.72rem;">
+            ${zones.map(z=>`<option value="${z}">${z}</option>`).join('')}
+          </select>
+          <button class="lock-btn" style="width:auto;padding:6px 12px;font-size:.75rem;" onclick="rhApprouverAvecRole('${emp.email}',${i})">✅ Approuver</button>
         </div>
       </div>`).join('');
   }
   document.getElementById('rhModalEmployes').style.display = 'flex';
+}
+// Approuve la demande ET attribue le rôle choisi en une seule fois (au lieu
+// d'approuver puis devoir aller régler le rôle séparément dans Paramètres).
+async function rhApprouverAvecRole(email, i){
+  const role = document.getElementById('roleApprobation_'+i).value;
+  const zoneEl = document.getElementById('zoneApprobation_'+i);
+  const zone = (role==='superviseur') ? zoneEl.value : null;
+  if(role==='superviseur' && !zone){ toast('⚠️ Choisis une zone pour ce superviseur','warn'); return; }
+  if(role!=='admin'){
+    try{
+      const { error } = await supabaseRH.from('rh_utilisateurs').upsert({ email, role, zone }, {onConflict:'email'});
+      if(error) throw error;
+    }catch(e){ toast('❌ Erreur d\'attribution du rôle : '+e.message,'err'); return; }
+  }
+  await rhApprouverEmploye(email, true);
 }
 
 async function rhApprouverEmploye(email, valeur) {
