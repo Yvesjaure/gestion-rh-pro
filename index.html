@@ -5851,6 +5851,7 @@ function _buildFichePrint(){
       ${photoHTML}
     </div>
     <div class="print-doc-title-bar"><span>FICHE INDIVIDUELLE DE L'EMPLOYÉ</span></div>
+    <div style="text-align:center;background:#F2F5F8;border-radius:5px;padding:4px;font-size:8.5pt;color:#555;margin:6px 0 10px;position:relative;z-index:1;">Réf. ${fmtMatricule(e.id)}-${new Date().getFullYear()} · Édité le ${new Date().toLocaleDateString('fr-FR')}</div>
     <div class="print-body">
       <div class="print-card">
         <div class="print-card-title"><span class="ico">📋</span> Informations personnelles</div>
@@ -7387,6 +7388,12 @@ function renderPresenceTable(date){
     const rec=presences[date][e.id]||{statut:'',justif:'',doc:null};
     const stClass=rec.statut==='Présent'?'status-p':rec.statut==='Absent'?'status-a':rec.statut==='Justifié'?'status-j':rec.statut==='À justifier'?'status-aj':rec.statut==='En congé'?'status-co':'';
     let stTxt=rec.statut||'—';
+    if(rec.statut==='Absent' && rec.punch_in){
+      // Un pointage EST bien enregistré (l'employé est venu), mais hors de la
+      // plage horaire tolérée — on le précise clairement dans le texte, pour
+      // ne pas laisser penser à tort qu'il ne s'est jamais présenté.
+      stTxt='Absent (Retard)';
+    }
     if(rec.statut==='Absent' && rec.retardTexte) stTxt+=` <span style="font-size:.62rem;font-weight:600;" title="${rec.retardTexte.replace(/"/g,'&quot;')}">ℹ️</span>`;
     if(rec.geo && rec.geo.inZone===false) stTxt+=' <span title="Hors zone GPS" style="color:#DC2626;">⚠️</span>';
 
@@ -9472,7 +9479,8 @@ function kioskChoisirAction(action){
   const cur = _kiosk.curRecord || {};
   const warnEl = document.getElementById('kioskActionWarn');
   if(action==='arrival' && cur.punch_in){
-    if(warnEl){ warnEl.style.display='block'; warnEl.textContent='⚠️ Pointage déjà enregistré. Veuillez attendre l\'heure de sortie avant de pointer le départ. Merci.'; }
+    const heureArrivee = new Date(cur.punch_in).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    if(warnEl){ warnEl.style.display='block'; warnEl.textContent=`⚠️ Votre arrivée est déjà enregistrée aujourd'hui à ${heureArrivee}. Scannez à nouveau uniquement pour votre DÉPART, en fin de service.`; }
     return;
   }
   if(action==='departure' && cur.punch_out){
