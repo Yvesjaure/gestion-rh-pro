@@ -1625,14 +1625,14 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
   </div>
   <div class="tabs">
-    <button class="tab-btn active" onclick="showPage(&#39;pgDash&#39;)">🏠 Tableau de bord</button>
-    <button class="tab-btn" onclick="showPage(&#39;pgEmp&#39;)">👤 Employés</button>
-    <button class="tab-btn" onclick="showPage(&#39;pgCon&#39;)">🌴 Congés</button>
-    <button class="tab-btn" onclick="showPage(&#39;pgBdg&#39;)">🪪 Badges</button>
-    <button class="tab-btn" onclick="showPage(&#39;pgPrz&#39;)">📅 Présence</button>
-    <button class="tab-btn" onclick="showPage(&#39;pgEqu&#39;)">🚛 Équipage</button>
-    <button class="tab-btn" onclick="showPage(&#39;pgMen&#39;)">📊 Mensuel</button>
-    <button class="tab-btn" onclick="showPage(&#39;pgAbs&#39;)">🚨 Absences</button>
+    <button class="tab-btn active" id="tabDash" onclick="showPage(&#39;pgDash&#39;)">🏠 Tableau de bord</button>
+    <button class="tab-btn" id="tabEmp" onclick="showPage(&#39;pgEmp&#39;)">👤 Employés</button>
+    <button class="tab-btn" id="tabCon" onclick="showPage(&#39;pgCon&#39;)">🌴 Congés</button>
+    <button class="tab-btn" id="tabBdg" onclick="showPage(&#39;pgBdg&#39;)">🪪 Badges</button>
+    <button class="tab-btn" id="tabPrz" onclick="showPage(&#39;pgPrz&#39;)">📅 Présence</button>
+    <button class="tab-btn" id="tabEqu" onclick="showPage(&#39;pgEqu&#39;)">🚛 Équipage</button>
+    <button class="tab-btn" id="tabMen" onclick="showPage(&#39;pgMen&#39;)">📊 Mensuel</button>
+    <button class="tab-btn" id="tabAbs" onclick="showPage(&#39;pgAbs&#39;)">🚨 Absences</button>
     <button class="tab-btn" id="tabIA" onclick="showPage(&#39;pgAI&#39;)" data-testid="tab-ai">🤖 IA Assistant</button>
     <button class="tab-btn" id="tabParametres" onclick="showPage(&#39;pgSet&#39;)">⚙️ Paramètres</button>
   </div>
@@ -2385,6 +2385,15 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <button class="btn b-add" onclick="ajouterSuperviseur()">➕ Ajouter</button>
     </div>
     <div id="supListe"></div>
+  </div>
+  <div class="settings-card">
+    <div class="sec">👁️ Comptes lecture seule — Présence uniquement</div>
+    <div style="font-size:.7rem;color:#666;margin:8px 0;">Ce compte ne verra QUE la page Présence, sans possibilité de rien modifier (juste consulter) — utile pour un responsable qui veut suivre sans avoir accès au reste.</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+      <input type="email" id="lecEmailInput" class="ci" placeholder="Email du lecteur" style="max-width:240px;">
+      <button class="btn b-add" onclick="ajouterLecteurPresence()">➕ Ajouter</button>
+    </div>
+    <div id="lecListe"></div>
   </div>
   <div class="settings-card">
     <div class="sec">🖼️ Logo &amp; Nom de l'entreprise</div>
@@ -3486,11 +3495,9 @@ let rhModeInscription = false;
 // nouvelle version, tant qu'on change CHANGELOG_VERSION (et la liste) en
 // même temps qu'on livre une mise à jour.
 // ============================================================
-const CHANGELOG_VERSION = '2026-08-11-2';
+const CHANGELOG_VERSION = '2026-08-11-3';
 const CHANGELOG_ITEMS = [
-  "Référence + date d'édition ajoutées sur la fiche employé",
-  "Statut « Absent (Retard) » : plus clair quand quelqu'un est arrivé en retard",
-  "Message du scanner précisé (heure d'arrivée déjà enregistrée)",
+  "Nouveau : comptes \"Lecture seule Présence\" (Paramètres)",
 ];
 function _verifierNouveautes(){
   try{
@@ -3549,11 +3556,36 @@ async function retirerSuperviseur(email){
 // Masque les sections réservées à l'admin pour un compte superviseur —
 // Paramètres, IA Assistant, Corbeille, Historique. Rien ne change pour un admin.
 function _appliquerRestrictionsSuperviseur(){
-  if(monRole!=='superviseur') return;
-  ['tabIA','tabParametres','menuCorbeille','menuHistorique'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.style.display='none';
-  });
+  if(monRole==='superviseur'){
+    ['tabIA','tabParametres','menuCorbeille','menuHistorique'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.style.display='none';
+    });
+  }
+  if(monRole==='lecteur_presence'){
+    // Ne garde QUE l'onglet Présence — tout le reste disparaît, y compris le
+    // tableau de bord. Bascule automatiquement dessus à la connexion.
+    ['tabDash','tabEmp','tabCon','tabBdg','tabEqu','tabMen','tabAbs','tabIA','tabParametres','menuCorbeille','menuHistorique'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.style.display='none';
+    });
+    setTimeout(()=>{ showPage('pgPrz'); _appliquerLectureSeulePresence(); }, 50);
+  }
+}
+// Rend la page Présence en lecture seule : retire les boutons d'action
+// (Présent/Absent/Justifier/Supprimer) et les contrôles de la barre latérale
+// qui modifient quelque chose (garde uniquement filtres, recherche et export).
+function _appliquerLectureSeulePresence(){
+  const style = document.createElement('style');
+  style.id = 'styleLectureSeulePresence';
+  style.textContent = `
+    #tPrz td:last-child button{display:none!important;}
+    #pgPrz .btn[onclick*="marquerTousPresents"],
+    #pgPrz .btn[onclick*="marquerTousAbsents"],
+    #pgPrz .btn[onclick*="clotureJournee"],
+    #pgPrz .btn[onclick*="fImportPointage"]{display:none!important;}
+  `;
+  if(!document.getElementById('styleLectureSeulePresence')) document.head.appendChild(style);
 }
 async function renderSuperviseurs(){
   const box = document.getElementById('supListe');
@@ -3571,6 +3603,41 @@ async function renderSuperviseurs(){
         <button class="btn" style="background:#e74c3c;color:#fff;font-size:.68rem;" onclick="retirerSuperviseur('${u.email}')">🗑️ Retirer</button>
       </div>`).join('');
   }catch(e){ box.innerHTML = '<p style="font-size:.72rem;color:#e74c3c;">Erreur de chargement : la table rh_utilisateurs existe-t-elle bien ?</p>'; }
+}
+async function ajouterLecteurPresence(){
+  const email = document.getElementById('lecEmailInput').value.trim().toLowerCase();
+  if(!email || !email.includes('@')){ toast('⚠️ Adresse email invalide','warn'); return; }
+  try{
+    const { error } = await supabaseRH.from('rh_utilisateurs').upsert({ email, role:'lecteur_presence', zone:null }, {onConflict:'email'});
+    if(error) throw error;
+    document.getElementById('lecEmailInput').value='';
+    renderLecteursPresence();
+    toast(`✅ ${email} ajouté en lecture seule (Présence)`,'ok');
+  }catch(e){ toast('❌ Erreur : '+e.message,'err'); }
+}
+async function retirerLecteurPresence(email){
+  if(!confirm(`Retirer les droits de ${email} ? Il redeviendra admin (accès complet).`))return;
+  try{
+    await supabaseRH.from('rh_utilisateurs').delete().eq('email', email);
+    renderLecteursPresence();
+    toast('✅ Retiré','ok');
+  }catch(e){ toast('❌ Erreur : '+e.message,'err'); }
+}
+async function renderLecteursPresence(){
+  const box = document.getElementById('lecListe');
+  if(!box) return;
+  try{
+    const { data } = await supabaseRH.from('rh_utilisateurs').select('email').eq('role','lecteur_presence').order('email');
+    if(!data || !data.length){
+      box.innerHTML = '<p style="font-size:.72rem;color:#888;font-style:italic;">Aucun compte lecture seule pour l\'instant.</p>';
+      return;
+    }
+    box.innerHTML = data.map(u=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;background:#F2F5F8;border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:.78rem;">
+        <div><b>${u.email}</b> <span style="color:#666;">— lecture seule, Présence uniquement</span></div>
+        <button class="btn" style="background:#e74c3c;color:#fff;font-size:.68rem;" onclick="retirerLecteurPresence('${u.email}')">🗑️ Retirer</button>
+      </div>`).join('');
+  }catch(e){ box.innerHTML = '<p style="font-size:.72rem;color:#e74c3c;">Erreur de chargement.</p>'; }
 }
 let rhEstAdmin = false;
 
@@ -3894,7 +3961,7 @@ function showPage(id) {
   if (id==='pgMen'){renderMensuel();}
   if (id==='pgAbs'){renderAbsences();}
   if (id==='pgAI'){aiInit();}
-  if (id==='pgSet'){updateSettingsInfo();renderSuperviseurs();}
+  if (id==='pgSet'){updateSettingsInfo();renderSuperviseurs();renderLecteursPresence();}
 }
 
 // ==================== CENTRE D'ALERTES ====================
