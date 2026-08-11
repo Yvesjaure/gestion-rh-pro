@@ -18445,14 +18445,15 @@ function prevBadge(){
   </div>
   <div class="badge-card badge-verso" style="${styleVars}">
     <div class="badge-header" style="justify-content:center;">
-      <div class="org-info" style="text-align:center;flex:none;"><div class="org-name" style="font-size:1.05rem;">CONDITIONS D'UTILISATION</div></div>
+      <div class="org-info" style="text-align:center;flex:none;"><div class="org-name" style="font-size:1.05rem;">AVIS IMPORTANT</div></div>
     </div>
-    <div style="padding:20px 20px;font-size:.95rem;color:#333;line-height:2.1;display:flex;flex-direction:column;justify-content:center;">
-      <div>• Cette carte est strictement personnelle et incessible.</div>
-      <div>• En cas de perte, prévenir immédiatement la RH.</div>
-      <div>• À restituer en fin de contrat.</div>
-      <div style="margin-top:18px;font-weight:800;font-size:1rem;color:var(--bdg-h1,#1A3A5C);">EN CAS DE DÉCOUVERTE</div>
-      <div>Merci de contacter : <b>${companyUrgence||'—'}</b></div>
+    <div style="padding:20px 20px;font-size:.86rem;color:#333;line-height:1.75;display:flex;flex-direction:column;justify-content:center;">
+      <div>Cette carte est personnelle et ne peut être cédée ou prêtée.</div>
+      <div style="margin-top:8px;">En cas de perte ou de détérioration, veuillez en informer immédiatement le service des Ressources Humaines.</div>
+      <div style="margin-top:8px;">Toute carte retrouvée doit être remise à l'entreprise ou signalée aux coordonnées ci-dessous.</div>
+      <div style="margin-top:16px;font-weight:800;font-size:.92rem;color:var(--bdg-h1,#1A3A5C);">CARTE RETROUVÉE — MERCI DE CONTACTER ${org}</div>
+      <div>Tél. : <b>${companyUrgence||'—'}</b></div>
+      <div style="margin-top:12px;font-style:italic;font-size:.8rem;">Cette carte demeure la propriété de l'entreprise et doit être restituée à la fin du contrat.</div>
     </div>
     <div class="badge-footer">${org} · Carte d'employé · ${dEmis.getFullYear()}</div>
   </div>`;
@@ -19062,14 +19063,15 @@ function _buildBadgePrint(){
   // Verso — même taille physique que le recto (54×85.6mm), sur une page à part.
   const versoHTML=`<div class="badge-print-card" style="${styleAttr}">
     <div class="bpc-header" style="justify-content:center;">
-      <div class="bpc-org" style="text-align:center;"><div class="bpc-org-name">CONDITIONS D'UTILISATION</div></div>
+      <div class="bpc-org" style="text-align:center;"><div class="bpc-org-name">AVIS IMPORTANT</div></div>
     </div>
-    <div style="padding:4mm 3mm;font-size:2.1mm;color:#333;line-height:1.7;">
-      <div>• Cette carte est strictement personnelle et incessible.</div>
-      <div>• En cas de perte, prévenir immédiatement la RH.</div>
-      <div>• À restituer en fin de contrat.</div>
-      <div style="margin-top:2.5mm;font-weight:800;color:var(--bdg-h1,#1A3A5C);">EN CAS DE DÉCOUVERTE</div>
-      <div>Merci de contacter : <b>${companyUrgence||'—'}</b></div>
+    <div style="padding:4mm 3mm;font-size:1.75mm;color:#333;line-height:1.5;">
+      <div>Cette carte est personnelle et ne peut être cédée ou prêtée.</div>
+      <div style="margin-top:1.5mm;">En cas de perte ou de détérioration, veuillez en informer immédiatement le service des Ressources Humaines.</div>
+      <div style="margin-top:1.5mm;">Toute carte retrouvée doit être remise à l'entreprise ou signalée aux coordonnées ci-dessous.</div>
+      <div style="margin-top:2.5mm;font-weight:800;color:var(--bdg-h1,#1A3A5C);">CARTE RETROUVÉE — MERCI DE CONTACTER ${org}</div>
+      <div>Tél. : <b>${companyUrgence||'—'}</b></div>
+      <div style="margin-top:2mm;font-style:italic;font-size:1.6mm;">Cette carte demeure la propriété de l'entreprise et doit être restituée à la fin du contrat.</div>
     </div>
     <div class="bpc-footer" style="margin-top:auto;">${org} · ${new Date().getFullYear()}</div>
   </div>`;
@@ -19143,7 +19145,7 @@ async function imprimerTousLesBadges(){
       .bpc-verso-header{ background:linear-gradient(135deg,var(--bdg-h1),var(--bdg-h2)); color:#fff; padding:2.8mm 3mm 2.2mm; display:flex; align-items:center; justify-content:center; position:relative; flex-shrink:0; }
       .bpc-verso-header::after{content:"";position:absolute;left:0;right:0;bottom:0;height:0.7mm;background:var(--bdg-f);}
       .bpc-verso-title{font-size:2.1mm;font-weight:900;letter-spacing:.2mm;text-transform:uppercase;text-align:center;}
-      .bpc-verso-body{flex:1;padding:3mm 2.5mm;font-size:1.7mm;color:#333;line-height:1.6;}
+      .bpc-verso-body{flex:1;padding:2.8mm 2.5mm;font-size:1.5mm;color:#333;line-height:1.45;}
       .bpc-verso-urgence-lbl{margin-top:2mm;font-weight:800;color:var(--bdg-h1,#1A3A5C);}
       .planche-titre{ grid-column:1/-1; text-align:center; font-family:Arial,sans-serif; font-size:12px; font-weight:700; color:#555; margin-top:6mm; text-transform:uppercase; letter-spacing:.5px; }
     </style></head>
@@ -19223,13 +19225,14 @@ async function imprimerTousLesBadges(){
     // et même position dans la grille, pour que recto/verso s'alignent au découpage.
     const versoWrap = w.document.createElement('div');
     versoWrap.innerHTML = `<div class="badge-print-card" style="--bdg-h1:${cc.h1};--bdg-h2:${cc.h2};--bdg-f:${cc.f};${cc.texte?`--bdg-texte:${cc.texte};`:''}${cc.pied?`--bdg-pied:${cc.pied};`:''}">
-      <div class="bpc-verso-header"><div class="bpc-verso-title">Conditions d'utilisation</div></div>
+      <div class="bpc-verso-header"><div class="bpc-verso-title">Avis important</div></div>
       <div class="bpc-verso-body">
-        <div>• Cette carte est strictement personnelle et incessible.</div>
-        <div>• En cas de perte, prévenir immédiatement la RH.</div>
-        <div>• À restituer en fin de contrat.</div>
-        <div class="bpc-verso-urgence-lbl">EN CAS DE DÉCOUVERTE</div>
-        <div>Merci de contacter : <b>${companyUrgence||'—'}</b></div>
+        <div>Cette carte est personnelle et ne peut être cédée ou prêtée.</div>
+        <div style="margin-top:1.2mm;">En cas de perte ou de détérioration, veuillez en informer immédiatement le service des Ressources Humaines.</div>
+        <div style="margin-top:1.2mm;">Toute carte retrouvée doit être remise à l'entreprise ou signalée aux coordonnées ci-dessous.</div>
+        <div class="bpc-verso-urgence-lbl">CARTE RETROUVÉE — MERCI DE CONTACTER ${org}</div>
+        <div>Tél. : <b>${companyUrgence||'—'}</b></div>
+        <div style="margin-top:1.5mm;font-style:italic;">Cette carte demeure la propriété de l'entreprise et doit être restituée à la fin du contrat.</div>
       </div>
       <div class="bpc-footer">${org} · ${new Date().getFullYear()}</div>
     </div>`;
