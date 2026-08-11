@@ -309,7 +309,7 @@ tbody td{padding:3px 4px;border:1px solid #E8E8E8;white-space:nowrap;max-width:1
 .ctable tr:hover td{background:#EBF5FB;}
 
 /* ========== BADGE ========== */
-#badgePreview{display:flex;justify-content:center;align-items:flex-start;gap:16px;flex-wrap:wrap;padding:18px;background:linear-gradient(135deg,#cfd8dc,#b0bec5);min-height:300px;border-radius:8px;}
+#badgePreview{display:flex;justify-content:center;align-items:stretch;gap:16px;flex-wrap:wrap;padding:18px;background:linear-gradient(135deg,#cfd8dc,#b0bec5);min-height:300px;border-radius:8px;}
 
 /* ========== BADGE EMPLOYÉ — design moderne format carte PVC ========== */
 .badge-card{
@@ -337,6 +337,10 @@ tbody td{padding:3px 4px;border:1px solid #E8E8E8;white-space:nowrap;max-width:1
   z-index:0;
 }
 .badge-card > *:not(.badge-watermark){ position:relative; z-index:1; }
+/* Verso : même hauteur que le recto (stretch du parent flex) — contenu réparti
+   verticalement pour que le pied reste collé en bas, comme sur le recto. */
+.badge-verso{ display:flex; flex-direction:column; }
+.badge-verso > div:nth-child(2){ flex:1; }
 /* En-tête coloré avec dégradé : logo + nom entreprise */
 .badge-header{
   background:linear-gradient(135deg,var(--bdg-h1,#1A3A5C),var(--bdg-h2,#2E6DA4));
@@ -6101,7 +6105,7 @@ function _buildFichePrint(){
       ${photoHTML}
     </div>
     <div class="print-doc-title-bar"><span>FICHE INDIVIDUELLE DE L'EMPLOYÉ</span></div>
-    <div style="text-align:center;background:#F2F5F8;border-radius:5px;padding:4px;font-size:8.5pt;color:#555;margin:6px 0 10px;position:relative;z-index:1;">Réf. ${fmtMatricule(e.id)}-${new Date().getFullYear()} · Édité le ${new Date().toLocaleDateString('fr-FR')}</div>
+    <div style="text-align:center;background:#F2F5F8;border-radius:5px;padding:4px;font-size:8.5pt;color:#555;margin:6px 0 10px;position:relative;z-index:1;">Réf. ${fmtMatricule(emp.id)}-${new Date().getFullYear()} · Édité le ${new Date().toLocaleDateString('fr-FR')}</div>
     <div class="print-body">
       <div class="print-card">
         <div class="print-card-title"><span class="ico">📋</span> Informations personnelles</div>
@@ -6282,13 +6286,24 @@ async function imprimerTousLesBadges(){
       .bpc-qr-img img{width:100%;height:100%;}
       .bpc-valid{font-size:1.3mm;color:#555;text-align:center;line-height:1.35;}
       .bpc-footer{background:var(--bdg-pied,var(--bdg-h1));color:#fff;text-align:center;font-size:1.35mm;font-weight:700;padding:1mm;flex-shrink:0;}
+      .bpc-verso-header{ background:linear-gradient(135deg,var(--bdg-h1),var(--bdg-h2)); color:#fff; padding:2.8mm 3mm 2.2mm; display:flex; align-items:center; justify-content:center; position:relative; flex-shrink:0; }
+      .bpc-verso-header::after{content:"";position:absolute;left:0;right:0;bottom:0;height:0.7mm;background:var(--bdg-f);}
+      .bpc-verso-title{font-size:2.1mm;font-weight:900;letter-spacing:.2mm;text-transform:uppercase;text-align:center;}
+      .bpc-verso-body{flex:1;padding:3mm 2.5mm;font-size:1.7mm;color:#333;line-height:1.6;}
+      .bpc-verso-urgence-lbl{margin-top:2mm;font-weight:800;color:var(--bdg-h1,#1A3A5C);}
+      .planche-titre{ grid-column:1/-1; text-align:center; font-family:Arial,sans-serif; font-size:12px; font-weight:700; color:#555; margin-top:6mm; text-transform:uppercase; letter-spacing:.5px; }
     </style></head>
     <body>
       <div id="bpcProgress">⏳ Génération des badges — 0 / ${actifs.length}…</div>
       <div class="planche" id="bpcPlanche"></div>
+      <div style="break-before:page;page-break-before:always;">
+        <div class="planche-titre">Versos — à imprimer sur l'autre face</div>
+        <div class="planche" id="bpcPlancheVerso"></div>
+      </div>
     </body></html>`);
   w.document.close();
   const planche = w.document.getElementById('bpcPlanche');
+  const plancheVerso = w.document.getElementById('bpcPlancheVerso');
   const progress = w.document.getElementById('bpcProgress');
 
   // Conteneur temporaire hors écran, pour générer chaque QR sans perturber l'affichage.
@@ -6340,6 +6355,22 @@ async function imprimerTousLesBadges(){
       <div class="bpc-footer">${org} · ${new Date().getFullYear()}</div>
     </div>`;
     planche.appendChild(carteWrap.firstElementChild);
+
+    // Verso correspondant — même couleur que le recto de l'employé, même taille
+    // et même position dans la grille, pour que recto/verso s'alignent au découpage.
+    const versoWrap = w.document.createElement('div');
+    versoWrap.innerHTML = `<div class="badge-print-card" style="--bdg-h1:${cc.h1};--bdg-h2:${cc.h2};--bdg-f:${cc.f};${cc.texte?`--bdg-texte:${cc.texte};`:''}${cc.pied?`--bdg-pied:${cc.pied};`:''}">
+      <div class="bpc-verso-header"><div class="bpc-verso-title">Conditions d'utilisation</div></div>
+      <div class="bpc-verso-body">
+        <div>• Cette carte est strictement personnelle et incessible.</div>
+        <div>• En cas de perte, prévenir immédiatement la RH.</div>
+        <div>• À restituer en fin de contrat.</div>
+        <div class="bpc-verso-urgence-lbl">EN CAS DE DÉCOUVERTE</div>
+        <div>Merci de contacter : <b>${companyUrgence||'—'}</b></div>
+      </div>
+      <div class="bpc-footer">${org} · ${new Date().getFullYear()}</div>
+    </div>`;
+    plancheVerso.appendChild(versoWrap.firstElementChild);
 
     // Progression + pause régulière pour laisser respirer le navigateur (évite
     // le gel de l'onglet, essentiel au-delà de quelques centaines d'employés).
