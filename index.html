@@ -14894,7 +14894,16 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <input type="email" id="equEmailInput" class="ci" placeholder="Email" style="max-width:240px;">
       <button class="btn b-add" onclick="ajouterGestionEquipage()">➕ Ajouter</button>
     </div>
-    <div id="equListe"></div>
+    <div id="equRoleListe"></div>
+  </div>
+  <div class="settings-card">
+    <div class="sec">📅🚛 Comptes Présence + Équipage</div>
+    <div style="font-size:.7rem;color:#666;margin:8px 0;">Ce compte voit UNIQUEMENT Présence et Équipage, avec accès complet aux deux — rien d'autre (pas de Tableau de bord, Employés, Congés, Badges, Mensuel, Absences, IA, Paramètres).</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+      <input type="email" id="przEquEmailInput" class="ci" placeholder="Email" style="max-width:240px;">
+      <button class="btn b-add" onclick="ajouterPresenceEquipage()">➕ Ajouter</button>
+    </div>
+    <div id="przEquListe"></div>
   </div>
   <div class="settings-card">
     <div class="sec">🖼️ Logo &amp; Nom de l'entreprise</div>
@@ -15768,18 +15777,24 @@ function _buildQrEIDA1(e, org){
   const statut = _champQR((e.statutEmploi||'Actif').toUpperCase());
   const parts = (companyUrgence||'').split('/').map(s=>_champQR(s));
   const tel1 = parts[0]||'', tel2 = parts[1]||'';
-  return [QR_SIGNATURE, matricule, nom, prenom, dateNais, fonction, statut, tel1, tel2].join(QR_SEP);
+  // Signature en DERNIER champ (pas en premier) : si quelqu'un scanne le badge
+  // avec une appli quelconque au lieu du kiosque RH, c'est le matricule qui
+  // apparaît en premier (plus lisible), pas "EIDA1". La vérification et le
+  // numéro de version restent tout aussi fiables, juste à la fin plutôt qu'au
+  // début.
+  return [matricule, nom, prenom, dateNais, fonction, statut, tel1, tel2, QR_SIGNATURE].join(QR_SEP);
 }
-// Décode un texte de QR scanné : reconnaît le format EIDA1, refuse tout le
-// reste (mauvaise signature ou mauvais nombre de champs — donc jamais de
-// mauvaise interprétation d'un QR qui n'est pas un badge EIDA). Renvoie
-// l'objet décodé, ou null si ce n'est pas un QR de badge EIDA valide.
+// Décode un texte de QR scanné : reconnaît le format EIDA1 (signature en
+// dernier champ), refuse tout le reste (mauvaise signature ou mauvais nombre
+// de champs — donc jamais de mauvaise interprétation d'un QR qui n'est pas un
+// badge EIDA). Renvoie l'objet décodé, ou null si ce n'est pas un QR de badge
+// EIDA valide.
 function _decoderQrEIDA1(texte){
   if(!texte || typeof texte!=='string') return null;
   const champs = texte.split(QR_SEP);
-  if(champs[0]!==QR_SIGNATURE) return null;
   if(champs.length!==9) return null;
-  const [, matricule, nom, prenom, dateNais, fonction, statut, tel1, tel2] = champs;
+  if(champs[champs.length-1]!==QR_SIGNATURE) return null;
+  const [matricule, nom, prenom, dateNais, fonction, statut, tel1, tel2] = champs;
   if(!matricule) return null;
   return {
     matricule, nom, prenom, dateNais, fonction, statut,
@@ -16126,7 +16141,27 @@ function _appliquerRestrictionsSuperviseur(){
     });
     setTimeout(()=>{ showPage('pgEqu'); }, 50);
   }
+  if(monRole==='presence_equipage'){
+    // Garde UNIQUEMENT Présence et Équipage — accès complet sur les deux (pas
+    // de restriction lecture seule ici, contrairement à lecteur_presence).
+    // Rien d'autre n'est visible, y compris le tableau de bord.
+    ['tabDash','tabEmp','tabCon','tabBdg','tabMen','tabAbs','tabIA','tabParametres','menuCorbeille','menuHistorique'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.style.display='none';
+    });
+    setTimeout(()=>{ showPage('pgPrz'); }, 50);
+  }
 }
+// Pages que chaque rôle restreint a le droit de voir — utilisé par showPage()
+// comme véritable verrou (pas juste un masquage de bouton) : même un appel
+// direct depuis la console du navigateur (showPage('pgEmp')) est bloqué pour
+// un compte qui n'a pas le droit d'y accéder. Un rôle absent de cette liste
+// (admin, superviseur) a accès à tout — pas de restriction.
+const PAGES_AUTORISEES_PAR_ROLE = {
+  lecteur_presence: ['pgPrz'],
+  gestion_equipage: ['pgEqu'],
+  presence_equipage: ['pgPrz','pgEqu'],
+};
 // Rend la page Présence en lecture seule : retire les boutons d'action
 // (Présent/Absent/Justifier/Supprimer) et les contrôles de la barre latérale
 // qui modifient quelque chose (garde uniquement filtres, recherche et export).
@@ -16242,7 +16277,7 @@ async function retirerGestionEquipage(email){
   }catch(e){ toast('❌ Erreur : '+e.message,'err'); }
 }
 async function renderGestionEquipage(){
-  const box = document.getElementById('equListe');
+  const box = document.getElementById('equRoleListe');
   if(!box) return;
   try{
     const { data } = await supabaseRH.from('rh_utilisateurs').select('email').eq('role','gestion_equipage').order('email');
@@ -16254,6 +16289,41 @@ async function renderGestionEquipage(){
       <div style="display:flex;justify-content:space-between;align-items:center;background:#F2F5F8;border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:.78rem;">
         <div><b>${u.email}</b> <span style="color:#666;">— Équipage uniquement, accès complet</span></div>
         <button class="btn" style="background:#e74c3c;color:#fff;font-size:.68rem;" onclick="retirerGestionEquipage('${u.email}')">🗑️ Retirer</button>
+      </div>`).join('');
+  }catch(e){ box.innerHTML = '<p style="font-size:.72rem;color:#e74c3c;">Erreur de chargement.</p>'; }
+}
+async function ajouterPresenceEquipage(){
+  const email = document.getElementById('przEquEmailInput').value.trim().toLowerCase();
+  if(!email || !email.includes('@')){ toast('⚠️ Adresse email invalide','warn'); return; }
+  try{
+    const { error } = await supabaseRH.from('rh_utilisateurs').upsert({ email, role:'presence_equipage', zone:null }, {onConflict:'email'});
+    if(error) throw error;
+    document.getElementById('przEquEmailInput').value='';
+    renderPresenceEquipage();
+    toast(`✅ ${email} ajouté — accès Présence + Équipage uniquement`,'ok');
+  }catch(e){ toast('❌ Erreur : '+e.message,'err'); }
+}
+async function retirerPresenceEquipage(email){
+  if(!confirm(`Retirer les droits de ${email} ? Il redeviendra admin (accès complet).`))return;
+  try{
+    await supabaseRH.from('rh_utilisateurs').delete().eq('email', email);
+    renderPresenceEquipage();
+    toast('✅ Retiré','ok');
+  }catch(e){ toast('❌ Erreur : '+e.message,'err'); }
+}
+async function renderPresenceEquipage(){
+  const box = document.getElementById('przEquListe');
+  if(!box) return;
+  try{
+    const { data } = await supabaseRH.from('rh_utilisateurs').select('email').eq('role','presence_equipage').order('email');
+    if(!data || !data.length){
+      box.innerHTML = '<p style="font-size:.72rem;color:#888;font-style:italic;">Aucun compte Présence + Équipage pour l\'instant.</p>';
+      return;
+    }
+    box.innerHTML = data.map(u=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;background:#F2F5F8;border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:.78rem;">
+        <div><b>${u.email}</b> <span style="color:#666;">— Présence + Équipage, accès complet</span></div>
+        <button class="btn" style="background:#e74c3c;color:#fff;font-size:.68rem;" onclick="retirerPresenceEquipage('${u.email}')">🗑️ Retirer</button>
       </div>`).join('');
   }catch(e){ box.innerHTML = '<p style="font-size:.72rem;color:#e74c3c;">Erreur de chargement.</p>'; }
 }
@@ -16610,6 +16680,7 @@ async function rhOuvrirPanneauEmployes() {
             <option value="superviseur">🧑‍💼 Superviseur — une zone</option>
             <option value="lecteur_presence">👁️ Lecture seule — Présence</option>
             <option value="gestion_equipage" ${emp.role_demande==='gestion_equipage'?'selected':''}>🚛 Équipage uniquement (planification)</option>
+            <option value="presence_equipage" ${emp.role_demande==='presence_equipage'?'selected':''}>📅🚛 Présence + Équipage uniquement</option>
           </select>
           <select id="zoneApprobation_${i}" style="display:none;padding:5px;border-radius:5px;font-size:.72rem;">
             ${zones.map(z=>`<option value="${z}">${z}</option>`).join('')}
@@ -16753,6 +16824,16 @@ function updateHeaderTitle() {
 // PAGES
 // ============================================================
 function showPage(id) {
+  // Verrou réel (pas juste esthétique) : un compte restreint (lecteur_presence,
+  // gestion_equipage, presence_equipage...) ne peut pas naviguer vers une page
+  // hors de sa liste autorisée, même en appelant showPage() directement depuis
+  // la console du navigateur — pas seulement en cliquant un onglet masqué.
+  const autorisees = PAGES_AUTORISEES_PAR_ROLE[monRole];
+  if(autorisees && !autorisees.includes(id)){
+    console.warn(`Accès refusé à ${id} pour le rôle ${monRole}`);
+    toast('⛔ Accès non autorisé pour ce compte','err');
+    id = autorisees[0]; // renvoie vers sa page autorisée plutôt que de rester bloqué
+  }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -16766,7 +16847,7 @@ function showPage(id) {
   if (id==='pgMen'){renderMensuel();}
   if (id==='pgAbs'){renderAbsences();}
   if (id==='pgAI'){aiInit();}
-  if (id==='pgSet'){updateSettingsInfo();renderSuperviseurs();renderLecteursPresence();renderGestionEquipage();_remplirLienDemandeAcces();}
+  if (id==='pgSet'){updateSettingsInfo();renderSuperviseurs();renderLecteursPresence();renderGestionEquipage();renderPresenceEquipage();_remplirLienDemandeAcces();}
 }
 
 // ==================== CENTRE D'ALERTES ====================
