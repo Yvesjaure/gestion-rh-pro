@@ -3252,7 +3252,7 @@ function _buildQrTexteVariantes(e, org){
   ].filter(Boolean).join('\n');
 
   const essentiel = [
-    `Entreprise : ${entrepriseTexte}`,
+    `Entreprise : ${org}`,
     `Matricule : ${matricule}`,
     `Nom : ${nomComplet}`,
     dateNais ? `Date de naissance : ${dateNais}` : '',
@@ -3269,7 +3269,7 @@ function _buildQrTexteVariantes(e, org){
 // sans erreur) — pour que TOUS les badges restent scannables, peu importe le
 // nombre de champs remplis sur la fiche de l'employé. La dernière variante
 // (le simple lien) est toujours gardée en tout dernier repli.
-const SEUIL_LONGUEUR_QR = 220;
+const SEUIL_LONGUEUR_QR = 260;
 function _filtrerVariantesQR(variantes){
   const courtes = variantes.filter((texte,i) => i===variantes.length-1 || (texte||'').length<=SEUIL_LONGUEUR_QR);
   return courtes.length ? courtes : variantes;
