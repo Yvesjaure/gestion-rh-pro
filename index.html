@@ -3537,9 +3537,9 @@ let rhModeInscription = false;
 // nouvelle version, tant qu'on change CHANGELOG_VERSION (et la liste) en
 // même temps qu'on livre une mise à jour.
 // ============================================================
-const CHANGELOG_VERSION = '2026-08-11-7';
+const CHANGELOG_VERSION = '2026-08-11-8';
 const CHANGELOG_ITEMS = [
-  "L'écran « Nouveau mot de passe » affiche maintenant l'email du compte concerné",
+  "Message plus clair si le lien de récupération a déjà expiré/été utilisé",
 ];
 function _verifierNouveautes(){
   try{
@@ -3723,6 +3723,16 @@ async function validerNouveauMdp(){
   if(pwd.length < 6){ msg.style.color='#e74c3c'; msg.textContent='⚠️ 6 caractères minimum'; return; }
   if(pwd !== confirm){ msg.style.color='#e74c3c'; msg.textContent='⚠️ Les mots de passe ne correspondent pas'; return; }
   msg.style.color='#666'; msg.textContent='Enregistrement...';
+  // Vérifie d'abord qu'une session de récupération est bien active — sinon le
+  // lien a probablement déjà été "consommé" avant que la personne ne clique
+  // dessus elle-même (ça arrive avec Gmail ou un antivirus qui pré-visitent
+  // les liens des emails pour vérifier qu'ils sont sûrs).
+  const { data: { session } } = await supabaseRH.auth.getSession();
+  if(!session){
+    msg.style.color='#e74c3c';
+    msg.innerHTML = '❌ Ce lien a expiré ou a déjà été utilisé (cela arrive souvent avec Gmail qui "pré-visite" les liens automatiquement). <b>Redemandez un nouveau lien</b> via "Mot de passe oublié ?", et cliquez dessus depuis un navigateur (pas depuis l\'aperçu de l\'email).';
+    return;
+  }
   try{
     const { error } = await supabaseRH.auth.updateUser({ password: pwd });
     if(error) throw error;
