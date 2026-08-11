@@ -3299,16 +3299,22 @@ function _hmToMin(hm){ const [h,m]=(hm||'0:0').split(':').map(Number); return (h
 // Construit plusieurs versions du texte du QR d'un employé, de la plus complète à
 // la plus courte (juste matricule + nom + lien). En repli automatique si la version
 // complète pose problème (texte trop long pour une librairie QR ancienne, etc.).
-// Chaque champ est plafonné (_tronquer) avant d'entrer dans le texte du QR : si un
-// champ contient accidentellement bien plus de texte que ce qui est visible à
-// l'écran (collage malencontreux, espaces répétés...), ça ne fait plus planter TOUT
-// le QR — juste ce champ est coupé, le reste des infos passe quand même.
+// Chaque champ passe par _nettoyerPourQR (retire les caractères invisibles — espaces
+// zéro-largeur, marques de direction, caractères de contrôle... souvent introduits
+// par un copier-coller depuis WhatsApp/PDF/téléphone : invisibles à l'écran mais
+// bien comptés par la librairie QR, ils peuvent la faire échouer sans raison
+// apparente) PUIS par _tronquer (plafond de longueur, même logique de sécurité).
+function _nettoyerPourQR(v){
+  return (v||'').toString()
+    .replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF]/g, '')
+    .trim();
+}
 function _tronquer(v, max){
-  const s = (v||'').toString();
+  const s = _nettoyerPourQR(v);
   return s.length>max ? s.slice(0,max)+'…' : s;
 }
 function _buildQrTexteVariantes(e, org){
-  const matricule = fmtMatricule(e.id);
+  const matricule = _nettoyerPourQR(fmtMatricule(e.id));
   const nomComplet = _tronquer(`${(e.nom||'').toUpperCase()} ${e.prenom||''}`.trim(), 60);
   let dateEmb = '';
   if(e.emb){
@@ -3323,10 +3329,10 @@ function _buildQrTexteVariantes(e, org){
   dateNais = _tronquer(dateNais, 30);
   dateEmb = _tronquer(dateEmb, 30);
   const fonc = _tronquer(e.fonc, 60);
-  const dept = _tronquer(e.dept, 40);
-  const site = _tronquer(e.site, 40);
+  const dept = _tronquer(e.dept, 30);
+  const site = _tronquer(e.site, 30);
   const tel = _tronquer(e.tel, 30);
-  const email = _tronquer(e.email, 60);
+  const email = _tronquer(e.email, 45);
   const statut = _tronquer(e.statutEmploi||'Actif', 30);
   const urgence = _tronquer(companyUrgence, 60);
   const sep = (qrBaseUrl && qrBaseUrl.includes('?')) ? '&' : '?';
@@ -3334,7 +3340,7 @@ function _buildQrTexteVariantes(e, org){
     ? `${qrBaseUrl.trim()}${sep}id=${matricule}`
     : `${window.location.origin}${window.location.pathname}?id=${matricule}`;
   // Nom court + nom complet, ex: "EIDA- Entreprise Ivoirienne d'aide en Assainissement"
-  const entrepriseTexte = _tronquer(companyFullName ? `${org}- ${companyFullName}` : org, 100);
+  const entrepriseTexte = _tronquer(companyFullName ? `${org}- ${companyFullName}` : org, 75);
 
   const complet = [
     `Entreprise : ${entrepriseTexte}`,
