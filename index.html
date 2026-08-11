@@ -2410,6 +2410,14 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
 <!-- ======= PAGE PARAMÈTRES ======= -->
 <div class="page" id="pgSet">
   <div class="settings-card">
+    <div class="sec">🔗 Lien à partager — Demander un accès</div>
+    <div style="font-size:.7rem;color:#666;margin:8px 0;">Envoie ce lien à quelqu'un (ex: ton patron) pour qu'il arrive directement sur l'écran « Demander un accès » — tu n'auras plus qu'à approuver sa demande et choisir son rôle.</div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <input type="text" id="lienDemandeAcces" class="ci" readonly value="" style="flex:1;font-size:.75rem;background:#F2F5F8;">
+      <button class="btn b-add" onclick="copierLienDemandeAcces()">📋 Copier</button>
+    </div>
+  </div>
+  <div class="settings-card">
     <div class="sec">🧑‍💼 Comptes superviseurs (accès limité à une zone)</div>
     <div style="font-size:.7rem;color:#666;margin:8px 0;">Un superviseur ne verra que les employés/pointages de la zone choisie. Un email absent de cette liste garde l'accès complet (admin).</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
@@ -2713,7 +2721,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
 <div id="printFicheWrap"><div class="print-page" id="printFicheContent"></div></div>
 <div id="printAbsentsWrap"><div class="print-page" id="printAbsentsContent"></div></div>
 <div id="printPresenceWrap"><div class="print-page" id="printPresenceContent"></div></div>
-<div id="printBadgeWrap"><div class="print-badge-page" id="printBadgeContent"></div></div>
+<div id="printBadgeWrap"><div id="printBadgeContent"></div></div>
 <div id="printMensuelWrap"><div class="print-mensuel-wrap" id="printMensuelContent"></div></div>
 <div id="printCumulWrap"><div class="print-cumul-wrap" id="printCumulContent"></div></div>
 
@@ -3540,10 +3548,9 @@ let rhModeInscription = false;
 // nouvelle version, tant qu'on change CHANGELOG_VERSION (et la liste) en
 // même temps qu'on livre une mise à jour.
 // ============================================================
-const CHANGELOG_VERSION = '2026-08-11-10';
+const CHANGELOG_VERSION = '2026-08-11-12';
 const CHANGELOG_ITEMS = [
-  "Nouveau : lien ?demande=1 pour partager directement l'accès « Demander un accès »",
-  "Nouveau : choix du rôle (admin/superviseur/lecture seule) directement à l'approbation d'une demande",
+  "Impression du badge : recto et verso maintenant chacun sur leur propre page",
 ];
 function _verifierNouveautes(){
   try{
@@ -3632,6 +3639,22 @@ function _appliquerLectureSeulePresence(){
     #pgPrz .btn[onclick*="fImportPointage"]{display:none!important;}
   `;
   if(!document.getElementById('styleLectureSeulePresence')) document.head.appendChild(style);
+}
+// Remplit le champ avec l'adresse ACTUELLE (pas figée en dur) — fonctionne
+// donc correctement même si l'app est un jour déplacée vers une autre adresse.
+function _remplirLienDemandeAcces(){
+  const champ = document.getElementById('lienDemandeAcces');
+  if(champ) champ.value = location.origin + location.pathname.replace(/[^\/]*$/, '') + '?demande=1';
+}
+function copierLienDemandeAcces(){
+  const champ = document.getElementById('lienDemandeAcces');
+  champ.select();
+  navigator.clipboard.writeText(champ.value).then(()=>{
+    toast('✅ Lien copié !','ok');
+  }).catch(()=>{
+    document.execCommand('copy'); // repli pour les navigateurs plus anciens
+    toast('✅ Lien copié !','ok');
+  });
 }
 async function renderSuperviseurs(){
   const box = document.getElementById('supListe');
@@ -4108,7 +4131,7 @@ function showPage(id) {
   if (id==='pgMen'){renderMensuel();}
   if (id==='pgAbs'){renderAbsences();}
   if (id==='pgAI'){aiInit();}
-  if (id==='pgSet'){updateSettingsInfo();renderSuperviseurs();renderLecteursPresence();}
+  if (id==='pgSet'){updateSettingsInfo();renderSuperviseurs();renderLecteursPresence();_remplirLienDemandeAcces();}
 }
 
 // ==================== CENTRE D'ALERTES ====================
@@ -6151,7 +6174,7 @@ function _buildBadgePrint(){
   const fonction=(e.fonc||'').trim()||'—';
 
   const afficherFiligrane = document.getElementById('bdgWatermark') ? document.getElementById('bdgWatermark').checked : true;
-  const html=`<div class="badge-print-card" id="bpcCard" style="${styleAttr}">
+  const rectoHTML=`<div class="badge-print-card" id="bpcCard" style="${styleAttr}">
     ${(companyLogo && afficherFiligrane) ? `<div class="bpc-watermark" style="background-image:url('${companyLogo}');"></div>` : ''}
     <div class="bpc-header">
       ${logoHTML}
@@ -6178,8 +6201,23 @@ function _buildBadgePrint(){
     <div class="bpc-footer">${org} · ${new Date().getFullYear()}</div>
   </div>`;
 
+  // Verso — même taille physique que le recto (54×85.6mm), sur une page à part.
+  const versoHTML=`<div class="badge-print-card" style="${styleAttr}">
+    <div class="bpc-header" style="justify-content:center;">
+      <div class="bpc-org" style="text-align:center;"><div class="bpc-org-name">CONDITIONS D'UTILISATION</div></div>
+    </div>
+    <div style="padding:4mm 3mm;font-size:2.1mm;color:#333;line-height:1.7;">
+      <div>• Cette carte est strictement personnelle et incessible.</div>
+      <div>• En cas de perte, prévenir immédiatement la RH.</div>
+      <div>• À restituer en fin de contrat.</div>
+      <div style="margin-top:2.5mm;font-weight:800;color:var(--bdg-h1,#1A3A5C);">EN CAS DE DÉCOUVERTE</div>
+      <div>Merci de contacter : <b>${companyUrgence||'—'}</b></div>
+    </div>
+    <div class="bpc-footer" style="margin-top:auto;">${org} · ${new Date().getFullYear()}</div>
+  </div>`;
+
   const wrap=document.getElementById('printBadgeContent');
-  wrap.innerHTML=html;
+  wrap.innerHTML = `<div class="print-badge-page">${rectoHTML}</div><div class="print-badge-page" style="break-before:page;page-break-before:always;">${versoHTML}</div>`;
   const qrEl=document.getElementById('bpcQR');
   if(qrEl) _genererQREmploye(qrEl, e, org, 340);
   return true;
