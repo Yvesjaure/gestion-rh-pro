@@ -51,7 +51,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1A3A5C">
 
-<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/qrcode.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/qrcode_UTF8.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
@@ -3382,6 +3383,27 @@ function _buildQrTexteVariantes(e, org){
 // voir le commentaire dans _genererQREmploye ci-dessous, cette pré-filtration
 // empêchait la variante "complet" d'être utilisée alors qu'elle passe très
 // bien.)
+// Brique de génération QR — utilise qrcode-generator (Kazuhiko Arase), bien
+// plus fiable que l'ancienne librairie qrcodejs : au lieu d'ESTIMER la taille
+// nécessaire à l'avance (ce que l'ancienne faisait mal pour certains textes —
+// c'était la vraie cause des "code length overflow" même sur du texte court),
+// celle-ci construit réellement les données bit par bit et augmente le
+// format tant que ça ne rentre pas (typeNumber:0 = automatique et fiable).
+// Support UTF-8 correct inclus (qrcode_UTF8.js chargé juste après).
+function _creerQRDataURL(texte, tailleCiblePx, niveauCorrection){
+  if(typeof qrcode==='undefined') return '';
+  try{
+    const qr = qrcode(0, niveauCorrection||'M');
+    qr.addData(texte||' ');
+    qr.make();
+    const nbModules = qr.getModuleCount();
+    const cell = Math.max(1, Math.round((tailleCiblePx||130)/nbModules));
+    return qr.createDataURL(cell, 0);
+  }catch(err){
+    console.warn('QR : échec de génération pour ce texte —', err);
+    return '';
+  }
+}
 // Génère le QR d'un employé dans targetEl, en essayant automatiquement une version
 // plus courte du texte si la plus complète échoue (au lieu d'afficher une erreur).
 // Mémorise le texte qui a fonctionné dans data-qr (et un indicateur data-qr-mode :
@@ -3391,11 +3413,11 @@ function _buildQrTexteVariantes(e, org){
 async function _genererQREmploye(targetEl, e, org, size){
   if(!targetEl) return false;
   let waited=0;
-  while(typeof QRCode==='undefined' && waited<3000){
+  while(typeof qrcode==='undefined' && waited<3000){
     await new Promise(r=>setTimeout(r,100));
     waited+=100;
   }
-  if(typeof QRCode==='undefined'){
+  if(typeof qrcode==='undefined'){
     targetEl.innerHTML='<span style="font-size:.55rem;color:#C0392B;text-align:center;padding:4px;font-weight:700;">⚠️ Lib QR<br>non chargée<br>(internet ?)</span>';
     return false;
   }
@@ -3404,26 +3426,18 @@ async function _genererQREmploye(targetEl, e, org, size){
   const echecs = []; // diagnostic : pourquoi chaque variante plus riche a été abandonnée
   for(let vi=0; vi<variantes.length; vi++){
     const texte = variantes[vi];
-    targetEl.innerHTML='';
     const len=(texte||'').length;
-    let level=QRCode.CorrectLevel.M;
-    if(len>150) level=QRCode.CorrectLevel.L; // texte long → capacité max, moins de redondance
-    else if(len<60) level=QRCode.CorrectLevel.Q;
-    try{
-      new QRCode(targetEl,{ text:texte||' ', width:size, height:size, correctLevel:level, colorDark:'#000000', colorLight:'#ffffff' });
-      await new Promise(r=>setTimeout(r,40));
-      if(targetEl.querySelector('img,canvas')){
-        targetEl.dataset.qr = encodeURIComponent(texte);
-        targetEl.dataset.qrMode = noms[vi] || 'lien';
-        targetEl.dataset.qrEchecs = echecs.length ? encodeURIComponent(echecs.join(' | ')) : '';
-        targetEl.title = texte + (echecs.length ? `\n\n(Variantes précédentes abandonnées : ${echecs.join(' | ')})` : '');
-        return true;
-      }
-      echecs.push(`${noms[vi]} : aucune image générée (sans erreur)`);
-    }catch(err){
-      echecs.push(`${noms[vi]} : ${err.message}`);
-      console.warn('QR : variante trop volumineuse pour cette librairie, on réessaie en plus court —', err.message);
+    const niveau = len>150 ? 'L' : (len<60 ? 'Q' : 'M');
+    const dataUrl = _creerQRDataURL(texte, size, niveau);
+    if(dataUrl){
+      targetEl.innerHTML = `<img src="${dataUrl}" style="width:${size}px;height:${size}px;image-rendering:pixelated;" alt="QR">`;
+      targetEl.dataset.qr = encodeURIComponent(texte);
+      targetEl.dataset.qrMode = noms[vi] || 'lien';
+      targetEl.dataset.qrEchecs = echecs.length ? encodeURIComponent(echecs.join(' | ')) : '';
+      targetEl.title = texte + (echecs.length ? `\n\n(Variantes précédentes abandonnées : ${echecs.join(' | ')})` : '');
+      return true;
     }
+    echecs.push(`${noms[vi]} : échec de génération`);
   }
   targetEl.innerHTML='<span style="font-size:.55rem;color:#C0392B;text-align:center;padding:4px;">⚠️ QR indisponible</span>';
   targetEl.title = 'Échec de toutes les variantes : ' + echecs.join(' | ');
@@ -3438,25 +3452,19 @@ async function _genererQREmploye(targetEl, e, org, size){
 let _dernierQRSyncDiag = { mode:'', echecs:[] };
 function _genererQRDataURLEmployeSync(container, e, org, size){
   _dernierQRSyncDiag = { mode:'', echecs:[] };
-  if(typeof QRCode==='undefined') return '';
+  if(typeof qrcode==='undefined') return '';
   const variantes = _buildQrTexteVariantes(e, org);
   const noms = ['complet','essentiel','identite','lien'];
   for(let vi=0; vi<variantes.length; vi++){
     const texte = variantes[vi];
-    container.innerHTML='';
     const len=(texte||'').length;
-    let level=QRCode.CorrectLevel.M;
-    if(len>150) level=QRCode.CorrectLevel.L;
-    else if(len<60) level=QRCode.CorrectLevel.Q;
-    try{
-      new QRCode(container,{ text:texte||' ', width:size, height:size, correctLevel:level, colorDark:'#000000', colorLight:'#ffffff' });
-      const node = container.querySelector('img,canvas');
-      if(node){
-        _dernierQRSyncDiag.mode = noms[vi] || 'lien';
-        return node.tagName==='IMG' ? node.src : node.toDataURL();
-      }
-      _dernierQRSyncDiag.echecs.push(`${noms[vi]} : aucune image générée (sans erreur)`);
-    }catch(err){ _dernierQRSyncDiag.echecs.push(`${noms[vi]} : ${err.message}`); }
+    const niveau = len>150 ? 'L' : (len<60 ? 'Q' : 'M');
+    const dataUrl = _creerQRDataURL(texte, size, niveau);
+    if(dataUrl){
+      _dernierQRSyncDiag.mode = noms[vi] || 'lien';
+      return dataUrl;
+    }
+    _dernierQRSyncDiag.echecs.push(`${noms[vi]} : échec de génération`);
   }
   return '';
 }
@@ -5255,7 +5263,6 @@ function updateNavInfo(){
 // ============================================================
 // WRAPPER QR — génération fiable + fallback + niveau auto
 // ============================================================
-// La lib qrcodejs (CDN) plante silencieusement si le texte dépasse sa capacité.
 // Ce wrapper :
 //  • Détecte si la lib est disponible
 //  • Choisit le niveau de correction (L/M/Q/H) selon la longueur du texte
@@ -5263,52 +5270,31 @@ function updateNavInfo(){
 //  • Attend la lib si elle n'est pas encore chargée (cas internet lent)
 async function generateQR(targetEl, text, size=120){
   if(!targetEl) return false;
-  // 1) Attendre que QRCode soit chargé (max 3s) — utile si CDN lent
+  // 1) Attendre que qrcode soit chargée (max 3s) — utile si CDN lent
   let waited=0;
-  while(typeof QRCode==='undefined' && waited<3000){
+  while(typeof qrcode==='undefined' && waited<3000){
     await new Promise(r=>setTimeout(r,100));
     waited+=100;
   }
-  if(typeof QRCode==='undefined'){
+  if(typeof qrcode==='undefined'){
     targetEl.innerHTML='<span style="font-size:.55rem;color:#C0392B;text-align:center;padding:4px;font-weight:700;">⚠️ Lib QR<br>non chargée<br>(internet ?)</span>';
     return false;
   }
-  // 2) Vide la cible
-  targetEl.innerHTML='';
-  // 3) Choisit le niveau de correction selon la longueur :
+  // 2) Choisit le niveau de correction selon la longueur :
   //    Niveau L = +tolérant aux longs textes / H = +résistant aux dégâts
   //    Pour un badge à scanner depuis un téléphone, niveau M ou L est suffisant.
   const len=(text||'').length;
-  let level=QRCode.CorrectLevel.M;
-  if(len>200) level=QRCode.CorrectLevel.L; // Texte long → moins de correction = plus de capacité
-  else if(len<60) level=QRCode.CorrectLevel.Q; // Texte court → on peut se permettre Q (plus robuste)
-  // 4) Génération avec gestion d'erreur
-  try{
-    new QRCode(targetEl,{
-      text: text||' ',
-      width: size,
-      height: size,
-      correctLevel: level,
-      colorDark:'#000000',
-      colorLight:'#ffffff'
-    });
-    // Vérification : si la lib n'a rien généré (texte trop long), on retente avec niveau L
-    await new Promise(r=>setTimeout(r,40));
-    if(!targetEl.querySelector('img,canvas')){
-      targetEl.innerHTML='';
-      new QRCode(targetEl,{text:text||' ',width:size,height:size,correctLevel:QRCode.CorrectLevel.L});
-    }
-    // Vérif finale
-    if(!targetEl.querySelector('img,canvas')){
-      targetEl.innerHTML='<span style="font-size:.55rem;color:#C0392B;text-align:center;padding:4px;">⚠️ Texte trop long<br>pour QR</span>';
-      return false;
-    }
-    return true;
-  }catch(err){
-    console.error('QR error:',err,'text length:',len);
+  const niveau = len>200 ? 'L' : (len<60 ? 'Q' : 'M');
+  // 3) Génération — qrcode-generator calcule réellement le format nécessaire
+  //    (contrairement à l'ancienne lib qui l'estimait, parfois mal) donc plus
+  //    besoin de retenter avec un niveau différent en cas d'échec.
+  const dataUrl = _creerQRDataURL(text, size, niveau);
+  if(!dataUrl){
     targetEl.innerHTML='<span style="font-size:.55rem;color:#C0392B;text-align:center;padding:4px;">⚠️ Erreur QR</span>';
     return false;
   }
+  targetEl.innerHTML = `<img src="${dataUrl}" style="width:${size}px;height:${size}px;image-rendering:pixelated;" alt="QR">`;
+  return true;
 }
 
 // ============================================================
@@ -6811,7 +6797,7 @@ async function imprimerTousLesBadges(){
 // Attend une seule fois (pas à chaque badge) que la librairie QR soit chargée.
 async function _attendreLibQR(){
   let waited=0;
-  while(typeof QRCode==='undefined' && waited<3000){
+  while(typeof qrcode==='undefined' && waited<3000){
     await new Promise(r=>setTimeout(r,100));
     waited+=100;
   }
@@ -6819,26 +6805,9 @@ async function _attendreLibQR(){
 // Génère un QR directement (sans les attentes de vérification de generateQR, inutiles
 // en génération de masse) et retourne son image en data URL, ou '' en cas d'échec.
 function _generateQRDataURLSync(container, text, size){
-  if(typeof QRCode==='undefined') return '';
-  container.innerHTML='';
   const len=(text||'').length;
-  let level=QRCode.CorrectLevel.M;
-  if(len>200) level=QRCode.CorrectLevel.L;
-  else if(len<60) level=QRCode.CorrectLevel.Q;
-  try{
-    new QRCode(container,{ text:text||' ', width:size, height:size, correctLevel:level, colorDark:'#000000', colorLight:'#ffffff' });
-  }catch(e){ return ''; }
-  const node = container.querySelector('img,canvas');
-  if(!node){
-    // Repli : texte trop long pour ce niveau de correction, on retente en L
-    try{
-      container.innerHTML='';
-      new QRCode(container,{ text:text||' ', width:size, height:size, correctLevel:QRCode.CorrectLevel.L });
-    }catch(e){ return ''; }
-  }
-  const node2 = container.querySelector('img,canvas');
-  if(!node2) return '';
-  return node2.tagName==='IMG' ? node2.src : node2.toDataURL();
+  const niveau = len>200 ? 'L' : (len<60 ? 'Q' : 'M');
+  return _creerQRDataURL(text, size, niveau);
 }
 
 function _buildAbsentsPrint(){
