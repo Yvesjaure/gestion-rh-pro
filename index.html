@@ -306,7 +306,7 @@ tbody td{padding:3px 4px;border:1px solid #E8E8E8;white-space:nowrap;max-width:1
 .ctable tr:hover td{background:#EBF5FB;}
 
 /* ========== BADGE ========== */
-#badgePreview{display:flex;justify-content:center;align-items:center;padding:18px;background:linear-gradient(135deg,#cfd8dc,#b0bec5);min-height:300px;border-radius:8px;}
+#badgePreview{display:flex;justify-content:center;align-items:flex-start;gap:16px;flex-wrap:wrap;padding:18px;background:linear-gradient(135deg,#cfd8dc,#b0bec5);min-height:300px;border-radius:8px;}
 
 /* ========== BADGE EMPLOYÉ — design moderne format carte PVC ========== */
 .badge-card{
@@ -1493,7 +1493,36 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     <div class="lock-hint" id="rhToggleMode" style="cursor:pointer;text-decoration:underline;margin-top:12px;">
       Pas encore de compte ? Demander un accès
     </div>
+    <div class="lock-hint" onclick="ouvrirMdpOublie()" style="cursor:pointer;text-decoration:underline;margin-top:6px;font-size:.72rem;opacity:.85;">
+      Mot de passe oublié ?
+    </div>
     <div style="color:rgba(255,255,255,.3);font-size:.52rem;font-weight:700;letter-spacing:.2px;margin-top:16px;">𝓕𝓡𝓞𝓜 𝓐𝓖𝓝𝓘𝓢𝓢𝓐𝓝 𝓨𝓥𝓔𝓢 𝓙𝓐𝓤𝓡𝓔𝓢</div>
+  </div>
+</div>
+
+<!-- Panneau : mot de passe oublié -->
+<div id="mMdpOublie" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:14px;padding:22px;max-width:340px;width:100%;font-family:'Nunito',sans-serif;">
+    <h3 style="margin:0 0 6px;color:#1A3A5C;">🔑 Mot de passe oublié</h3>
+    <p style="font-size:.78rem;color:#666;margin:0 0 14px;">Entrez l'email de votre compte — vous recevrez un lien pour choisir un nouveau mot de passe.</p>
+    <input type="email" id="mdpOublieEmail" class="ci" placeholder="Votre email" style="width:100%;margin-bottom:12px;">
+    <div id="mdpOublieMsg" style="font-size:.75rem;margin-bottom:10px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn" style="flex:1;justify-content:center;background:#eee;color:#333;" onclick="document.getElementById('mMdpOublie').style.display='none';">Annuler</button>
+      <button class="btn" style="flex:1;justify-content:center;background:#1A3A5C;color:#fff;" onclick="envoyerReinitialisationMdp()">📧 Envoyer le lien</button>
+    </div>
+  </div>
+</div>
+
+<!-- Panneau : choisir un nouveau mot de passe (après avoir cliqué le lien reçu par email) -->
+<div id="mNouveauMdp" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10003;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:14px;padding:22px;max-width:340px;width:100%;font-family:'Nunito',sans-serif;">
+    <h3 style="margin:0 0 6px;color:#1A3A5C;">🔑 Nouveau mot de passe</h3>
+    <p style="font-size:.78rem;color:#666;margin:0 0 14px;">Choisissez votre nouveau mot de passe (6 caractères minimum).</p>
+    <input type="password" id="nouveauMdpInput" class="ci" placeholder="Nouveau mot de passe" style="width:100%;margin-bottom:8px;">
+    <input type="password" id="nouveauMdpConfirm" class="ci" placeholder="Confirmer" style="width:100%;margin-bottom:12px;">
+    <div id="nouveauMdpMsg" style="font-size:.75rem;margin-bottom:10px;"></div>
+    <button class="btn" style="width:100%;justify-content:center;background:#16A34A;color:#fff;" onclick="validerNouveauMdp()">✅ Valider le nouveau mot de passe</button>
   </div>
 </div>
 
@@ -3495,9 +3524,9 @@ let rhModeInscription = false;
 // nouvelle version, tant qu'on change CHANGELOG_VERSION (et la liste) en
 // même temps qu'on livre une mise à jour.
 // ============================================================
-const CHANGELOG_VERSION = '2026-08-11-3';
+const CHANGELOG_VERSION = '2026-08-11-5';
 const CHANGELOG_ITEMS = [
-  "Nouveau : comptes \"Lecture seule Présence\" (Paramètres)",
+  "Nouveau : lien « Mot de passe oublié ? » sur l'écran de connexion",
 ];
 function _verifierNouveautes(){
   try{
@@ -3648,6 +3677,63 @@ function rhAfficherErreur(msg) {
   el.style.display = 'block';
   setTimeout(() => { el.style.display = 'none'; }, 4500);
 }
+
+// ============================================================
+// MOT DE PASSE OUBLIÉ
+// ============================================================
+function ouvrirMdpOublie(){
+  document.getElementById('mdpOublieEmail').value = document.getElementById('rhEmail').value || '';
+  document.getElementById('mdpOublieMsg').textContent = '';
+  document.getElementById('mMdpOublie').style.display='flex';
+}
+async function envoyerReinitialisationMdp(){
+  const email = document.getElementById('mdpOublieEmail').value.trim();
+  const msg = document.getElementById('mdpOublieMsg');
+  if(!email || !email.includes('@')){ msg.style.color='#e74c3c'; msg.textContent='⚠️ Adresse email invalide'; return; }
+  msg.style.color='#666'; msg.textContent='Envoi en cours...';
+  try{
+    const { error } = await supabaseRH.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname,
+    });
+    if(error) throw error;
+    msg.style.color='#16A34A';
+    msg.textContent='✅ Email envoyé ! Vérifiez votre boîte de réception (et les spams) — cliquez sur le lien reçu pour choisir un nouveau mot de passe.';
+  }catch(e){
+    msg.style.color='#e74c3c';
+    msg.textContent='❌ Erreur : '+e.message;
+  }
+}
+async function validerNouveauMdp(){
+  const pwd = document.getElementById('nouveauMdpInput').value;
+  const confirm = document.getElementById('nouveauMdpConfirm').value;
+  const msg = document.getElementById('nouveauMdpMsg');
+  if(pwd.length < 6){ msg.style.color='#e74c3c'; msg.textContent='⚠️ 6 caractères minimum'; return; }
+  if(pwd !== confirm){ msg.style.color='#e74c3c'; msg.textContent='⚠️ Les mots de passe ne correspondent pas'; return; }
+  msg.style.color='#666'; msg.textContent='Enregistrement...';
+  try{
+    const { error } = await supabaseRH.auth.updateUser({ password: pwd });
+    if(error) throw error;
+    msg.style.color='#16A34A';
+    msg.textContent='✅ Mot de passe changé ! Vous pouvez maintenant vous connecter normalement.';
+    setTimeout(()=>{
+      document.getElementById('mNouveauMdp').style.display='none';
+      // Nettoie le lien de récupération dans l'URL pour ne pas le réutiliser par erreur
+      history.replaceState(null, '', window.location.pathname);
+    }, 1800);
+  }catch(e){
+    msg.style.color='#e74c3c';
+    msg.textContent='❌ Erreur : '+e.message;
+  }
+}
+// Détecte si la page a été ouverte depuis le lien reçu par email (Supabase
+// ajoute #type=recovery dans l'adresse) — dans ce cas, on affiche directement
+// le panneau "Nouveau mot de passe" au lieu de l'écran de connexion normal.
+function _verifierLienRecuperationMdp(){
+  if(window.location.hash.includes('type=recovery')){
+    document.getElementById('mNouveauMdp').style.display='flex';
+  }
+}
+document.addEventListener('DOMContentLoaded', _verifierLienRecuperationMdp);
 
 async function rhValider() {
   const email = (document.getElementById('rhEmail').value || '').trim();
@@ -5422,6 +5508,19 @@ function prevBadge(){
         <span class="qr-info-val ${expired?'expired':''}">${dateExp}</span>
         <span class="qr-hint">Émis le ${dateEmis}</span>
       </div>
+    </div>
+    <div class="badge-footer">${org} · Carte d'employé · ${dEmis.getFullYear()}</div>
+  </div>
+  <div class="badge-card badge-verso" style="${styleVars}">
+    <div class="badge-header" style="justify-content:center;">
+      <div class="org-info" style="text-align:center;flex:none;"><div class="org-name" style="font-size:.85rem;">CONDITIONS D'UTILISATION</div></div>
+    </div>
+    <div style="padding:16px 14px;font-size:.72rem;color:#333;line-height:1.7;">
+      <div>• Cette carte est strictement personnelle et incessible.</div>
+      <div>• En cas de perte, prévenir immédiatement la RH.</div>
+      <div>• À restituer en fin de contrat.</div>
+      <div style="margin-top:10px;font-weight:800;color:var(--bdg-h1,#1A3A5C);">EN CAS DE DÉCOUVERTE</div>
+      <div>Merci de contacter : <b>${companyUrgence||'—'}</b></div>
     </div>
     <div class="badge-footer">${org} · Carte d'employé · ${dEmis.getFullYear()}</div>
   </div>`;
