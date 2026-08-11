@@ -1956,7 +1956,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
         <select id="pagSize" onchange="pagChangeSize()" class="btn-sm" style="cursor:pointer;">
           <option value="50">50/page</option>
           <option value="100">100/page</option>
-          <option value="200">200/page</option>
+          <option value="200" selected>200/page</option>
           <option value="500">500/page</option>
         </select>
       </div>
@@ -2126,22 +2126,30 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
         <div class="cf"><span class="cl" style="background:var(--vert);">🔎 Rechercher</span>
           <input type="text" id="przSearch" class="ci" placeholder="Nom, prénom, fonction..." oninput="renderPresenceTable(document.getElementById('przDate').value);updatePrzStats();">
         </div>
-        <div class="action-bar">
-          <button class="btn b-mod" onclick="marquerTousPresents()">✅ Tous présents</button>
-          <button class="btn b-del" onclick="marquerTousAbsents()">❌ Tous absents</button>
-        </div>
-        <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap;">
-          <button class="btn" style="background:#B7950B;color:#fff;" onclick="clotureJournee()" title="Marque automatiquement 'Absent' tous les employés qui n'ont ni pointé ni été saisis manuellement pour cette date">🔒 Clôturer la journée</button>
-          <button class="btn b-prt" onclick="imprimerAbsents()">🖨️ Imprimer absents</button>
-          <button class="btn b-prt" onclick="imprimerListePresence()">🖨️ Imprimer la liste (zone/service)</button>
-          <button class="btn" style="background:#1D6F42;color:#fff;" onclick="exporterPresenceExcel()">📊 Export Excel</button>
-          <button class="btn b-sav" onclick="sauvegarder(true)">💾 Sauvegarder</button>
-        </div>
-        <div style="margin-top:10px;padding-top:8px;border-top:1.5px dashed #ddd;display:flex;gap:5px;flex-wrap:wrap;">
-          <button class="btn" style="background:linear-gradient(135deg,#7C3AED,#EC4899);color:#fff;" onclick="punchShowHistory()" data-testid="btn-punch-history">📋 Historique pointages QR mobile</button>
-          <button class="btn" style="background:rgba(124,58,237,.12);color:#5B21B6;border:1px solid #C4B5FD;" onclick="pointageExporterJour()" title="À faire depuis chaque appareil (téléphone employé) pour ramener ses pointages vers ce poste">⬇️ Exporter pointages (ce poste)</button>
-          <button class="btn" style="background:rgba(124,58,237,.12);color:#5B21B6;border:1px solid #C4B5FD;" onclick="triggerFile('fImportPointage')" title="Importer un fichier exporté depuis un autre appareil (tablette accueil, téléphone employé) pour fusionner les pointages">⬆️ Importer pointages</button>
-          <input type="file" id="fImportPointage" accept=".json" style="display:none" onchange="pointageImporterFichier(this)">
+        <!-- Toutes les actions occasionnelles (impressions, export, historique...) sont
+             regroupées derrière ce bouton unique au lieu d'être empilées en permanence —
+             ça libère de la hauteur pour que le tableau de présence en profite. -->
+        <div style="position:relative;margin-top:8px;">
+          <button class="btn" style="width:100%;justify-content:center;background:#1A3A5C;color:#fff;" onclick="toggleMenuActionsPresence()">☰ Actions <span id="menuActionsPrzFleche">▾</span></button>
+          <div id="menuActionsPresence" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid #ddd;border-radius:8px;padding:8px;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.18);max-height:60vh;overflow-y:auto;">
+            <div class="action-bar">
+              <button class="btn b-mod" onclick="marquerTousPresents()">✅ Tous présents</button>
+              <button class="btn b-del" onclick="marquerTousAbsents()">❌ Tous absents</button>
+            </div>
+            <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap;">
+              <button class="btn" style="background:#B7950B;color:#fff;" onclick="clotureJournee()" title="Marque automatiquement 'Absent' tous les employés qui n'ont ni pointé ni été saisis manuellement pour cette date">🔒 Clôturer la journée</button>
+              <button class="btn b-prt" onclick="imprimerAbsents()">🖨️ Imprimer absents</button>
+              <button class="btn b-prt" onclick="imprimerListePresence()">🖨️ Imprimer la liste (zone/service)</button>
+              <button class="btn" style="background:#1D6F42;color:#fff;" onclick="exporterPresenceExcel()">📊 Export Excel</button>
+              <button class="btn b-sav" onclick="sauvegarder(true)">💾 Sauvegarder</button>
+            </div>
+            <div style="margin-top:10px;padding-top:8px;border-top:1.5px dashed #ddd;display:flex;gap:5px;flex-wrap:wrap;">
+              <button class="btn" style="background:linear-gradient(135deg,#7C3AED,#EC4899);color:#fff;" onclick="punchShowHistory()" data-testid="btn-punch-history">📋 Historique pointages QR mobile</button>
+              <button class="btn" style="background:rgba(124,58,237,.12);color:#5B21B6;border:1px solid #C4B5FD;" onclick="pointageExporterJour()" title="À faire depuis chaque appareil (téléphone employé) pour ramener ses pointages vers ce poste">⬇️ Exporter pointages (ce poste)</button>
+              <button class="btn" style="background:rgba(124,58,237,.12);color:#5B21B6;border:1px solid #C4B5FD;" onclick="triggerFile('fImportPointage')" title="Importer un fichier exporté depuis un autre appareil (tablette accueil, téléphone employé) pour fusionner les pointages">⬆️ Importer pointages</button>
+              <input type="file" id="fImportPointage" accept=".json" style="display:none" onchange="pointageImporterFichier(this)">
+            </div>
+          </div>
         </div>
         <div id="punchSyncMeta" style="font-size:.65rem;color:#666;margin-top:4px;"></div>
       </div>
@@ -3361,6 +3369,7 @@ async function _genererQREmploye(targetEl, e, org, size){
   }
   const variantes = _buildQrTexteVariantes(e, org);
   const noms = ['complet','essentiel','lien'];
+  const echecs = []; // diagnostic : pourquoi chaque variante plus riche a été abandonnée
   for(let vi=0; vi<variantes.length; vi++){
     const texte = variantes[vi];
     targetEl.innerHTML='';
@@ -3374,21 +3383,34 @@ async function _genererQREmploye(targetEl, e, org, size){
       if(targetEl.querySelector('img,canvas')){
         targetEl.dataset.qr = encodeURIComponent(texte);
         targetEl.dataset.qrMode = noms[vi] || 'lien';
-        targetEl.title = texte;
+        targetEl.dataset.qrEchecs = echecs.length ? encodeURIComponent(echecs.join(' | ')) : '';
+        targetEl.title = texte + (echecs.length ? `\n\n(Variantes précédentes abandonnées : ${echecs.join(' | ')})` : '');
         return true;
       }
-    }catch(err){ console.warn('QR : variante trop volumineuse pour cette librairie, on réessaie en plus court —', err.message); }
+      echecs.push(`${noms[vi]} : aucune image générée (sans erreur)`);
+    }catch(err){
+      echecs.push(`${noms[vi]} : ${err.message}`);
+      console.warn('QR : variante trop volumineuse pour cette librairie, on réessaie en plus court —', err.message);
+    }
   }
   targetEl.innerHTML='<span style="font-size:.55rem;color:#C0392B;text-align:center;padding:4px;">⚠️ QR indisponible</span>';
+  targetEl.title = 'Échec de toutes les variantes : ' + echecs.join(' | ');
   return false;
 }
 // Même repli automatique que _genererQREmploye, mais version SYNCHRONE (sans
 // attente) qui retourne directement l'image en data URL — utilisée pour la
-// génération en masse ("Imprimer TOUS les badges").
+// génération en masse ("Imprimer TOUS les badges"). Le diagnostic (mode
+// obtenu + raisons des échecs éventuels) est déposé sur _dernierQRSyncDiag,
+// pour que l'appelant puisse repérer et lister les badges retombés sur le
+// lien seul (voir imprimerTousLesBadges).
+let _dernierQRSyncDiag = { mode:'', echecs:[] };
 function _genererQRDataURLEmployeSync(container, e, org, size){
+  _dernierQRSyncDiag = { mode:'', echecs:[] };
   if(typeof QRCode==='undefined') return '';
   const variantes = _buildQrTexteVariantes(e, org);
-  for(const texte of variantes){
+  const noms = ['complet','essentiel','lien'];
+  for(let vi=0; vi<variantes.length; vi++){
+    const texte = variantes[vi];
     container.innerHTML='';
     const len=(texte||'').length;
     let level=QRCode.CorrectLevel.M;
@@ -3397,8 +3419,12 @@ function _genererQRDataURLEmployeSync(container, e, org, size){
     try{
       new QRCode(container,{ text:texte||' ', width:size, height:size, correctLevel:level, colorDark:'#000000', colorLight:'#ffffff' });
       const node = container.querySelector('img,canvas');
-      if(node) return node.tagName==='IMG' ? node.src : node.toDataURL();
-    }catch(err){ /* variante trop volumineuse, on essaie la suivante, plus courte */ }
+      if(node){
+        _dernierQRSyncDiag.mode = noms[vi] || 'lien';
+        return node.tagName==='IMG' ? node.src : node.toDataURL();
+      }
+      _dernierQRSyncDiag.echecs.push(`${noms[vi]} : aucune image générée (sans erreur)`);
+    }catch(err){ _dernierQRSyncDiag.echecs.push(`${noms[vi]} : ${err.message}`); }
   }
   return '';
 }
@@ -4065,6 +4091,22 @@ document.addEventListener('click', (e)=>{
   const menu = document.getElementById('hdrMenu');
   if(!menu || menu.style.display==='none') return;
   if(!menu.contains(e.target) && !e.target.closest('.hdr-icon-btn')) menu.style.display='none';
+});
+// Menu "☰ Actions" de la page Présence — regroupe les boutons occasionnels
+// (impressions, export, historique...) derrière un seul bouton pour libérer
+// de la hauteur au tableau de présence.
+function toggleMenuActionsPresence(){
+  const menu = document.getElementById('menuActionsPresence');
+  const fleche = document.getElementById('menuActionsPrzFleche');
+  if(!menu) return;
+  const ouvert = menu.style.display==='block';
+  menu.style.display = ouvert ? 'none' : 'block';
+  if(fleche) fleche.textContent = ouvert ? '▾' : '▴';
+}
+document.addEventListener('click', (e)=>{
+  const menu = document.getElementById('menuActionsPresence');
+  if(!menu || menu.style.display==='none') return;
+  if(!menu.contains(e.target) && !e.target.closest('[onclick="toggleMenuActionsPresence()"]')) toggleMenuActionsPresence();
 });
 function toggleTheme(){
   const sombre = document.body.getAttribute('data-theme') === 'dark';
@@ -5074,7 +5116,7 @@ function supprimer(){
 // Pour gérer 10 000+ fiches sans freezer le navigateur, on n'affiche
 // qu'une page à la fois (50 par défaut).
 let pagPage = 1;
-let pagSize = 50;
+let pagSize = 200;
 let pagFiltered = null; // liste filtrée par recherche, ou null = tous
 
 function getCurrentList(){
@@ -5942,7 +5984,13 @@ function prevBadge(){
     const alerteEl=document.getElementById('bdgQRAlerte'); // capturé AVANT l'attente, avec qrEl, pour rester cohérent
     await _genererQREmploye(qrEl, e, org, 130);
     if(monToken !== _bdgApercuToken) return; // annulé entre-temps par une sélection plus récente
-    if(alerteEl) alerteEl.style.display = (qrEl && qrEl.dataset.qrMode==='lien') ? 'block' : 'none';
+    if(alerteEl){
+      const reduit = qrEl && qrEl.dataset.qrMode==='lien';
+      alerteEl.style.display = reduit ? 'block' : 'none';
+      if(reduit && qrEl.dataset.qrEchecs){
+        alerteEl.innerHTML = `⚠️ QR réduit au lien seul — raison : ${decodeURIComponent(qrEl.dataset.qrEchecs)}`;
+      }
+    }
   },100);
 }
 
@@ -6640,11 +6688,19 @@ async function imprimerTousLesBadges(){
   document.body.appendChild(tmp);
   await _attendreLibQR();
 
+  // Diagnostic : liste des employés dont le QR est retombé sur le lien seul,
+  // avec la raison — affiché en résumé à la fin plutôt que d'obliger à
+  // décoder chaque QR un par un pour s'en apercevoir.
+  const badgesReduits = [];
+
   for(let i=0;i<actifs.length;i++){
     const e = actifs[i];
     const matricule = fmtMatricule(e.id);
     const qrSrc = _genererQRDataURLEmployeSync(tmp, e, org, 250);
     const qrImgHTML = qrSrc ? `<img src="${qrSrc}" alt="QR">` : '<span style="font-size:.5rem;">QR indisponible</span>';
+    if(_dernierQRSyncDiag.mode==='lien'){
+      badgesReduits.push(`${matricule} ${e.nom||''} ${e.prenom||''} — ${_dernierQRSyncDiag.echecs.join(' | ')}`);
+    }
 
     const photoHTML = e.photo
       ? `<img src="${e.photo}" class="bpc-photo" alt="Photo">`
@@ -6707,8 +6763,15 @@ async function imprimerTousLesBadges(){
   }
   document.body.removeChild(tmp);
 
-  progress.textContent = `✅ ${actifs.length} badge(s) prêt(s) — lancement de l'impression…`;
-  setTimeout(()=>{ progress.style.display='none'; w.focus(); w.print(); }, 400);
+  if(badgesReduits.length){
+    progress.style.background='#B7950B';
+    progress.innerHTML = `⚠️ ${badgesReduits.length} badge(s) avec QR réduit au lien seul :<br>${badgesReduits.map(x=>`• ${x}`).join('<br>')}<br><br>✅ Impression des ${actifs.length} badge(s) dans 5s quand même…`;
+    console.warn('Badges avec QR réduit :', badgesReduits);
+    setTimeout(()=>{ progress.style.display='none'; w.focus(); w.print(); }, 5000);
+  } else {
+    progress.textContent = `✅ ${actifs.length} badge(s) prêt(s) — lancement de l'impression…`;
+    setTimeout(()=>{ progress.style.display='none'; w.focus(); w.print(); }, 400);
+  }
 }
 // Attend une seule fois (pas à chaque badge) que la librairie QR soit chargée.
 async function _attendreLibQR(){
