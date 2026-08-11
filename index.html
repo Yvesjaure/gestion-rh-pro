@@ -2420,6 +2420,11 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <input type="text" id="lienDemandeAcces" class="ci" readonly value="" style="flex:1;font-size:.75rem;background:#F2F5F8;">
       <button class="btn b-add" onclick="copierLienDemandeAcces()">📋 Copier</button>
     </div>
+    <div style="font-size:.7rem;color:#666;margin:14px 0 8px;">Lien dédié pour quelqu'un qui doit uniquement gérer la planification des équipes (page Équipage) — la demande arrive déjà pré-cochée « Équipage uniquement », il ne reste qu'à approuver.</div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <input type="text" id="lienDemandeAccesEquipage" class="ci" readonly value="" style="flex:1;font-size:.75rem;background:#F2F5F8;">
+      <button class="btn b-add" onclick="copierLienDemandeAccesEquipage()">📋 Copier</button>
+    </div>
   </div>
   <div class="settings-card">
     <div class="sec">🧑‍💼 Comptes superviseurs (accès limité à une zone)</div>
@@ -2439,6 +2444,15 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <button class="btn b-add" onclick="ajouterLecteurPresence()">➕ Ajouter</button>
     </div>
     <div id="lecListe"></div>
+  </div>
+  <div class="settings-card">
+    <div class="sec">🚛 Comptes Équipage — planification uniquement</div>
+    <div style="font-size:.7rem;color:#666;margin:8px 0;">Ce compte ne verra QUE la page Équipage, avec accès COMPLET dessus (créer/modifier les équipes, gérer les remplacements du jour) — utile pour déléguer la planification sans donner accès au reste.</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+      <input type="email" id="equEmailInput" class="ci" placeholder="Email" style="max-width:240px;">
+      <button class="btn b-add" onclick="ajouterGestionEquipage()">➕ Ajouter</button>
+    </div>
+    <div id="equListe"></div>
   </div>
   <div class="settings-card">
     <div class="sec">🖼️ Logo &amp; Nom de l'entreprise</div>
@@ -2627,6 +2641,13 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <button class="btn" style="background:var(--bleu2);color:#fff;" onclick="triggerFile(&#39;fImport&#39;)">⬆️ Importer (JSON)</button>
       <button class="btn b-del" onclick="resetAll()">⚠️ Réinitialiser tout</button>
       <input type="file" id="fImport" accept=".json" onchange="importJSON(this)">
+    </div>
+
+    <div class="sec" style="margin-top:14px;">☁️ Stockage cloud (photos, documents, selfies)</div>
+    <div style="font-size:.7rem;color:#666;margin:8px 0;">Déplace les photos employés, documents du dossier et selfies de pointage hors du gros paquet de données synchronisé, vers un espace de stockage à part — l'app reste rapide même avec beaucoup d'employés. Se fait automatiquement en tâche de fond pour les nouveaux fichiers ; utilisez le bouton ci-dessous pour migrer d'un coup ce qui existe déjà. Nécessite d'avoir créé le bucket <code>rh-fichiers</code> dans Supabase au préalable (SQL fourni à part).</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+      <button class="btn" style="background:#0F6E56;color:#fff;" onclick="migrerStockageMaintenant()">🚀 Migrer maintenant</button>
+      <span id="migStockageStatut" style="font-size:.72rem;color:#666;"></span>
     </div>
 
     <div class="sec" style="margin-top:14px;">ℹ️ Informations système</div>
@@ -3317,21 +3338,16 @@ function _buildQrTexteVariantes(e, org){
 
   return [complet, essentiel, lien]; // du plus complet au plus sûr (le lien reste en tout dernier repli, si le texte reste trop long)
 }
-// Sélectionne les variantes de texte QR à essayer, en écartant celles trop
-// longues (au-delà d'un certain seuil, le QR devient trop dense pour bien
-// scanner à la taille physique d'un badge, même si la librairie l'accepterait
-// sans erreur) — pour que TOUS les badges restent scannables, peu importe le
-// nombre de champs remplis sur la fiche de l'employé. La dernière variante
-// (le simple lien) est toujours gardée en tout dernier repli.
-const SEUIL_LONGUEUR_QR = 260;
-function _filtrerVariantesQR(variantes){
-  const courtes = variantes.filter((texte,i) => i===variantes.length-1 || (texte||'').length<=SEUIL_LONGUEUR_QR);
-  return courtes.length ? courtes : variantes;
-}
+// (Avant, on filtrait les variantes trop longues par avance ici — supprimé :
+// voir le commentaire dans _genererQREmploye ci-dessous, cette pré-filtration
+// empêchait la variante "complet" d'être utilisée alors qu'elle passe très
+// bien.)
 // Génère le QR d'un employé dans targetEl, en essayant automatiquement une version
 // plus courte du texte si la plus complète échoue (au lieu d'afficher une erreur).
-// Mémorise le texte qui a fonctionné dans data-qr, pour que l'impression du badge
-// utilise exactement le même contenu que l'aperçu.
+// Mémorise le texte qui a fonctionné dans data-qr (et un indicateur data-qr-mode :
+// 'complet'/'essentiel'/'lien') pour que l'impression du badge utilise exactement
+// le même contenu que l'aperçu, et pour qu'on puisse repérer d'un coup d'œil si un
+// badge est retombé sur le lien seul (survoler le QR affiche aussi le contenu exact).
 async function _genererQREmploye(targetEl, e, org, size){
   if(!targetEl) return false;
   let waited=0;
@@ -3343,17 +3359,24 @@ async function _genererQREmploye(targetEl, e, org, size){
     targetEl.innerHTML='<span style="font-size:.55rem;color:#C0392B;text-align:center;padding:4px;font-weight:700;">⚠️ Lib QR<br>non chargée<br>(internet ?)</span>';
     return false;
   }
-  const variantes = _filtrerVariantesQR(_buildQrTexteVariantes(e, org));
-  for(const texte of variantes){
+  const variantes = _buildQrTexteVariantes(e, org);
+  const noms = ['complet','essentiel','lien'];
+  for(let vi=0; vi<variantes.length; vi++){
+    const texte = variantes[vi];
     targetEl.innerHTML='';
     const len=(texte||'').length;
     let level=QRCode.CorrectLevel.M;
-    if(len>200) level=QRCode.CorrectLevel.L;
+    if(len>150) level=QRCode.CorrectLevel.L; // texte long → capacité max, moins de redondance
     else if(len<60) level=QRCode.CorrectLevel.Q;
     try{
       new QRCode(targetEl,{ text:texte||' ', width:size, height:size, correctLevel:level, colorDark:'#000000', colorLight:'#ffffff' });
       await new Promise(r=>setTimeout(r,40));
-      if(targetEl.querySelector('img,canvas')){ targetEl.dataset.qr = encodeURIComponent(texte); return true; }
+      if(targetEl.querySelector('img,canvas')){
+        targetEl.dataset.qr = encodeURIComponent(texte);
+        targetEl.dataset.qrMode = noms[vi] || 'lien';
+        targetEl.title = texte;
+        return true;
+      }
     }catch(err){ console.warn('QR : variante trop volumineuse pour cette librairie, on réessaie en plus court —', err.message); }
   }
   targetEl.innerHTML='<span style="font-size:.55rem;color:#C0392B;text-align:center;padding:4px;">⚠️ QR indisponible</span>';
@@ -3364,12 +3387,12 @@ async function _genererQREmploye(targetEl, e, org, size){
 // génération en masse ("Imprimer TOUS les badges").
 function _genererQRDataURLEmployeSync(container, e, org, size){
   if(typeof QRCode==='undefined') return '';
-  const variantes = _filtrerVariantesQR(_buildQrTexteVariantes(e, org));
+  const variantes = _buildQrTexteVariantes(e, org);
   for(const texte of variantes){
     container.innerHTML='';
     const len=(texte||'').length;
     let level=QRCode.CorrectLevel.M;
-    if(len>200) level=QRCode.CorrectLevel.L;
+    if(len>150) level=QRCode.CorrectLevel.L;
     else if(len<60) level=QRCode.CorrectLevel.Q;
     try{
       new QRCode(container,{ text:texte||' ', width:size, height:size, correctLevel:level, colorDark:'#000000', colorLight:'#ffffff' });
@@ -3464,6 +3487,16 @@ async function init() {
     console.error('Erreur chargement IndexedDB:',err);
     toast('⚠️ Erreur chargement données — vérifiez le navigateur','err');
   }
+  // Établit l'empreinte de référence pour sauvegarder() juste après le
+  // chargement — évite qu'elle croie que "tout" a changé et ne resynchronise
+  // inutilement l'intégralité des données vers Supabase dès la 1ère minute.
+  _rhDernierEtatJSON = {
+    rh_emp: JSON.stringify(employes), rh_con: JSON.stringify(conges),
+    rh_prz: JSON.stringify(presences), rh_men: JSON.stringify(mensuel),
+    rh_equ: JSON.stringify(equipages), rh_rem: JSON.stringify(remplacements),
+    rh_fer: JSON.stringify(joursFeries), rh_cor: JSON.stringify(corbeille),
+    rh_hist: JSON.stringify(historique),
+  };
   afficherTableau(); updateNavInfo(); updateSaveTime();
   buildQuickBtns();
   renderDashboard();
@@ -3473,6 +3506,9 @@ async function init() {
   if(!window._absAutoTimer) window._absAutoTimer = setInterval(verifierAbsencesAutomatiques, 5*60*1000);
   verifierCongesTermines();
   if(!window._congesAutoTimer) window._congesAutoTimer = setInterval(verifierCongesTermines, 5*60*1000);
+  _purgerSelfiesAnciensSiBesoin();
+  if(!window._migrationStockageTimer) window._migrationStockageTimer = setInterval(_migrerFichiersSiBesoin, 2*60*1000);
+  setTimeout(_migrerFichiersSiBesoin, 5000); // un premier passage discret peu après le démarrage
   document.getElementById('setCompanyName').value = companyName;
   document.getElementById('setCompanyFullName').value = companyFullName;
   document.getElementById('setCompanyAddr').value = companyAddr;
@@ -3547,6 +3583,10 @@ supabaseRH.auth.onAuthStateChange((event, session) => {
   }
 });
 let rhModeInscription = false;
+// Rôle visé quand on arrive via un lien de demande d'accès spécifique (ex:
+// ?demande=equipage) — transmis avec la demande pour que l'admin voie tout de
+// suite quel rôle attribuer, au lieu de devoir deviner à l'approbation.
+let _demandeRoleVoulu = null;
 // ============================================================
 // NOUVEAUTÉS DE LA MISE À JOUR — s'affiche une fois par appareil à chaque
 // nouvelle version, tant qu'on change CHANGELOG_VERSION (et la liste) en
@@ -3628,6 +3668,17 @@ function _appliquerRestrictionsSuperviseur(){
     });
     setTimeout(()=>{ showPage('pgPrz'); _appliquerLectureSeulePresence(); }, 50);
   }
+  if(monRole==='gestion_equipage'){
+    // Ne garde QUE l'onglet Équipage — accès COMPLET (pas lecture seule) : la
+    // personne doit pouvoir créer/modifier les équipes et les remplacements du
+    // jour, donc aucun bouton n'est retiré sur cette page contrairement au rôle
+    // lecteur_presence. Bascule automatiquement dessus à la connexion.
+    ['tabDash','tabEmp','tabCon','tabBdg','tabMen','tabAbs','tabIA','tabParametres','menuCorbeille','menuHistorique'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.style.display='none';
+    });
+    setTimeout(()=>{ showPage('pgEqu'); }, 50);
+  }
 }
 // Rend la page Présence en lecture seule : retire les boutons d'action
 // (Présent/Absent/Justifier/Supprimer) et les contrôles de la barre latérale
@@ -3649,6 +3700,18 @@ function _appliquerLectureSeulePresence(){
 function _remplirLienDemandeAcces(){
   const champ = document.getElementById('lienDemandeAcces');
   if(champ) champ.value = location.origin + location.pathname.replace(/[^\/]*$/, '') + '?demande=1';
+  const champEqu = document.getElementById('lienDemandeAccesEquipage');
+  if(champEqu) champEqu.value = location.origin + location.pathname.replace(/[^\/]*$/, '') + '?demande=equipage';
+}
+function copierLienDemandeAccesEquipage(){
+  const champ = document.getElementById('lienDemandeAccesEquipage');
+  champ.select();
+  navigator.clipboard.writeText(champ.value).then(()=>{
+    toast('✅ Lien copié !','ok');
+  }).catch(()=>{
+    document.execCommand('copy');
+    toast('✅ Lien copié !','ok');
+  });
 }
 function copierLienDemandeAcces(){
   const champ = document.getElementById('lienDemandeAcces');
@@ -3709,6 +3772,41 @@ async function renderLecteursPresence(){
       <div style="display:flex;justify-content:space-between;align-items:center;background:#F2F5F8;border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:.78rem;">
         <div><b>${u.email}</b> <span style="color:#666;">— lecture seule, Présence uniquement</span></div>
         <button class="btn" style="background:#e74c3c;color:#fff;font-size:.68rem;" onclick="retirerLecteurPresence('${u.email}')">🗑️ Retirer</button>
+      </div>`).join('');
+  }catch(e){ box.innerHTML = '<p style="font-size:.72rem;color:#e74c3c;">Erreur de chargement.</p>'; }
+}
+async function ajouterGestionEquipage(){
+  const email = document.getElementById('equEmailInput').value.trim().toLowerCase();
+  if(!email || !email.includes('@')){ toast('⚠️ Adresse email invalide','warn'); return; }
+  try{
+    const { error } = await supabaseRH.from('rh_utilisateurs').upsert({ email, role:'gestion_equipage', zone:null }, {onConflict:'email'});
+    if(error) throw error;
+    document.getElementById('equEmailInput').value='';
+    renderGestionEquipage();
+    toast(`✅ ${email} ajouté — accès Équipage uniquement`,'ok');
+  }catch(e){ toast('❌ Erreur : '+e.message,'err'); }
+}
+async function retirerGestionEquipage(email){
+  if(!confirm(`Retirer les droits de ${email} ? Il redeviendra admin (accès complet).`))return;
+  try{
+    await supabaseRH.from('rh_utilisateurs').delete().eq('email', email);
+    renderGestionEquipage();
+    toast('✅ Retiré','ok');
+  }catch(e){ toast('❌ Erreur : '+e.message,'err'); }
+}
+async function renderGestionEquipage(){
+  const box = document.getElementById('equListe');
+  if(!box) return;
+  try{
+    const { data } = await supabaseRH.from('rh_utilisateurs').select('email').eq('role','gestion_equipage').order('email');
+    if(!data || !data.length){
+      box.innerHTML = '<p style="font-size:.72rem;color:#888;font-style:italic;">Aucun compte Équipage pour l\'instant.</p>';
+      return;
+    }
+    box.innerHTML = data.map(u=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;background:#F2F5F8;border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:.78rem;">
+        <div><b>${u.email}</b> <span style="color:#666;">— Équipage uniquement, accès complet</span></div>
+        <button class="btn" style="background:#e74c3c;color:#fff;font-size:.68rem;" onclick="retirerGestionEquipage('${u.email}')">🗑️ Retirer</button>
       </div>`).join('');
   }catch(e){ box.innerHTML = '<p style="font-size:.72rem;color:#e74c3c;">Erreur de chargement.</p>'; }
 }
@@ -3792,8 +3890,16 @@ document.addEventListener('DOMContentLoaded', _verifierLienRecuperationMdp);
 // un accès" (ex: gestion-rh-pro.vercel.app/?demande=1), sans avoir à cliquer
 // sur le lien en bas de l'écran de connexion.
 document.addEventListener('DOMContentLoaded', ()=>{
-  if(new URLSearchParams(location.search).get('demande')==='1'){
+  const demande = new URLSearchParams(location.search).get('demande');
+  if(demande==='1' || demande==='equipage'){
     setTimeout(()=>rhBasculerMode(true), 100);
+    if(demande==='equipage'){
+      _demandeRoleVoulu = 'gestion_equipage';
+      setTimeout(()=>{
+        const lbl = document.getElementById('rhModeLabel');
+        if(lbl) lbl.textContent = 'Demander un accès — Équipage uniquement';
+      }, 110);
+    }
   }
 });
 
@@ -3813,8 +3919,35 @@ async function rhValider() {
       if (pass.length < 6) { rhAfficherErreur('Le mot de passe doit contenir au moins 6 caractères.'); btn.disabled=false; btn.textContent=texteOriginal; return; }
       if (pass !== confirmPass) { rhAfficherErreur('Les mots de passe ne correspondent pas.'); btn.disabled=false; btn.textContent=texteOriginal; return; }
       const { error } = await supabaseRH.auth.signUp({ email, password: pass });
-      if (error) { rhAfficherErreur("Impossible de créer le compte : " + error.message); btn.disabled=false; btn.textContent=texteOriginal; return; }
-      await supabaseRH.from('rh_employes').insert({ email }).select();
+      if (error) {
+        // Cas fréquent : un essai précédent (coupure réseau, onglet fermé trop
+        // vite...) a déjà créé le compte d'authentification côté Supabase, mais
+        // l'inscription RH (ligne rh_employes) ne s'était jamais terminée — la
+        // personne reste alors bloquée pour toujours avec "déjà inscrit". On tente
+        // une récupération automatique au lieu de la laisser sans solution.
+        const dejaInscrit = /already registered|already exists/i.test(error.message || '');
+        if (dejaInscrit) {
+          const statut = await _recupererInscriptionOrpheline(email, pass);
+          btn.disabled = false; btn.textContent = texteOriginal;
+          if (statut === 'ok') {
+            rhBasculerMode(false);
+            document.getElementById('rhModeLabel').textContent = "Compte créé — en attente d'approbation par un administrateur.";
+            document.getElementById('rhEmail').value = email;
+            document.getElementById('rhPassword').value = '';
+            return;
+          }
+          if (statut === 'deja_approuve') {
+            rhAfficherErreur("Ce compte existe déjà et est actif — connectez-vous directement avec ce mot de passe.");
+            rhBasculerMode(false);
+            return;
+          }
+          rhAfficherErreur("Un compte existe déjà pour cet email. Si c'est le vôtre, connectez-vous ; sinon utilisez « Mot de passe oublié » ou contactez l'administrateur.");
+          return;
+        }
+        rhAfficherErreur("Impossible de créer le compte : " + error.message); btn.disabled=false; btn.textContent=texteOriginal; return;
+      }
+      const { error: errInsert } = await _inscrireDemandeRH(email);
+      if (errInsert) console.error('Erreur enregistrement demande RH :', errInsert);
       await supabaseRH.auth.signOut();
       btn.disabled = false; btn.textContent = texteOriginal;
       rhBasculerMode(false);
@@ -3882,6 +4015,40 @@ function rhBasculerMode(forcerInscription) {
   document.getElementById('rhBtnValider').textContent = rhModeInscription ? '✅ Créer mon compte' : '🔓 Se connecter';
   document.getElementById('rhModeLabel').textContent = rhModeInscription ? 'Demander un accès' : 'Connectez-vous à votre espace';
   document.getElementById('rhToggleMode').textContent = rhModeInscription ? 'Déjà un compte ? Se connecter' : "Pas encore de compte ? Demander un accès";
+}
+
+// Enregistre la demande d'accès dans rh_employes, en y joignant le rôle visé
+// (_demandeRoleVoulu) s'il y en a un — ex: quelqu'un arrivé via ?demande=equipage.
+// Repli automatique si la colonne role_demande n'existe pas encore côté Supabase
+// (avant que l'admin ait exécuté le petit ALTER TABLE) : on ne bloque JAMAIS la
+// création de compte pour ça, on retente juste sans ce champ.
+async function _inscrireDemandeRH(email) {
+  if (_demandeRoleVoulu) {
+    const r = await supabaseRH.from('rh_employes').insert({ email, role_demande: _demandeRoleVoulu }).select();
+    if (!r.error) return r;
+  }
+  return await supabaseRH.from('rh_employes').insert({ email }).select();
+}
+// Tente de terminer une inscription restée en suspens : le compte d'authentification
+// existe déjà (Supabase) mais aucune ligne rh_employes correspondante n'a été créée.
+// On se connecte d'abord avec les identifiants fournis — si ça réussit, c'est bien
+// la même personne qui retente (pas quelqu'un devinant un email au hasard) — puis on
+// complète l'inscription si besoin. Retourne 'ok' | 'deja_approuve' | 'echec'.
+async function _recupererInscriptionOrpheline(email, pass) {
+  try {
+    const { error } = await supabaseRH.auth.signInWithPassword({ email, password: pass });
+    if (error) return 'echec';
+    const { data: admin } = await supabaseRH.from('admins').select('email').eq('email', email).maybeSingle();
+    const { data: emp } = await supabaseRH.from('rh_employes').select('approuve').eq('email', email).maybeSingle();
+    if (admin || (emp && emp.approuve)) { await supabaseRH.auth.signOut(); return 'deja_approuve'; }
+    if (!emp) { await _inscrireDemandeRH(email); }
+    await supabaseRH.auth.signOut();
+    return 'ok';
+  } catch (e) {
+    console.error('Erreur récupération inscription orpheline :', e);
+    try { await supabaseRH.auth.signOut(); } catch(e2){}
+    return 'echec';
+  }
 }
 
 // ============================================================
@@ -3970,15 +4137,16 @@ async function rhOuvrirPanneauEmployes() {
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
           <div>
             <div style="font-size:.85rem;font-weight:700;">${emp.email}</div>
-            <div style="font-size:.72rem;color:#FBBF24;">⏳ En attente</div>
+            <div style="font-size:.72rem;color:#FBBF24;">⏳ En attente${emp.role_demande==='gestion_equipage' ? ' · 🚛 Demande : Équipage uniquement' : ''}</div>
           </div>
           <button class="lock-btn" style="width:auto;padding:6px 12px;font-size:.75rem;background:#e74c3c;" onclick="rhAnnulerDemande('${emp.email}')">Annuler</button>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
           <select id="roleApprobation_${i}" style="padding:5px;border-radius:5px;font-size:.72rem;flex:1;min-width:140px;" onchange="document.getElementById('zoneApprobation_${i}').style.display=(this.value==='superviseur')?'block':'none';">
-            <option value="admin">🔑 Accès complet (admin)</option>
+            <option value="admin" ${!emp.role_demande?'selected':''}>🔑 Accès complet (admin)</option>
             <option value="superviseur">🧑‍💼 Superviseur — une zone</option>
             <option value="lecteur_presence">👁️ Lecture seule — Présence</option>
+            <option value="gestion_equipage" ${emp.role_demande==='gestion_equipage'?'selected':''}>🚛 Équipage uniquement (planification)</option>
           </select>
           <select id="zoneApprobation_${i}" style="display:none;padding:5px;border-radius:5px;font-size:.72rem;">
             ${zones.map(z=>`<option value="${z}">${z}</option>`).join('')}
@@ -4135,7 +4303,7 @@ function showPage(id) {
   if (id==='pgMen'){renderMensuel();}
   if (id==='pgAbs'){renderAbsences();}
   if (id==='pgAI'){aiInit();}
-  if (id==='pgSet'){updateSettingsInfo();renderSuperviseurs();renderLecteursPresence();_remplirLienDemandeAcces();}
+  if (id==='pgSet'){updateSettingsInfo();renderSuperviseurs();renderLecteursPresence();renderGestionEquipage();_remplirLienDemandeAcces();}
 }
 
 // ==================== CENTRE D'ALERTES ====================
@@ -4476,11 +4644,14 @@ async function _safeSetIDB(items){
     return {ok:false, ko:totalKo, err:err};
   }
 }
+// Empreinte de la dernière sauvegarde effective — permet à sauvegarder() de ne
+// réécrire/resynchroniser QUE ce qui a réellement changé, au lieu de renvoyer
+// systématiquement tout le paquet (photos, selfies, documents...) vers Supabase
+// toutes les 30 secondes même quand rien n'a bougé. Décisif à grande échelle
+// (des centaines d'employés avec photos/documents = plusieurs dizaines de Mo).
+let _rhDernierEtatJSON = {};
 async function sauvegarder(manual=false) {
   clearTimeout(autoSaveTimer);
-  document.getElementById('saveDot').className='save-dot saving';
-  // Petit délai pour laisser l'UI réagir avant l'écriture (UX)
-  await new Promise(r=>setTimeout(r,80));
   const items=[
     ['rh_emp', JSON.stringify(employes)],
     ['rh_con', JSON.stringify(conges)],
@@ -4492,13 +4663,24 @@ async function sauvegarder(manual=false) {
     ['rh_cor', JSON.stringify(corbeille)],
     ['rh_hist', JSON.stringify(historique)],
   ];
-  const res=await _safeSetIDB(items);
+  const itemsModifies = items.filter(([cle,val]) => _rhDernierEtatJSON[cle] !== val);
+  // Sauvegarde automatique périodique (toutes les 30s) : si rien n'a changé
+  // depuis la dernière fois, on ne touche à rien — ni IndexedDB, ni Supabase.
+  // Une sauvegarde manuelle (bouton, ou après une vraie action) s'exécute
+  // toujours, même si la liste des changements semble vide, par sécurité.
+  if(!manual && itemsModifies.length===0) return;
+  document.getElementById('saveDot').className='save-dot saving';
+  // Petit délai pour laisser l'UI réagir avant l'écriture (UX)
+  await new Promise(r=>setTimeout(r,80));
+  const aEcrire = itemsModifies.length ? itemsModifies : items;
+  const res=await _safeSetIDB(aEcrire);
   if(res.ok){
+    aEcrire.forEach(([cle,val])=>{ _rhDernierEtatJSON[cle]=val; });
     document.getElementById('saveDot').className='save-dot';
     document.getElementById('saveLabel').textContent='Sauvegardé';
     updateSaveTime();
     if (manual) toast('✅ Données sauvegardées !','ok');
-    rhSyncVersLigne(items); // synchronise aussi vers la base partagée (arrière-plan, sans bloquer)
+    rhSyncVersLigne(aEcrire); // synchronise aussi vers la base partagée (arrière-plan, sans bloquer) — seulement ce qui a changé
     rhSyncAnnuaire(); // met à jour l'annuaire public (pour le pointage QR sur le téléphone des employés)
   } else {
     document.getElementById('saveDot').className='save-dot saving';
@@ -5056,8 +5238,128 @@ async function generateQR(targetEl, text, size=120){
 }
 
 // ============================================================
-// COMPRESSION D'IMAGES — évite la saturation du localStorage
+// STOCKAGE CLOUD (Supabase Storage) — remplace les photos/documents/selfies
+// collés en base64 dans le gros paquet JSON par un simple lien vers un
+// fichier stocké à part. Bucket attendu : "rh-fichiers" (voir Paramètres
+// pour le SQL de création si pas encore fait). Conçu pour ne JAMAIS bloquer
+// ni casser l'app si le bucket n'existe pas encore ou si la connexion est
+// coupée : en cas d'échec, on garde simplement le fichier en base64 tel
+// quel (comme avant), et on retentera plus tard.
 // ============================================================
+const STORAGE_BUCKET = 'rh-fichiers';
+// Convertit un dataURL base64 en Blob binaire prêt à uploader.
+function _dataUrlVersBlob(dataUrl){
+  const [entete, b64] = dataUrl.split(',');
+  const mime = (entete.match(/data:(.*?);base64/)||[])[1] || 'application/octet-stream';
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+  return new Blob([arr], {type:mime});
+}
+function _estUrlStockage(v){ return typeof v==='string' && /^https?:\/\//.test(v); }
+// Upload un dataURL vers le stockage cloud et renvoie son URL publique — ou
+// null en cas d'échec (pas de réseau, bucket absent...), auquel cas
+// l'appelant garde simplement le fichier en base64 sans rien casser.
+// Volontairement PAS conditionné à une session admin : c'est aussi utilisé
+// par le kiosque de pointage (téléphone d'un employé, jamais connecté).
+async function _uploaderVersStorage(dataUrl, chemin){
+  if(!dataUrl || _estUrlStockage(dataUrl)) return dataUrl; // déjà une URL, ou vide
+  try{
+    const blob = _dataUrlVersBlob(dataUrl);
+    const { error } = await supabaseRH.storage.from(STORAGE_BUCKET).upload(chemin, blob, { upsert:true, contentType: blob.type });
+    if(error) throw error;
+    const { data } = supabaseRH.storage.from(STORAGE_BUCKET).getPublicUrl(chemin);
+    return (data && data.publicUrl) ? data.publicUrl : null;
+  }catch(err){
+    console.warn('Upload stockage échoué (', chemin, ') — fichier gardé en local pour le moment :', err.message||err);
+    return null;
+  }
+}
+// Parcourt les données déjà en mémoire et upload tout fichier encore en
+// base64 (photo employé, documents du dossier, selfies de pointage) vers le
+// stockage cloud, EN PLACE — remplace juste le champ par son lien une fois
+// prêt. N'importe quoi déjà migré (déjà un lien) est ignoré instantanément,
+// donc rappeler cette fonction plusieurs fois ne recommence jamais le
+// travail déjà fait. Renvoie true si quelque chose a été migré (pour
+// déclencher une sauvegarde qui persiste le remplacement).
+async function _migrerFichiersVersStorage(limite=25){
+  let modifie = false, traites = 0;
+  for(const e of employes){
+    if(traites>=limite) break;
+    if(e.photo && e.photo.startsWith('data:')){
+      const url = await _uploaderVersStorage(e.photo, `photos/${e.id}.jpg`);
+      if(url){ e.photo=url; modifie=true; traites++; }
+    }
+    if(Array.isArray(e.dossier)){
+      for(let j=0;j<e.dossier.length && traites<limite;j++){
+        const d=e.dossier[j];
+        if(d && d.data && d.data.startsWith('data:')){
+          const ext=(d.fileType==='application/pdf')?'pdf':'jpg';
+          const url=await _uploaderVersStorage(d.data, `documents/${e.id}-${j}-${Date.now()}.${ext}`);
+          if(url){ d.data=url; modifie=true; traites++; }
+        }
+      }
+    }
+  }
+  for(const date of Object.keys(presences)){
+    if(traites>=limite) break;
+    const jour=presences[date];
+    for(const empId of Object.keys(jour||{})){
+      if(traites>=limite) break;
+      const rec=jour[empId];
+      if(rec && rec.selfie && rec.selfie.startsWith('data:')){
+        const url=await _uploaderVersStorage(rec.selfie, `selfies/${date}-${empId}.jpg`);
+        if(url){ rec.selfie=url; modifie=true; traites++; }
+      }
+    }
+  }
+  return modifie;
+}
+// Filet de sécurité périodique : migre par petits lots (25 fichiers) toutes
+// les 2 minutes, pour ne jamais surcharger le réseau ni geler l'interface —
+// même avec des centaines de fichiers en attente, tout finit par passer.
+async function _migrerFichiersSiBesoin(){
+  if(!rhSessionActuelle) return; // le kiosque migre son propre selfie tout de suite, pas besoin ici
+  try{
+    const modifie = await _migrerFichiersVersStorage(25);
+    if(modifie) sauvegarder(false);
+  }catch(e){ console.warn('Migration stockage cloud :', e); }
+}
+
+// Migration manuelle complète (bouton Paramètres) — traite TOUT ce qui reste
+// en base64, par lots, avec un retour visible de la progression. Contrairement
+// au filet de sécurité automatique (25 fichiers/2min, discret), celle-ci va
+// jusqu'au bout sans s'arrêter, pour un rattrapage volontaire et immédiat.
+async function migrerStockageMaintenant(){
+  if(!rhSessionActuelle){ toast('⚠️ Connectez-vous d\'abord (compte en ligne requis)','warn'); return; }
+  const statutEl = document.getElementById('migStockageStatut');
+  let total = 0, tour = 0;
+  if(statutEl) statutEl.textContent = '⏳ Migration en cours…';
+  try{
+    let modifieUneFois = false;
+    while(true){
+      tour++;
+      const avant = total;
+      const modifie = await _migrerFichiersVersStorage(40);
+      if(!modifie) break; // plus rien à migrer
+      modifieUneFois = true;
+      total += 40; // approximatif, juste pour l'affichage de progression
+      if(statutEl) statutEl.textContent = `⏳ Migration en cours… (${tour} lot${tour>1?'s':''} traité${tour>1?'s':''})`;
+      if(tour>200) break; // garde-fou, évite une boucle infinie en cas de souci
+    }
+    if(modifieUneFois){
+      await sauvegarder(true);
+      if(statutEl) statutEl.textContent = '✅ Migration terminée — fichiers déplacés vers le stockage cloud';
+      toast('✅ Fichiers migrés vers le stockage cloud','ok');
+    } else {
+      if(statutEl) statutEl.textContent = '✅ Rien à migrer — déjà à jour (ou bucket "rh-fichiers" introuvable)';
+      toast('ℹ️ Rien à migrer pour le moment','ok');
+    }
+  }catch(e){
+    if(statutEl) statutEl.textContent = '❌ Erreur — vérifiez que le bucket "rh-fichiers" existe';
+    toast('❌ Erreur pendant la migration : '+e.message,'err');
+  }
+}
 // Compresse une image (DataURL) via canvas : redimensionne et baisse la qualité
 // Renvoie une promesse qui résout en un nouveau DataURL plus léger
 function compressImage(dataUrl, maxWidth=600, quality=0.75){
@@ -5207,13 +5509,18 @@ function viewDoc(k){
 }
 function renderDocInModal(doc,container){
   const typeReel = doc.fileType || doc.type; // fileType = vrai type MIME ; repli pour anciens documents
+  const estUrl = _estUrlStockage(doc.data);
+  // Lien de téléchargement : pour une URL de stockage cloud, on ajoute
+  // ?download pour forcer le téléchargement au lieu d'ouvrir dans l'onglet
+  // (sinon le navigateur navigue simplement vers le fichier).
+  const hrefTelecharger = estUrl ? `${doc.data}${doc.data.includes('?')?'&':'?'}download=${encodeURIComponent(doc.name||'document')}` : doc.data;
   if(typeReel==='application/pdf' || /\.pdf$/i.test(doc.name||'')){
-    const blob=dataURLtoBlob(doc.data);const url=URL.createObjectURL(blob);
+    const url = estUrl ? doc.data : URL.createObjectURL(dataURLtoBlob(doc.data));
     container.innerHTML=`<div style="padding:20px;text-align:center;">
       <div style="font-size:3rem;margin-bottom:10px;">📄</div>
       <div style="font-size:.88rem;font-weight:700;color:var(--bleu);margin-bottom:8px;">${doc.name}</div>
       <a href="${url}" target="_blank" class="btn b-prt" style="display:inline-flex;text-decoration:none;margin-bottom:8px;">👁️ Ouvrir PDF (nouvel onglet)</a><br>
-      <a href="${doc.data}" download="${doc.name}" class="btn b-mod" style="display:inline-flex;text-decoration:none;margin-top:5px;">⬇️ Télécharger</a>
+      <a href="${hrefTelecharger}" download="${doc.name}" class="btn b-mod" style="display:inline-flex;text-decoration:none;margin-top:5px;">⬇️ Télécharger</a>
     </div>`;
   } else if(typeReel && typeReel.startsWith('image/')){
     container.innerHTML=`<img src="${doc.data}" style="max-width:100%;max-height:460px;border-radius:6px;">`;
@@ -5224,7 +5531,7 @@ function renderDocInModal(doc,container){
       <div style="font-size:3rem;margin-bottom:10px;">📎</div>
       <div style="font-size:.88rem;font-weight:700;color:var(--bleu);margin-bottom:8px;">${doc.name}</div>
       <a href="${doc.data}" target="_blank" class="btn b-prt" style="display:inline-flex;text-decoration:none;margin-bottom:8px;">👁️ Ouvrir</a><br>
-      <a href="${doc.data}" download="${doc.name}" class="btn b-mod" style="display:inline-flex;text-decoration:none;margin-top:5px;">⬇️ Télécharger</a>
+      <a href="${hrefTelecharger}" download="${doc.name}" class="btn b-mod" style="display:inline-flex;text-decoration:none;margin-top:5px;">⬇️ Télécharger</a>
     </div>`;
   }
 }
@@ -5591,6 +5898,7 @@ function prevBadge(){
     </div>
     <div class="badge-qr-zone">
       <div class="qr-box" id="bdgQR"></div>
+      <div id="bdgQRAlerte" style="display:none;font-size:.6rem;font-weight:800;color:#C0392B;text-align:center;margin-top:4px;max-width:130px;">⚠️ QR réduit au lien seul (infos non incluses) — survole le QR pour voir le texte exact encodé</div>
       <div class="qr-info">
         <span class="qr-info-lbl">Valide jusqu'au</span>
         <span class="qr-info-val ${expired?'expired':''}">${dateExp}</span>
@@ -5601,22 +5909,28 @@ function prevBadge(){
   </div>
   <div class="badge-card badge-verso" style="${styleVars}">
     <div class="badge-header" style="justify-content:center;">
-      <div class="org-info" style="text-align:center;flex:none;"><div class="org-name" style="font-size:.85rem;">CONDITIONS D'UTILISATION</div></div>
+      <div class="org-info" style="text-align:center;flex:none;"><div class="org-name" style="font-size:1.05rem;">CONDITIONS D'UTILISATION</div></div>
     </div>
-    <div style="padding:16px 14px;font-size:.72rem;color:#333;line-height:1.7;">
+    <div style="padding:20px 20px;font-size:.95rem;color:#333;line-height:2.1;display:flex;flex-direction:column;justify-content:center;">
       <div>• Cette carte est strictement personnelle et incessible.</div>
       <div>• En cas de perte, prévenir immédiatement la RH.</div>
       <div>• À restituer en fin de contrat.</div>
-      <div style="margin-top:10px;font-weight:800;color:var(--bdg-h1,#1A3A5C);">EN CAS DE DÉCOUVERTE</div>
+      <div style="margin-top:18px;font-weight:800;font-size:1rem;color:var(--bdg-h1,#1A3A5C);">EN CAS DE DÉCOUVERTE</div>
       <div>Merci de contacter : <b>${companyUrgence||'—'}</b></div>
     </div>
     <div class="badge-footer">${org} · Carte d'employé · ${dEmis.getFullYear()}</div>
   </div>`;
 
   // Génération du QR (avec repli automatique si le texte complet pose problème)
-  setTimeout(()=>{
+  setTimeout(async ()=>{
     const qrEl=document.getElementById('bdgQR');
-    _genererQREmploye(qrEl, e, org, 130);
+    await _genererQREmploye(qrEl, e, org, 130);
+    // Garde-fou visible : si jamais le QR est retombé sur le lien seul (sans
+    // nom/matricule/infos dedans), on l'affiche clairement ici plutôt que de
+    // laisser croire que tout est en ordre — voir data-qr-mode posé par
+    // _genererQREmploye. Survoler le QR affiche aussi le contenu exact encodé.
+    const alerteEl=document.getElementById('bdgQRAlerte');
+    if(alerteEl) alerteEl.style.display = (qrEl && qrEl.dataset.qrMode==='lien') ? 'block' : 'none';
   },100);
 }
 
@@ -6614,6 +6928,19 @@ function _dataUrlVersOctets(dataUrl){
   for(let i=0;i<bin.length;i++) octets[i]=bin.charCodeAt(i);
   return octets;
 }
+// Récupère les octets d'une image pour l'insérer dans un Word — gère aussi
+// bien un dataURL base64 (ancien format, encore présent hors-ligne) qu'une
+// URL de stockage cloud (nouveau format, depuis la migration) en la
+// téléchargeant d'abord.
+async function _imageVersOctets(valeur){
+  if(!valeur) return null;
+  if(_estUrlStockage(valeur)){
+    const rep = await fetch(valeur);
+    if(!rep.ok) throw new Error('Téléchargement image échoué');
+    return new Uint8Array(await rep.arrayBuffer());
+  }
+  return _dataUrlVersOctets(valeur);
+}
 // Export du badge de l'employé sélectionné en document Word (.docx) —
 // mêmes informations que le badge imprimé, en mise en page simple modifiable
 // (le rendu visuel exact — dégradés, cercle photo — n'est pas reproductible
@@ -6642,13 +6969,13 @@ async function exporterBadgeWord(){
   ];
 
   if(companyLogo){
-    try{ enfants.unshift(new Paragraph({ alignment: AlignmentType.CENTER, spacing:{after:80}, children:[ new ImageRun({ data:_dataUrlVersOctets(companyLogo), transformation:{width:70,height:70}, type:'png' }) ] })); }catch(_){ }
+    try{ enfants.unshift(new Paragraph({ alignment: AlignmentType.CENTER, spacing:{after:80}, children:[ new ImageRun({ data:await _imageVersOctets(companyLogo), transformation:{width:70,height:70}, type:'png' }) ] })); }catch(_){ }
   }
 
   const lignesInfo = [];
   if(e.photo){
     try{
-      lignesInfo.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing:{after:100}, children:[ new ImageRun({ data:_dataUrlVersOctets(e.photo), transformation:{width:110,height:110}, type:'png' }) ] }));
+      lignesInfo.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing:{after:100}, children:[ new ImageRun({ data:await _imageVersOctets(e.photo), transformation:{width:110,height:110}, type:'png' }) ] }));
     }catch(_){ }
   }
   lignesInfo.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing:{after:20}, children:[ new TextRun({text:`${(e.nom||'').toUpperCase()} ${e.prenom||''}`.trim(), bold:true, size:28}) ] }));
@@ -7784,6 +8111,40 @@ function _estEnCongeApprouve(empId, dateStr){
 // Passe automatiquement en "Terminé" tout congé Approuvé dont la date de fin
 // est dépassée — sinon il reste affiché comme "Approuvé" indéfiniment, même
 // des mois après le retour de l'employé.
+// Purge les selfies de pointage (photos prises à chaque arrivée/départ) plus
+// vieux que la fenêtre de conservation — le texte du pointage (statut, heure,
+// justification) est conservé pour toujours, seule la photo (le plus gros en
+// taille, ~15-40 Ko à chaque scan) est retirée passé ce délai. Sans ça, ce
+// bloc grossit sans fin et finit par ralentir la sauvegarde/synchronisation
+// pour tout le monde, surtout avec beaucoup d'employés qui pointent 2×/jour.
+// Lancé une fois par jour (voir _purgerSelfiesAnciensSiBesoin), pas à chaque
+// sauvegarde — parcourir des mois d'historique à chaque fois serait inutile.
+function _purgerSelfiesAnciens(joursConservation=60){
+  const limite = new Date(); limite.setDate(limite.getDate()-joursConservation);
+  const limiteStr = limite.toISOString().slice(0,10);
+  let purges = 0;
+  Object.keys(presences).forEach(date=>{
+    if(date >= limiteStr) return; // encore dans la fenêtre de conservation
+    const jour = presences[date];
+    if(!jour) return;
+    Object.keys(jour).forEach(empId=>{
+      if(jour[empId] && jour[empId].selfie){
+        delete jour[empId].selfie;
+        purges++;
+      }
+    });
+  });
+  return purges;
+}
+// Vérifie une fois par jour seulement (pas à chaque chargement de page) —
+// mémorise la dernière date de purge dans localStorage.
+async function _purgerSelfiesAnciensSiBesoin(){
+  const today = new Date().toISOString().slice(0,10);
+  if(localStorage.getItem('rh_derniere_purge_selfies')===today) return;
+  const n = _purgerSelfiesAnciens(60);
+  localStorage.setItem('rh_derniere_purge_selfies', today);
+  if(n>0){ console.log(`🧹 ${n} ancien(s) selfie(s) de pointage purgé(s) (>60 jours) pour alléger la synchronisation.`); sauvegarder(false); }
+}
 function verifierCongesTermines(){
   const today = new Date().toISOString().slice(0,10);
   let modifie = false;
@@ -9338,11 +9699,32 @@ function _kioskMajHorsHoraires(now){
   }
 }
 let _kioskAnnuaire = [];
+// Charge l'annuaire SANS les photos — seuls id/nom/prénom/fonction/site sont
+// nécessaires pour reconnaître un badge scanné (la comparaison se fait sur le
+// matricule, jamais sur la photo). Avant, cette requête ramenait la photo de
+// TOUS les employés actifs toutes les 10 secondes en tâche de fond : avec 500
+// employés, ça représente plusieurs dizaines de Mo téléchargées en boucle sur
+// le téléphone qui pointe, pour rien la plupart du temps. La photo de la
+// personne qui vient VRAIMENT de scanner est chargée à part, une seule ligne
+// à la fois, dans _kioskChargerPhotoAnnuaire.
 async function _kioskChargerAnnuaire(){
   try{
-    const { data } = await supabaseRH.from('rh_annuaire').select('*');
+    const { data } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,modifie_le');
     _kioskAnnuaire = data || [];
   }catch(e){ console.warn('Annuaire indisponible:', e); _kioskAnnuaire = []; }
+}
+// Charge la photo d'UN SEUL employé (celui qui vient d'être scanné), après
+// coup — évite de télécharger la photo de tout le monde en continu. Met à
+// jour la carte déjà affichée dès que la photo arrive (l'employé voit son nom
+// tout de suite, la photo suit une fraction de seconde après).
+async function _kioskChargerPhotoAnnuaire(id){
+  try{
+    const { data } = await supabaseRH.from('rh_annuaire').select('photo').eq('id', String(id)).maybeSingle();
+    if(data && data.photo && _kiosk.emp && String(_kiosk.emp.id)===String(id)){
+      _kiosk.emp.photo = data.photo;
+      _kioskRenderEmpCard();
+    }
+  }catch(e){ /* pas grave — la carte reste affichée sans photo */ }
 }
 async function _kioskLoadCfg(){
   // Charge d'abord un éventuel repli local (rapide), puis écrase avec la
@@ -9628,7 +10010,10 @@ async function _kioskOnBadgeDetected(id){
     // Pas trouvé en local (cas normal sur le téléphone de l'employé) — on cherche
     // dans l'annuaire public déjà récupéré depuis Supabase au démarrage du kiosque.
     const trouve = _kioskAnnuaire.find(a=>fmtMatricule(a.id)===id);
-    if(trouve) _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: trouve.photo, fonc: trouve.fonc, site: trouve.site||'' };
+    if(trouve){
+      _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: '', fonc: trouve.fonc, site: trouve.site||'' };
+      _kioskChargerPhotoAnnuaire(trouve.id); // photo chargée à part, sans bloquer l'affichage
+    }
   }
   if(!_kiosk.emp){
     // Toujours pas trouvé (annuaire en cache pas encore à jour — cas typique
@@ -9638,10 +10023,13 @@ async function _kioskOnBadgeDetected(id){
     // dans Présence : mieux vaut attendre une seconde de plus ici.
     _kioskSetMsg('🔎 Vérification du badge…');
     try{
-      const { data } = await supabaseRH.from('rh_annuaire').select('*');
+      const { data } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,modifie_le');
       _kioskAnnuaire = data || _kioskAnnuaire; // on rafraîchit le cache au passage
       const trouve = (data||[]).find(a=>fmtMatricule(a.id)===id);
-      if(trouve) _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: trouve.photo, fonc: trouve.fonc, site: trouve.site||'' };
+      if(trouve){
+        _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: '', fonc: trouve.fonc, site: trouve.site||'' };
+        _kioskChargerPhotoAnnuaire(trouve.id);
+      }
     }catch(e){ console.warn('Vérification directe du badge échouée :', e); }
     _kioskSetMsg('');
   }
@@ -9654,11 +10042,12 @@ async function _kioskOnBadgeDetected(id){
     setTimeout(async ()=>{
       if(_kiosk.emp || _kiosk.empId!==id) return;
       try{
-        const { data } = await supabaseRH.from('rh_annuaire').select('*');
+        const { data } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,modifie_le');
         const trouve = (data||[]).find(a=>fmtMatricule(a.id)===id);
         if(trouve && _kiosk.empId===id){
-          _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: trouve.photo, fonc: trouve.fonc, site: trouve.site||'' };
+          _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: '', fonc: trouve.fonc, site: trouve.site||'' };
           _kioskRenderEmpCard();
+          _kioskChargerPhotoAnnuaire(trouve.id);
         }
       }catch(e){ /* on retentera au prochain scan si besoin */ }
     }, 2000);
@@ -10009,12 +10398,21 @@ async function kioskValider(){
   // mais le statut passe à "Absent" — comme un vrai absent, il reste dans la
   // liste des absents tant que la RH ne le justifie pas (bouton Justifier).
   const horsZone = _kiosk.geo && _kiosk.geo.inZone === false;
+  // Upload le selfie vers le stockage cloud avant de l'enregistrer — c'est le
+  // plus gros générateur de volume de l'app (un selfie à chaque pointage). En
+  // cas d'échec (pas de réseau, bucket pas encore créé), on garde le selfie
+  // en base64 tel quel : rien ne bloque le pointage.
+  let selfieAEnregistrer = _kiosk.selfieData;
+  if(selfieAEnregistrer){
+    const url = await _uploaderVersStorage(selfieAEnregistrer, `selfies/${dateEcriture}-${cle}.jpg`);
+    if(url) selfieAEnregistrer = url;
+  }
   const rec = {
     ...cur,
     statut: horaireCheck.ok ? 'Présent' : 'Absent',
     retardTexte: horaireCheck.ok ? '' : horaireCheck.message,
     service,
-    hors_zone: horsZone, from_mobile:true, geo:_kiosk.geo, selfie:_kiosk.selfieData
+    hors_zone: horsZone, from_mobile:true, geo:_kiosk.geo, selfie:selfieAEnregistrer
   };
   if(action==='arrival'){ rec.punch_in = now; }
   else { rec.punch_out = now; }
