@@ -1633,8 +1633,8 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     <button class="tab-btn" onclick="showPage(&#39;pgEqu&#39;)">🚛 Équipage</button>
     <button class="tab-btn" onclick="showPage(&#39;pgMen&#39;)">📊 Mensuel</button>
     <button class="tab-btn" onclick="showPage(&#39;pgAbs&#39;)">🚨 Absences</button>
-    <button class="tab-btn" onclick="showPage(&#39;pgAI&#39;)" data-testid="tab-ai">🤖 IA Assistant</button>
-    <button class="tab-btn" onclick="showPage(&#39;pgSet&#39;)">⚙️ Paramètres</button>
+    <button class="tab-btn" id="tabIA" onclick="showPage(&#39;pgAI&#39;)" data-testid="tab-ai">🤖 IA Assistant</button>
+    <button class="tab-btn" id="tabParametres" onclick="showPage(&#39;pgSet&#39;)">⚙️ Paramètres</button>
   </div>
   <div class="header-right">
     <div class="save-status"><div class="save-dot" id="saveDot"></div><span id="saveLabel">Sauvegardé</span><span id="saveTime" style="opacity:.6;margin-left:3px;">16:44</span></div>
@@ -1654,8 +1654,8 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <div id="hdrMenu" style="display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);min-width:190px;overflow:hidden;z-index:50;">
         <button class="hdr-menu-item" onclick="toggleHdrMenu();rhRecharger();" id="rhSyncBadge" title="Cliquer pour recharger les dernières données partagées">☁️ Local uniquement</button>
         <button class="hdr-menu-item" onclick="toggleHdrMenu();toggleTheme();">🌙 Mode sombre/clair</button>
-        <button class="hdr-menu-item" onclick="toggleHdrMenu();ouvrirCorbeille();">🗑️ Corbeille</button>
-        <button class="hdr-menu-item" onclick="toggleHdrMenu();ouvrirHistorique();">📜 Historique</button>
+        <button class="hdr-menu-item" id="menuCorbeille" onclick="toggleHdrMenu();ouvrirCorbeille();">🗑️ Corbeille</button>
+        <button class="hdr-menu-item" id="menuHistorique" onclick="toggleHdrMenu();ouvrirHistorique();">📜 Historique</button>
       </div>
     </div>
     <button class="btn-lock" onclick="lockApp()">🔒 Verrouiller</button>
@@ -2362,6 +2362,16 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
 
 <!-- ======= PAGE PARAMÈTRES ======= -->
 <div class="page" id="pgSet">
+  <div class="settings-card">
+    <div class="sec">🧑‍💼 Comptes superviseurs (accès limité à une zone)</div>
+    <div style="font-size:.7rem;color:#666;margin:8px 0;">Un superviseur ne verra que les employés/pointages de la zone choisie. Un email absent de cette liste garde l'accès complet (admin).</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+      <input type="email" id="supEmailInput" class="ci" placeholder="Email du superviseur" style="max-width:220px;">
+      <select id="supZoneInput" class="ci" style="max-width:160px;"></select>
+      <button class="btn b-add" onclick="ajouterSuperviseur()">➕ Ajouter</button>
+    </div>
+    <div id="supListe"></div>
+  </div>
   <div class="settings-card">
     <div class="sec">🖼️ Logo &amp; Nom de l'entreprise</div>
     <div style="margin-top:8px;display:flex;align-items:center;gap:12px;background:#fff;padding:10px;border-radius:6px;border:1.5px solid #ddd;">
@@ -3458,6 +3468,70 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabaseRH = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let rhModeInscription = false;
 let rhSessionActuelle = null;
+let monRole = 'admin'; // 'admin' (accès complet) ou 'superviseur' (limité à sa zone)
+let maZone = null; // zone du superviseur connecté, null si admin
+// Filtre une liste d'employés selon la zone du superviseur connecté — un
+// admin voit tout le monde, un superviseur ne voit que ceux de sa zone.
+function _filtrerParMaZone(liste){
+  if(monRole!=='superviseur' || !maZone) return liste;
+  return liste.filter(e=>e.site===maZone);
+}
+// ============================================================
+// COMPTES SUPERVISEURS PAR ZONE
+// ============================================================
+function _remplirZonesSuperviseur(){
+  const sel = document.getElementById('supZoneInput');
+  if(!sel) return;
+  const zones = [...new Set(employes.map(e=>e.site).filter(Boolean))].sort();
+  sel.innerHTML = zones.map(z=>`<option value="${z}">${z}</option>`).join('') || '<option value="">Aucune zone trouvée</option>';
+}
+async function ajouterSuperviseur(){
+  const email = document.getElementById('supEmailInput').value.trim().toLowerCase();
+  const zone = document.getElementById('supZoneInput').value;
+  if(!email || !email.includes('@')){ toast('⚠️ Adresse email invalide','warn'); return; }
+  if(!zone){ toast('⚠️ Choisis une zone','warn'); return; }
+  try{
+    const { error } = await supabaseRH.from('rh_utilisateurs').upsert({ email, role:'superviseur', zone }, {onConflict:'email'});
+    if(error) throw error;
+    document.getElementById('supEmailInput').value='';
+    renderSuperviseurs();
+    toast(`✅ ${email} ajouté comme superviseur de ${zone}`,'ok');
+  }catch(e){ toast('❌ Erreur : '+e.message,'err'); }
+}
+async function retirerSuperviseur(email){
+  if(!confirm(`Retirer les droits superviseur de ${email} ? Il redeviendra admin (accès complet).`))return;
+  try{
+    await supabaseRH.from('rh_utilisateurs').delete().eq('email', email);
+    renderSuperviseurs();
+    toast('✅ Retiré','ok');
+  }catch(e){ toast('❌ Erreur : '+e.message,'err'); }
+}
+// Masque les sections réservées à l'admin pour un compte superviseur —
+// Paramètres, IA Assistant, Corbeille, Historique. Rien ne change pour un admin.
+function _appliquerRestrictionsSuperviseur(){
+  if(monRole!=='superviseur') return;
+  ['tabIA','tabParametres','menuCorbeille','menuHistorique'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.style.display='none';
+  });
+}
+async function renderSuperviseurs(){
+  const box = document.getElementById('supListe');
+  if(!box) return;
+  _remplirZonesSuperviseur();
+  try{
+    const { data } = await supabaseRH.from('rh_utilisateurs').select('email,zone').eq('role','superviseur').order('email');
+    if(!data || !data.length){
+      box.innerHTML = '<p style="font-size:.72rem;color:#888;font-style:italic;">Aucun superviseur pour l\'instant — tout le monde a l\'accès complet.</p>';
+      return;
+    }
+    box.innerHTML = data.map(u=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;background:#F2F5F8;border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:.78rem;">
+        <div><b>${u.email}</b> <span style="color:#666;">— limité à la zone</span> <b style="color:var(--bleu);">${u.zone}</b></div>
+        <button class="btn" style="background:#e74c3c;color:#fff;font-size:.68rem;" onclick="retirerSuperviseur('${u.email}')">🗑️ Retirer</button>
+      </div>`).join('');
+  }catch(e){ box.innerHTML = '<p style="font-size:.72rem;color:#e74c3c;">Erreur de chargement : la table rh_utilisateurs existe-t-elle bien ?</p>'; }
+}
 let rhEstAdmin = false;
 
 function rhAfficherErreur(msg) {
@@ -3522,9 +3596,16 @@ async function rhValider() {
     }
 
     rhSessionActuelle = data.session;
+    // Rôle et zone (superviseur limité à sa zone, ou admin par défaut si absent de la table)
+    try{
+      const { data: monProfil } = await supabaseRH.from('rh_utilisateurs').select('role,zone').eq('email', email).maybeSingle();
+      monRole = (monProfil && monProfil.role) || 'admin';
+      maZone = (monProfil && monProfil.zone) || null;
+    }catch(e){ monRole='admin'; maZone=null; }
     document.getElementById('lockScreen').style.display = 'none';
     document.getElementById('appContent').style.display = 'block';
     rhAfficherBoutonAdmin();
+    _appliquerRestrictionsSuperviseur();
     loginAttempts = 0;
     await rhChargerDepuisLigne(); // récupère les données partagées les plus récentes avant d'afficher
     const badgeInit = document.getElementById('rhSyncBadge');
@@ -3772,7 +3853,7 @@ function showPage(id) {
   if (id==='pgMen'){renderMensuel();}
   if (id==='pgAbs'){renderAbsences();}
   if (id==='pgAI'){aiInit();}
-  if (id==='pgSet'){updateSettingsInfo();}
+  if (id==='pgSet'){updateSettingsInfo();renderSuperviseurs();}
 }
 
 // ==================== CENTRE D'ALERTES ====================
@@ -4533,7 +4614,7 @@ let pagSize = 50;
 let pagFiltered = null; // liste filtrée par recherche, ou null = tous
 
 function getCurrentList(){
-  return pagFiltered !== null ? pagFiltered : employes;
+  return _filtrerParMaZone(pagFiltered !== null ? pagFiltered : employes);
 }
 function pagTotalPages(){
   const total=getCurrentList().length;
@@ -7247,7 +7328,7 @@ function _przListeFiltree(){
   const dept=document.getElementById('przDept').value;
   const site=document.getElementById('przSite').value;
   const q=(document.getElementById('przSearch').value||'').trim().toLowerCase();
-  return employes.filter(e=>{
+  return _filtrerParMaZone(employes).filter(e=>{
     if(dept && e.dept!==dept) return false;
     if(site && e.site!==site) return false;
     if(q){
@@ -9262,20 +9343,42 @@ async function _kioskAfficherActionPrevue(){
   if(warnEl) warnEl.style.display='none';
   const cle = _kiosk.emp ? String(_kiosk.emp.id) : null;
   const today = new Date().toISOString().slice(0,10);
-  let cur = (cle && presences[today]) ? (presences[today][cle]||{}) : {};
+  const hierDate = new Date(); hierDate.setDate(hierDate.getDate()-1);
+  const hier = hierDate.toISOString().slice(0,10);
+
+  let curToday = (cle && presences[today]) ? (presences[today][cle]||{}) : {};
+  let curHier = (cle && presences[hier]) ? (presences[hier][cle]||{}) : {};
   if(cle){
     try{
       const { data } = await supabaseRH.from('rh_pointages').select('data').eq('date_jour', today).eq('emp_id', cle).maybeSingle();
-      if(data && data.data) cur = {...cur, ...data.data};
+      if(data && data.data) curToday = {...curToday, ...data.data};
+    }catch(e){ /* on continue avec ce qu'on a localement */ }
+    try{
+      const { data } = await supabaseRH.from('rh_pointages').select('data').eq('date_jour', hier).eq('emp_id', cle).maybeSingle();
+      if(data && data.data) curHier = {...curHier, ...data.data};
     }catch(e){ /* on continue avec ce qu'on a localement */ }
   }
+
+  // Un pointage d'HIER encore "ouvert" (arrivée notée, jamais de départ) —
+  // typique d'un service Nuit ou 24h qui traverse minuit — a priorité : le
+  // prochain scan est presque certainement le départ de CE pointage-là, pas
+  // une nouvelle arrivée aujourd'hui. Sans ça, la personne se retrouvait
+  // bloquée ("aucune arrivée aujourd'hui") ou marquée absente à tort le jour
+  // de son départ.
+  let cur, dateAEcrire;
+  if(curHier.punch_in && !curHier.punch_out){
+    cur = curHier; dateAEcrire = hier;
+  } else {
+    cur = curToday; dateAEcrire = today;
+  }
   _kiosk.curRecord = cur; // relu par kioskChoisirAction pour repérer un pointage déjà fait
+  _kiosk.datePointage = dateAEcrire; // relu par kioskValider pour écrire au bon endroit
 
   const btnConfirmer = document.querySelector('#kioskStep-confirmBadge .kiosk-btn:not(.kiosk-btn-sec)');
   if(cur.punch_in && cur.punch_out){
     badge.innerHTML = `
       <div style="font-size:2.6rem;line-height:1;margin-bottom:6px;">🚫</div>
-      <div style="color:#fff;font-weight:800;font-size:1.05rem;margin-bottom:2px;">Déjà pointé aujourd'hui</div>
+      <div style="color:#fff;font-weight:800;font-size:1.05rem;margin-bottom:2px;">Déjà pointé</div>
       <div style="color:#9ca3af;font-size:.8rem;">Arrivée et départ complets</div>`;
     if(btnConfirmer){ btnConfirmer.disabled=true; btnConfirmer.style.opacity=.4; }
   } else {
@@ -9336,7 +9439,7 @@ function kioskChoisirAction(action){
     return;
   }
   if(action==='departure' && !cur.punch_in){
-    if(warnEl){ warnEl.style.display='block'; warnEl.textContent='ℹ️ Aucune arrivée enregistrée aujourd\'hui — veuillez d\'abord pointer votre arrivée.'; }
+    if(warnEl){ warnEl.style.display='block'; warnEl.textContent='ℹ️ Aucune arrivée trouvée — veuillez d\'abord pointer votre arrivée.'; }
     return;
   }
   if(warnEl) warnEl.style.display='none';
@@ -9516,15 +9619,22 @@ async function kioskValider(){
     return;
   }
   const cle = String(_kiosk.emp.id);
-  if(!presences[today]) presences[today]={};
-  let cur = presences[today][cle] || {};
+  // Date où écrire ce pointage : normalement aujourd'hui, MAIS si une équipe
+  // Nuit/24h a pointé son arrivée HIER et n'a pas encore de départ, ce scan
+  // est presque certainement CE départ-là — on écrit alors dans le pointage
+  // d'hier, pas un nouveau pointage vide aujourd'hui (sinon la personne se
+  // retrouve à tort "absente" le jour de son départ). Déterminé dans
+  // _kioskAfficherActionPrevue() et mémorisé dans _kiosk.datePointage.
+  const dateEcriture = _kiosk.datePointage || today;
+  if(!presences[dateEcriture]) presences[dateEcriture]={};
+  let cur = presences[dateEcriture][cle] || {};
 
   // On part de l'état le plus à jour connu de Supabase (un autre appareil a pu
   // déjà enregistrer l'arrivée de cet employé aujourd'hui) — c'est la vraie
   // source de vérité partagée, contrairement au stockage local de ce téléphone.
   try{
     const { data: existant } = await supabaseRH
-      .from('rh_pointages').select('data').eq('date_jour', today).eq('emp_id', cle).maybeSingle();
+      .from('rh_pointages').select('data').eq('date_jour', dateEcriture).eq('emp_id', cle).maybeSingle();
     if(existant && existant.data) cur = {...cur, ...existant.data};
   }catch(e){ console.warn('Lecture Supabase échouée, on continue avec les données locales:',e); }
 
@@ -9532,16 +9642,16 @@ async function kioskValider(){
   const fdb = _fbReady ? _fbDb : await fbInit();
   let cloudRef = null;
   if(fdb){
-    cloudRef = fdb.collection('pointages').doc(today).collection('entries').doc(cle);
+    cloudRef = fdb.collection('pointages').doc(dateEcriture).collection('entries').doc(cle);
     try{
       const snap = await cloudRef.get();
       if(snap.exists) cur = {...cur, ...snap.data()};
     }catch(e){ console.warn('Lecture Firebase échouée, on continue en local:',e); }
   }
 
-  // Refus ferme : arrivée ET départ déjà enregistrés aujourd'hui pour cet employé
+  // Refus ferme : arrivée ET départ déjà enregistrés pour ce pointage
   if(cur.punch_in && cur.punch_out){
-    _kioskSetMsg('⛔ Arrivée et départ déjà enregistrés aujourd\'hui pour cet employé — pointage refusé.', 'err');
+    _kioskSetMsg('⛔ Arrivée et départ déjà enregistrés pour cet employé — pointage refusé.', 'err');
     setTimeout(kioskRestart, 3500);
     return;
   }
@@ -9563,7 +9673,7 @@ async function kioskValider(){
   };
   if(action==='arrival'){ rec.punch_in = now; }
   else { rec.punch_out = now; }
-  presences[today][cle] = rec;
+  presences[dateEcriture][cle] = rec;
   try{ await db.set('rh_prz', JSON.stringify(presences)); }catch(e){ _kioskSetMsg('❌ Erreur de sauvegarde locale : '+e.message,'err'); return; }
 
   // Remonte immédiatement vers Supabase : c'est ce qui permet à l'admin (et à
@@ -9571,7 +9681,7 @@ async function kioskValider(){
   // été connecté à l'application.
   try{
     await supabaseRH.from('rh_pointages').upsert({
-      date_jour: today, emp_id: cle, data: rec, modifie_le: now,
+      date_jour: dateEcriture, emp_id: cle, data: rec, modifie_le: now,
     }, { onConflict: 'date_jour,emp_id' });
   }catch(e){
     console.warn('Écriture Supabase échouée (pointage local conservé) :',e);
