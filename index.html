@@ -1388,7 +1388,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
 #kioskApp.kiosk-soleil #kioskBienvenue{color:#FBBF24;font-size:1.15rem;text-shadow:0 0 8px rgba(251,191,36,.4);}
 #kioskApp.kiosk-soleil .kiosk-scan-hint{color:#FBBF24;font-weight:800;font-size:1rem;}
 #kioskApp.kiosk-soleil #kioskSoleilBtn{background:#FBBF24;color:#000;}
-.kiosk-wrap{width:100%;max-width:420px;color:#fff;display:flex;flex-direction:column;align-items:center;gap:14px;}
+.kiosk-wrap{width:100%;max-width:420px;color:#fff;display:flex;flex-direction:column;align-items:center;gap:10px;}
 .kiosk-head{font-size:1.05rem;font-weight:800;text-align:center;letter-spacing:.3px;}
 .kiosk-msg{min-height:20px;font-size:.8rem;text-align:center;color:#B9E4F5;}
 .kiosk-msg.ok{color:#6EE7B7;font-weight:700;}
@@ -1508,8 +1508,8 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     <!-- Étape scan badge -->
     <div class="kiosk-step" id="kioskStep-scan" style="display:flex;">
       <button id="kioskSoleilBtn" onclick="kioskToggleSoleil()" title="Mode plein soleil (contraste élevé)" style="position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.3);color:#FBBF24;font-size:1rem;cursor:pointer;z-index:5;">☀️</button>
-      <div id="kioskHorlogeAccueil" style="text-align:center;margin-bottom:6px;">
-        <div id="kioskHorloge" style="font-size:1.8rem;font-weight:800;color:#fff;letter-spacing:1px;"></div>
+      <div id="kioskHorlogeAccueil" style="text-align:center;margin-bottom:4px;">
+        <div id="kioskHorloge" style="font-size:1.5rem;font-weight:800;color:#fff;letter-spacing:1px;"></div>
         <div id="kioskDateJour" style="font-size:.72rem;color:#93c5fd;margin-bottom:6px;"></div>
         <div id="kioskBienvenue" style="font-size:.85rem;font-weight:800;color:#FBBF24;"></div>
         <div id="kioskHorsHoraires" style="display:none;background:rgba(255,255,255,.06);border-radius:10px;padding:8px 12px;margin:8px auto;max-width:240px;font-size:.68rem;color:#9ca3af;"></div>
@@ -1523,7 +1523,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <div class="kiosk-manual">
         <span>QR illisible ? Saisir le matricule :</span>
         <input type="text" id="kioskBadgeManual" placeholder="EMP-00001">
-        <button class="kiosk-btn kiosk-btn-sec" onclick="kioskManualBadge()">Valider</button>
+        <button class="kiosk-btn" style="background:linear-gradient(135deg,#16A34A,#22C55E);border-color:#16A34A;padding:9px 20px;font-size:.85rem;box-shadow:0 3px 10px rgba(22,163,74,.4);" onclick="kioskManualBadge()">✅ VALIDER</button>
       </div>
     </div>
 
