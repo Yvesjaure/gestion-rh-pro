@@ -3299,9 +3299,17 @@ function _hmToMin(hm){ const [h,m]=(hm||'0:0').split(':').map(Number); return (h
 // Construit plusieurs versions du texte du QR d'un employé, de la plus complète à
 // la plus courte (juste matricule + nom + lien). En repli automatique si la version
 // complète pose problème (texte trop long pour une librairie QR ancienne, etc.).
+// Chaque champ est plafonné (_tronquer) avant d'entrer dans le texte du QR : si un
+// champ contient accidentellement bien plus de texte que ce qui est visible à
+// l'écran (collage malencontreux, espaces répétés...), ça ne fait plus planter TOUT
+// le QR — juste ce champ est coupé, le reste des infos passe quand même.
+function _tronquer(v, max){
+  const s = (v||'').toString();
+  return s.length>max ? s.slice(0,max)+'…' : s;
+}
 function _buildQrTexteVariantes(e, org){
   const matricule = fmtMatricule(e.id);
-  const nomComplet = `${(e.nom||'').toUpperCase()} ${e.prenom||''}`.trim();
+  const nomComplet = _tronquer(`${(e.nom||'').toUpperCase()} ${e.prenom||''}`.trim(), 60);
   let dateEmb = '';
   if(e.emb){
     const d = new Date(e.emb);
@@ -3312,39 +3320,57 @@ function _buildQrTexteVariantes(e, org){
     const d = new Date(e.dateNais);
     dateNais = isNaN(d) ? e.dateNais : d.toLocaleDateString('fr-FR');
   }
+  dateNais = _tronquer(dateNais, 30);
+  dateEmb = _tronquer(dateEmb, 30);
+  const fonc = _tronquer(e.fonc, 60);
+  const dept = _tronquer(e.dept, 40);
+  const site = _tronquer(e.site, 40);
+  const tel = _tronquer(e.tel, 30);
+  const email = _tronquer(e.email, 60);
+  const statut = _tronquer(e.statutEmploi||'Actif', 30);
+  const urgence = _tronquer(companyUrgence, 60);
   const sep = (qrBaseUrl && qrBaseUrl.includes('?')) ? '&' : '?';
   const lien = (qrBaseUrl && qrBaseUrl.trim())
     ? `${qrBaseUrl.trim()}${sep}id=${matricule}`
     : `${window.location.origin}${window.location.pathname}?id=${matricule}`;
   // Nom court + nom complet, ex: "EIDA- Entreprise Ivoirienne d'aide en Assainissement"
-  const entrepriseTexte = companyFullName ? `${org}- ${companyFullName}` : org;
+  const entrepriseTexte = _tronquer(companyFullName ? `${org}- ${companyFullName}` : org, 100);
 
   const complet = [
     `Entreprise : ${entrepriseTexte}`,
     `Matricule : ${matricule}`,
     `Nom : ${nomComplet}`,
     dateNais ? `Date de naissance : ${dateNais}` : '',
-    e.fonc ? `Fonction : ${e.fonc}` : '',
-    e.dept ? `Service : ${e.dept}` : '',
-    e.site ? `Site : ${e.site}` : '',
+    fonc ? `Fonction : ${fonc}` : '',
+    dept ? `Service : ${dept}` : '',
+    site ? `Site : ${site}` : '',
     dateEmb ? `Date d'embauche : ${dateEmb}` : '',
-    `Statut : ${e.statutEmploi||'Actif'}`,
-    e.tel ? `Téléphone : ${e.tel}` : '',
-    e.email ? `Email : ${e.email}` : '',
-    companyUrgence ? `Urgence : ${companyUrgence}` : '',
+    `Statut : ${statut}`,
+    tel ? `Téléphone : ${tel}` : '',
+    email ? `Email : ${email}` : '',
+    urgence ? `Urgence : ${urgence}` : '',
   ].filter(Boolean).join('\n');
 
   const essentiel = [
-    `Entreprise : ${org}`,
+    `Entreprise : ${_tronquer(org,40)}`,
     `Matricule : ${matricule}`,
     `Nom : ${nomComplet}`,
     dateNais ? `Date de naissance : ${dateNais}` : '',
-    e.fonc ? `Fonction : ${e.fonc}` : '',
-    `Statut : ${e.statutEmploi||'Actif'}`,
-    companyUrgence ? `Urgence : ${companyUrgence}` : '',
+    fonc ? `Fonction : ${fonc}` : '',
+    `Statut : ${statut}`,
+    urgence ? `Urgence : ${urgence}` : '',
   ].filter(Boolean).join('\n');
 
-  return [complet, essentiel, lien]; // du plus complet au plus sûr (le lien reste en tout dernier repli, si le texte reste trop long)
+  // Filet de sécurité supplémentaire, entre essentiel et lien : juste l'identité,
+  // volontairement minuscule — garantit presque toujours de garder au moins le nom
+  // et le matricule dans le QR, même si un champ inattendu fait échouer essentiel.
+  const identite = [
+    `Matricule : ${matricule}`,
+    `Nom : ${_tronquer(nomComplet, 40)}`,
+    `Statut : ${statut}`,
+  ].join('\n');
+
+  return [complet, essentiel, identite, lien]; // du plus complet au plus sûr (le lien reste en tout dernier repli)
 }
 // (Avant, on filtrait les variantes trop longues par avance ici — supprimé :
 // voir le commentaire dans _genererQREmploye ci-dessous, cette pré-filtration
@@ -3368,7 +3394,7 @@ async function _genererQREmploye(targetEl, e, org, size){
     return false;
   }
   const variantes = _buildQrTexteVariantes(e, org);
-  const noms = ['complet','essentiel','lien'];
+  const noms = ['complet','essentiel','identite','lien'];
   const echecs = []; // diagnostic : pourquoi chaque variante plus riche a été abandonnée
   for(let vi=0; vi<variantes.length; vi++){
     const texte = variantes[vi];
@@ -3408,7 +3434,7 @@ function _genererQRDataURLEmployeSync(container, e, org, size){
   _dernierQRSyncDiag = { mode:'', echecs:[] };
   if(typeof QRCode==='undefined') return '';
   const variantes = _buildQrTexteVariantes(e, org);
-  const noms = ['complet','essentiel','lien'];
+  const noms = ['complet','essentiel','identite','lien'];
   for(let vi=0; vi<variantes.length; vi++){
     const texte = variantes[vi];
     container.innerHTML='';
@@ -5985,10 +6011,12 @@ function prevBadge(){
     await _genererQREmploye(qrEl, e, org, 130);
     if(monToken !== _bdgApercuToken) return; // annulé entre-temps par une sélection plus récente
     if(alerteEl){
-      const reduit = qrEl && qrEl.dataset.qrMode==='lien';
+      const mode = qrEl && qrEl.dataset.qrMode;
+      const reduit = mode==='lien' || mode==='identite';
       alerteEl.style.display = reduit ? 'block' : 'none';
       if(reduit && qrEl.dataset.qrEchecs){
-        alerteEl.innerHTML = `⚠️ QR réduit au lien seul — raison : ${decodeURIComponent(qrEl.dataset.qrEchecs)}`;
+        const libelle = mode==='lien' ? 'QR réduit au lien seul' : 'QR réduit à l\'identité de base (matricule/nom/statut)';
+        alerteEl.innerHTML = `⚠️ ${libelle} — raison : ${decodeURIComponent(qrEl.dataset.qrEchecs)}`;
       }
     }
   },100);
@@ -6698,8 +6726,9 @@ async function imprimerTousLesBadges(){
     const matricule = fmtMatricule(e.id);
     const qrSrc = _genererQRDataURLEmployeSync(tmp, e, org, 250);
     const qrImgHTML = qrSrc ? `<img src="${qrSrc}" alt="QR">` : '<span style="font-size:.5rem;">QR indisponible</span>';
-    if(_dernierQRSyncDiag.mode==='lien'){
-      badgesReduits.push(`${matricule} ${e.nom||''} ${e.prenom||''} — ${_dernierQRSyncDiag.echecs.join(' | ')}`);
+    if(_dernierQRSyncDiag.mode==='lien' || _dernierQRSyncDiag.mode==='identite'){
+      const libelle = _dernierQRSyncDiag.mode==='lien' ? 'lien seul' : 'identité de base';
+      badgesReduits.push(`${matricule} ${e.nom||''} ${e.prenom||''} — réduit à : ${libelle} — ${_dernierQRSyncDiag.echecs.join(' | ')}`);
     }
 
     const photoHTML = e.photo
