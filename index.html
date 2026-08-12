@@ -22652,12 +22652,6 @@ async function _kioskOnBadgeDetected(id){
   _kiosk.empId = id;
   _kiosk.emp = employes.find(e=>fmtMatricule(e.id)===id) || null;
   _kiosk.empSource = _kiosk.emp ? `employes[] local (${employes.length} chargés)` : null;
-  // Sur ce même appareil, s'il vient de trouver l'employé dans employes[] (la
-  // liste vivante déjà chargée, la même utilisée pour modifier ses infos), cette
-  // source est déjà la plus fraîche possible — pas besoin, et surtout pas
-  // question, d'aller ensuite l'écraser avec une copie de l'annuaire Supabase
-  // qui peut être en retard (c'était le bug de la correction précédente).
-  const depuisEmployesLocal = !!_kiosk.emp;
   if(!_kiosk.emp){
     // Pas trouvé en local (cas normal sur le téléphone de l'employé) — on cherche
     // dans l'annuaire public déjà récupéré depuis Supabase au démarrage du kiosque.
@@ -22689,11 +22683,15 @@ async function _kioskOnBadgeDetected(id){
   }
   _kioskRenderEmpCard();
   _kioskAfficherActionPrevue(); // détermine si ce sera une arrivée ou un départ
-  // Vérification fraîche en tâche de fond, UNIQUEMENT si la source utilisée était
-  // l'annuaire (cache 10s ou requête directe) — jamais si c'était employes[] local,
-  // qui est toujours la donnée la plus à jour possible sur cet appareil. Corrige
-  // l'affichage en direct si un écart est trouvé, sans bloquer ni ralentir l'écran.
-  if(_kiosk.emp && !depuisEmployesLocal){
+  // Vérification fraîche en tâche de fond — TOUJOURS, quelle que soit la source
+  // utilisée pour l'affichage initial. On a eu la preuve qu'même "employes[]
+  // local" peut être périmé : un onglet resté ouvert un moment garde sa propre
+  // copie chargée une fois, jamais mise à jour toute seule quand on modifie une
+  // fiche depuis un AUTRE onglet/appareil. Cette revérification ponctuelle (une
+  // seule ligne Supabase, rapide) est donc le seul moyen fiable de garantir un
+  // affichage à jour, peu importe l'ancienneté de l'onglet. Corrige l'affichage
+  // en direct si un écart est trouvé, sans bloquer ni ralentir l'écran déjà là.
+  if(_kiosk.emp){
     (async ()=>{
       try{
         const { data, error } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,modifie_le').eq('id', String(_kiosk.emp.id)).maybeSingle();
