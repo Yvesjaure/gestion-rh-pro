@@ -21135,21 +21135,59 @@ function _estEnCongeApprouve(empId, dateStr){
 // pour tout le monde, surtout avec beaucoup d'employés qui pointent 2×/jour.
 // Lancé une fois par jour (voir _purgerSelfiesAnciensSiBesoin), pas à chaque
 // sauvegarde — parcourir des mois d'historique à chaque fois serait inutile.
-function _purgerSelfiesAnciens(joursConservation=60){
-  const limite = new Date(); limite.setDate(limite.getDate()-joursConservation);
-  const limiteStr = limite.toISOString().slice(0,10);
+// Purge les selfies de pointage (photos prises à chaque arrivée/départ) plus
+// vieux que la fenêtre de conservation — le texte du pointage (statut, heure,
+// justification) est conservé pour toujours, seule la photo est retirée passé
+// ce délai. Si le selfie a déjà été migré vers le stockage cloud (une URL, pas
+// du base64), le VRAI fichier est aussi supprimé là-bas — sinon seule la
+// référence locale disparaît et le fichier reste indéfiniment sur le serveur,
+// ce qui finit par remplir l'espace de stockage même si le paquet de données
+// synchronisé, lui, reste petit.
+// Purge les selfies de pointage (photos prises à chaque arrivée/départ) par
+// MOIS CIVIL COMPLET, avec 10 jours de grâce — pas un compte à rebours en
+// jours glissants. Exemple : les selfies du 1er au 31 juillet restent
+// disponibles jusqu'au 9 août inclus, puis sont supprimés d'un coup à partir
+// du 10 août (le mois de juillet entier "libère la place" pour la suite). Le
+// texte du pointage (statut, heure, justification) est conservé pour
+// toujours, seule la photo est retirée. Si le selfie a déjà été migré vers le
+// stockage cloud (une URL, pas du base64), le VRAI fichier est aussi
+// supprimé là-bas — sinon seule la référence locale disparaît et le fichier
+// reste indéfiniment sur le serveur, ce qui finit par remplir l'espace de
+// stockage même si le paquet de données synchronisé, lui, reste petit.
+function _dateLimitePurgeSelfies(maintenant){
+  maintenant = maintenant || new Date();
+  const jour = maintenant.getDate();
+  // À partir du 10 du mois : on coupe au 1er du mois EN COURS (tout le mois
+  // précédent, et avant, est purgé). Avant le 10 : on coupe encore au 1er du
+  // mois PRÉCÉDENT (le mois d'avant a droit à ses 10 jours de grâce).
+  const coupe = jour>=10
+    ? new Date(maintenant.getFullYear(), maintenant.getMonth(), 1)
+    : new Date(maintenant.getFullYear(), maintenant.getMonth()-1, 1);
+  return coupe.toISOString().slice(0,10);
+}
+async function _purgerSelfiesAnciens(maintenant){
+  const limiteStr = _dateLimitePurgeSelfies(maintenant);
   let purges = 0;
-  Object.keys(presences).forEach(date=>{
-    if(date >= limiteStr) return; // encore dans la fenêtre de conservation
+  const cheminsAsupprimer = [];
+  for(const date of Object.keys(presences)){
+    if(date >= limiteStr) continue; // encore dans le mois courant ou la grâce de 10 jours
     const jour = presences[date];
-    if(!jour) return;
-    Object.keys(jour).forEach(empId=>{
-      if(jour[empId] && jour[empId].selfie){
-        delete jour[empId].selfie;
+    if(!jour) continue;
+    for(const empId of Object.keys(jour)){
+      const rec = jour[empId];
+      if(rec && rec.selfie){
+        if(_estUrlStockage(rec.selfie)){
+          cheminsAsupprimer.push(`selfies/${date}-${empId}.jpg`);
+        }
+        delete rec.selfie;
         purges++;
       }
-    });
-  });
+    }
+  }
+  if(cheminsAsupprimer.length){
+    try{ await supabaseRH.storage.from(STORAGE_BUCKET).remove(cheminsAsupprimer); }
+    catch(e){ console.warn('Suppression de vieux selfies sur le stockage cloud échouée (la référence locale a quand même été retirée) :', e); }
+  }
   return purges;
 }
 // Vérifie une fois par jour seulement (pas à chaque chargement de page) —
@@ -21157,9 +21195,9 @@ function _purgerSelfiesAnciens(joursConservation=60){
 async function _purgerSelfiesAnciensSiBesoin(){
   const today = new Date().toISOString().slice(0,10);
   if(localStorage.getItem('rh_derniere_purge_selfies')===today) return;
-  const n = _purgerSelfiesAnciens(60);
+  const n = await _purgerSelfiesAnciens();
   localStorage.setItem('rh_derniere_purge_selfies', today);
-  if(n>0){ console.log(`🧹 ${n} ancien(s) selfie(s) de pointage purgé(s) (>60 jours) pour alléger la synchronisation.`); sauvegarder(false); }
+  if(n>0){ console.log(`🧹 ${n} ancien(s) selfie(s) de pointage purgé(s) (mois civil complet, avec 10 jours de grâce) pour alléger la synchronisation.`); sauvegarder(false); }
 }
 function verifierCongesTermines(){
   const today = new Date().toISOString().slice(0,10);
@@ -21639,7 +21677,27 @@ function importJSON(input){
   reader.onload=e=>{
     try{
       const d=JSON.parse(e.target.result);
-      if(!confirm(`Importer ${(d.employes||[]).length} employés ?`))return;
+      // Garde-fou : un import remplace TOUT (employés, présences, congés...) sans
+      // aucune sauvegarde automatique côté Supabase (le plan gratuit n'en fait
+      // aucune) — donc AVANT d'écraser quoi que ce soit, on force une sauvegarde
+      // de ce qui est actuellement chargé, avec la date dans le nom du fichier.
+      // Ça se télécharge tout seul, sans action supplémentaire à faire.
+      if(employes.length){
+        try{
+          const sauvegardeAuto = {
+            employes, conges, presences, mensuel, equipages,
+            mdp: motDePasse, name: companyName, addr: companyAddr, logo: companyLogo, qrbase: qrBaseUrl,
+          };
+          const blob = new Blob([JSON.stringify(sauvegardeAuto)], {type:'application/json'});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `sauvegarde_avant_import_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }catch(err){ console.warn('Sauvegarde automatique avant import échouée :', err); }
+      }
+      if(!confirm(`⚠️ Importer ${(d.employes||[]).length} employé(s) ? Ça va REMPLACER les ${employes.length} employé(s) actuellement chargé(s) (une sauvegarde de l'état actuel vient d'être téléchargée par précaution, vérifie ton dossier Téléchargements).`))return;
       employes=d.employes||[];conges=d.conges||[];presences=d.presences||{};mensuel=d.mensuel||{};equipages=d.equipages||[];
       employes.sort(_cmpEmp);
       if(d.mdp){motDePasse=d.mdp;kvSet('rh_mdp',d.mdp);}
