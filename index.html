@@ -15737,15 +15737,26 @@ const DEFAULT_HORAIRES = {
 function _hmToMin(hm){ const [h,m]=(hm||'0:0').split(':').map(Number); return (h||0)*60+(m||0); }
 
 // ============================================================
-// FORMAT DE QR DE BADGE — EIDA1|MATRICULE|NOM|PRENOM|DATE_NAISSANCE|FONCTION|
-// STATUT|TEL_URGENCE_1|TEL_URGENCE_2
-// Une seule ligne compacte (pas de JSON, pas de texte multi-lignes) : quelques
-// dizaines d'octets seulement, donc plus jamais de dépassement de capacité QR
-// — peu importe la longueur des noms/fonctions. "EIDA1" sert de signature +
-// numéro de version : au décodage, tout texte qui ne commence pas par ça (ou
-// qui n'a pas exactement le bon nombre de champs) est refusé comme QR invalide.
+// FORMAT DE QR DE BADGE — EIDA|MATRICULE|NOM|PRENOM|DATE_NAISSANCE|STATUT|
+// FONCTION|NUMERO_URGENCE|EIDA1
+// Le QR est reconstruit à partir des données ACTUELLES de l'employé à chaque
+// fois qu'il est affiché ou imprimé (aperçu, impression individuelle,
+// impression en masse) — jamais mis en cache. Donc dès que le nom/la fonction/
+// le statut change et qu'on ré-ouvre ou réimprime le badge, le QR généré
+// reflète tout de suite les nouvelles infos, sans action manuelle.
+// Le matricule est indispensable pour le pointage : c'est LUI (jamais le nom,
+// qui peut changer) qui sert à retrouver l'employé — voir _decoderQrEIDA1 et
+// _kioskParseEmpId, qui n'utilisent QUE ce champ pour l'identification. Les
+// autres champs sont là pour lecture directe (badge, appli externe), mais ne
+// sont JAMAIS utilisés par l'app elle-même pour afficher ou pointer — elle va
+// toujours chercher les données à jour dans la fiche employé à partir du
+// matricule, jamais dans le texte du QR.
+// "EIDA" (1er champ) et "EIDA1" (dernier champ) marquent le format : au
+// décodage, tout texte qui n'a pas exactement ces deux bornes ou le bon
+// nombre de champs est refusé comme QR invalide.
 // ============================================================
-const QR_SIGNATURE = 'EIDA1';
+const QR_SIGNATURE_DEBUT = 'EIDA';
+const QR_SIGNATURE = 'EIDA1'; // signature de fin (conservé sous ce nom pour compat avec le reste du code)
 const QR_SEP = '|';
 // Retire les caractères invisibles (espaces zéro-largeur, marques de direction,
 // caractères de contrôle...) souvent introduits par un copier-coller depuis
@@ -15760,32 +15771,42 @@ function _nettoyerPourQR(v){
 function _champQR(v){
   return _nettoyerPourQR(v).replace(/\|/g, '/');
 }
-// Le QR n'encode plus QUE l'identifiant du badge — jamais les informations
-// personnelles de l'employé (nom, fonction, statut...). Le QR est un pointeur
-// vers la fiche employé, pas une copie figée de son contenu : ainsi, modifier
-// le nom/la fonction/le statut d'un employé dans l'app est immédiatement
-// visible au prochain scan, SANS avoir à réimprimer le badge — l'app va
-// toujours chercher les informations à jour dans la base au moment du scan.
-// Format : EIDA1|MATRICULE (ex: EIDA1|EMP-00009).
+// Construit le texte du QR à partir des données ACTUELLES de l'employé (l'objet
+// `e` passé est toujours la version en mémoire la plus récente, jamais une copie
+// figée) — c'est ce qui garantit que le QR est toujours à jour dès qu'il est
+// (re)généré, sans avoir besoin d'un mécanisme de régénération séparé.
 function _buildQrEIDA1(e, org){
   const matricule = _champQR(fmtMatricule(e.id));
-  return [QR_SIGNATURE, matricule].join(QR_SEP);
+  const nom = _champQR((e.nom||'').toUpperCase());
+  const prenom = _champQR((e.prenom||'').toUpperCase());
+  let dateNais = '';
+  if(e.dateNais){
+    const d = new Date(e.dateNais);
+    dateNais = isNaN(d) ? e.dateNais : d.toLocaleDateString('fr-FR');
+  }
+  dateNais = _champQR(dateNais);
+  const statut = _champQR((e.statutEmploi==='Parti' ? 'INACTIF' : 'ACTIF'));
+  const fonction = _champQR((e.fonc||'').toUpperCase());
+  const urgence = _champQR((companyUrgence||'').replace(/\s*\/\s*/g,'/'));
+  return [QR_SIGNATURE_DEBUT, matricule, nom, prenom, dateNais, statut, fonction, urgence, QR_SIGNATURE].join(QR_SEP);
 }
-// Décode un texte de QR scanné : reconnaît le format EIDA1 (signature en
-// PREMIER champ), refuse tout le reste (mauvaise signature ou mauvais nombre
-// de champs — donc jamais de mauvaise interprétation d'un QR qui n'est pas un
-// badge EIDA). Ne renvoie QUE le matricule — c'est un identifiant, pas une
-// copie des infos employé : l'appelant doit toujours aller chercher les
-// informations actuelles de l'employé dans les données de l'app à partir de
-// ce matricule, jamais se fier à un contenu qui viendrait du QR lui-même.
+// Décode un texte de QR scanné : reconnaît le format (bornes EIDA...EIDA1,
+// exactement 9 champs), refuse tout le reste (mauvaises bornes ou mauvais
+// nombre de champs — donc jamais de mauvaise interprétation d'un QR qui n'est
+// pas un badge EIDA). IMPORTANT : seul `matricule` doit servir à identifier
+// l'employé (voir _kioskParseEmpId) — les autres champs décodés ici ne sont
+// JAMAIS utilisés pour l'affichage ou le pointage dans l'app ; ils ne servent
+// qu'à la lecture directe par un tiers (appli externe). L'app va toujours
+// chercher les informations actuelles dans la fiche employé à partir du
+// matricule, jamais dans ce texte.
 function _decoderQrEIDA1(texte){
   if(!texte || typeof texte!=='string') return null;
   const champs = texte.split(QR_SEP);
-  if(champs.length!==2) return null;
-  if(champs[0]!==QR_SIGNATURE) return null;
-  const matricule = champs[1];
+  if(champs.length!==9) return null;
+  if(champs[0]!==QR_SIGNATURE_DEBUT || champs[champs.length-1]!==QR_SIGNATURE) return null;
+  const [, matricule, nom, prenom, dateNais, statut, fonction, urgence] = champs;
   if(!matricule) return null;
-  return { matricule };
+  return { matricule, nom, prenom, dateNais, statut, fonction, urgence };
 }
 // Brique de génération QR — utilise qrcode-generator (Kazuhiko Arase), intégrée
 // directement dans ce fichier (aucun CDN) : au lieu d'ESTIMER la taille
