@@ -17257,6 +17257,7 @@ function dashTraiterConge(id, decision){
   const c = conges.find(x=>x.id===id);
   if(!c) return;
   c.stat = decision;
+  if(decision==='Approuvé') _appliquerCongeAuxPresences(c);
   afficherConges(); updateStats(); renderDashboard();
   sauvegarder(false);
   toast(decision==='Approuvé' ? '✅ Congé approuvé' : '❌ Congé refusé', decision==='Approuvé'?'ok':'err');
@@ -19244,6 +19245,18 @@ function _buildBadgePrint(){
 async function imprimerTousLesBadges(){
   const actifs = employes.filter(e=>e.statutEmploi!=='Parti');
   if(!actifs.length){ toast('⚠️ Aucun employé actif à imprimer','warn'); return; }
+
+  // À grande échelle (plusieurs centaines d'employés), des photos encore en
+  // base64 (pas encore migrées vers le stockage cloud) alourdissent énormément
+  // cette impression en masse — chaque photo est collée telle quelle dans la
+  // page au lieu d'être chargée comme une image normale, ce qui peut ralentir
+  // ou faire planter le navigateur sur un appareil modeste. On prévient plutôt
+  // que de laisser deviner pourquoi c'est lent.
+  const nbPhotosNonMigrees = actifs.filter(e => e.photo && e.photo.startsWith('data:')).length;
+  if(nbPhotosNonMigrees > 50){
+    const continuer = confirm(`⚠️ ${nbPhotosNonMigrees} photo(s) sur ${actifs.length} ne sont pas encore migrées vers le stockage cloud — l'impression risque d'être lente ou de faire ramer le navigateur.\n\nConseil : allez dans Paramètres → "🚀 Migrer maintenant" d'abord, puis relancez l'impression.\n\nContinuer quand même maintenant ?`);
+    if(!continuer) return;
+  }
 
   // On ouvre la fenêtre d'impression TOUT DE SUITE, avant tout traitement — beaucoup
   // de navigateurs bloquent window.open() s'il n'est pas déclenché de façon synchrone
@@ -21246,10 +21259,37 @@ function supprConge(id){
   }
   afficherConges();updateStats();sauvegarder(false);
 }
+// Quand un congé passe à "Approuvé", met immédiatement à jour la présence de
+// l'employé pour chaque jour de la période concernée : un jour resté vide ou
+// marqué "Absent" devient "En congé" (donc justifié, retiré de la liste des
+// absents) — sans attendre le prochain passage du contrôle automatique
+// quotidien. N'écrase jamais un vrai pointage déjà enregistré (arrivée
+// effective), ni un jour marqué "Présent".
+function _appliquerCongeAuxPresences(c){
+  if(!c || c.stat!=='Approuvé' || !c.deb || !c.fin) return;
+  const debut = new Date(c.deb+'T00:00:00');
+  const fin = new Date(c.fin+'T00:00:00');
+  if(isNaN(debut)||isNaN(fin)||fin<debut) return;
+  let modifie = false;
+  for(let d=new Date(debut); d<=fin; d.setDate(d.getDate()+1)){
+    const dateStr = d.toISOString().slice(0,10);
+    if(!presences[dateStr]) presences[dateStr] = {};
+    const cur = presences[dateStr][c.emp];
+    if(!cur || !cur.statut || cur.statut==='Absent'){
+      presences[dateStr][c.emp] = { statut:'En congé', auto:true, congeId:c.id };
+      modifie = true;
+    }
+  }
+  if(modifie){
+    const przDateEl = document.getElementById('przDate');
+    if(przDateEl && typeof renderPresenceTable==='function') renderPresenceTable(przDateEl.value);
+  }
+}
 function setStatCon(id,s){
   const i=conges.findIndex(c=>c.id==id);
   if(i!==-1){
     conges[i].stat=s;
+    if(s==='Approuvé') _appliquerCongeAuxPresences(conges[i]);
     afficherConges();updateStats();sauvegarder(false);
     if(s==='Approuvé') genererRecuConge(id);
   }
