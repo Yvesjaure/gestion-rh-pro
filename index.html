@@ -19976,6 +19976,32 @@ function _enginEquipeActiveChaine(eng, dateStr){
   const index = jours % equipes24h.length;
   return equipes24h[index].id;
 }
+// Version "en masse" de _serviceEffectifEmploye : calcule le service effectif de
+// TOUS les employés pour une date en une seule passe sur equipages/remplacements,
+// au lieu de refaire, pour chaque employé, une recherche complète dans equipages
+// PUIS dans la liste des employés (ce que faisait verifierAbsencesAutomatiques en
+// appelant _serviceEffectifEmploye une fois par employé) — devient très lent une
+// fois qu'il y a des centaines d'employés (recherche linéaire répétée des
+// centaines de fois = des centaines de milliers d'opérations). Renvoie une Map
+// empId (en texte) → service ('jour'/'nuit'/'24h'/'repos').
+function _construireCarteServicesEffectifs(dateStr){
+  const date = dateStr || new Date().toISOString().slice(0,10);
+  const carte = new Map();
+  for(const eng of equipages){
+    const chaineActiveId = _enginEquipeActiveChaine(eng, date);
+    for(const eq of (eng.equipes||[])){
+      const service = chaineActiveId ? (String(eq.id)===String(chaineActiveId) ? '24h' : 'repos') : _equServiceEffectif(eq);
+      if(eq.chauffeurId) carte.set(String(eq.chauffeurId), service);
+      (eq.eboueurIds||[]).forEach(id=>carte.set(String(id), service));
+    }
+  }
+  const remJour = remplacements[date] || {};
+  Object.keys(remJour).forEach(empId=>{
+    const rem = remJour[empId];
+    carte.set(String(empId), (typeof rem==='object') ? rem.service : rem);
+  });
+  return carte;
+}
 function _serviceEffectifEmploye(empId, dateStr){
   const date = dateStr || new Date().toISOString().slice(0,10);
   const rem = remplacements[date] && remplacements[date][empId];
@@ -20731,6 +20757,9 @@ async function verifierAbsencesAutomatiques(){
     if(!presences[today]) presences[today] = {};
     let modifie = false;
     const nouvellesAbsences = [];
+    // Une seule construction de la carte des services (au lieu d'une recherche
+    // complète par employé, ~1000× plus lent avec beaucoup d'employés).
+    const carteServices = _construireCarteServicesEffectifs(today);
     employes.forEach(e=>{
       if(e.statutEmploi==='Parti') return;
       const cur = presences[today][e.id];
@@ -20741,7 +20770,8 @@ async function verifierAbsencesAutomatiques(){
         modifie = true;
         return;
       }
-      const service = _serviceEffectifEmploye(e.id, today);
+      const service = carteServices.get(String(e.id))
+        || (e.serviceHabituel==='nuit' ? 'nuit' : e.serviceHabituel==='24h' ? '24h' : 'jour');
       if(service==='repos') return; // équipe 24h pas de tour aujourd'hui (chaîne) — jamais d'absence auto
       const limite = _hmToMin((hor[service]||hor.jour).absenceApres);
       if(nowMin < limite) return; // heure limite de ce service pas encore atteinte
