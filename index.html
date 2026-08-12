@@ -18431,19 +18431,25 @@ function prevBadge(){
     </div>
     <div class="badge-footer">${org} · Carte d'employé · ${dEmis.getFullYear()}</div>
   </div>
-  <div class="badge-card badge-verso" style="${styleVars}">
-    <div class="badge-header" style="justify-content:center;">
-      <div class="org-info" style="text-align:center;flex:none;"><div class="org-name" style="font-size:1.05rem;">AVIS IMPORTANT</div></div>
+  <div class="badge-card badge-verso" style="${styleVars}display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:16px 16px 0;">
+      <div style="font-size:.78rem;color:#333;line-height:1.65;">
+        <div>Cette carte est personnelle et ne peut être cédée ou prêtée.</div>
+        <div style="margin-top:8px;">En cas de perte ou de détérioration, veuillez en informer immédiatement le service des Ressources Humaines.</div>
+        <div style="margin-top:8px;">Toute carte retrouvée doit être remise à l'entreprise ou signalée aux coordonnées ci-dessous.</div>
+        <div style="margin-top:8px;">Tél. : <b>${companyUrgence||'—'}</b></div>
+      </div>
     </div>
-    <div style="padding:20px 20px;font-size:.86rem;color:#333;line-height:1.75;display:flex;flex-direction:column;justify-content:center;">
-      <div>Cette carte est personnelle et ne peut être cédée ou prêtée.</div>
-      <div style="margin-top:8px;">En cas de perte ou de détérioration, veuillez en informer immédiatement le service des Ressources Humaines.</div>
-      <div style="margin-top:8px;">Toute carte retrouvée doit être remise à l'entreprise ou signalée aux coordonnées ci-dessous.</div>
-      <div style="margin-top:16px;font-weight:800;font-size:.92rem;color:var(--bdg-h1,#1A3A5C);">CARTE RETROUVÉE — MERCI DE CONTACTER ${org}</div>
-      <div>Tél. : <b>${companyUrgence||'—'}</b></div>
-      <div style="margin-top:12px;font-style:italic;font-size:.8rem;">Cette carte demeure la propriété de l'entreprise et doit être restituée à la fin du contrat.</div>
+    <div style="position:relative;flex:1;min-height:110px;">
+      <svg viewBox="0 0 260 150" style="display:block;width:100%;height:100%;" preserveAspectRatio="none">
+        <path d="M0 45 C 80 0, 180 95, 260 35 L260 150 L0 150 Z" fill="var(--bdg-h1,#1A3A5C)"></path>
+      </svg>
+      <div style="position:absolute;bottom:16px;left:0;right:0;text-align:center;">
+        ${companyLogo ? `<img src="${companyLogo}" style="width:38px;height:38px;object-fit:contain;border-radius:50%;background:#fff;padding:4px;margin-bottom:6px;" alt="Logo">` : `<div style="width:38px;height:38px;border-radius:50%;background:#fff;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;">🏢</div>`}
+        <div style="color:#fff;font-weight:800;font-size:.82rem;letter-spacing:.5px;">${org}</div>
+        ${companyFullName ? `<div style="color:#C7D3E0;font-size:.55rem;letter-spacing:.3px;padding:0 14px;margin-top:2px;">${companyFullName.toUpperCase()}</div>` : ''}
+      </div>
     </div>
-    <div class="badge-footer">${org} · Carte d'employé · ${dEmis.getFullYear()}</div>
   </div>`;
 
   // Génération du QR (format compact EIDA1, quasiment increvable — voir
@@ -19095,18 +19101,24 @@ function _buildBadgePrint(){
 
   // Verso — même taille physique que le recto (54×85.6mm), sur une page à part.
   const versoHTML=`<div class="badge-print-card" style="${styleAttr}">
-    <div class="bpc-header" style="justify-content:center;">
-      <div class="bpc-org" style="text-align:center;"><div class="bpc-org-name">AVIS IMPORTANT</div></div>
+    <div style="padding:3mm 3mm 0;">
+      <div style="font-size:1.7mm;color:#333;line-height:1.45;">
+        <div>Cette carte est personnelle et ne peut être cédée ou prêtée.</div>
+        <div style="margin-top:1.2mm;">En cas de perte ou de détérioration, veuillez en informer immédiatement le service des Ressources Humaines.</div>
+        <div style="margin-top:1.2mm;">Toute carte retrouvée doit être remise à l'entreprise ou signalée aux coordonnées ci-dessous.</div>
+        <div style="margin-top:1.2mm;">Tél. : <b>${companyUrgence||'—'}</b></div>
+      </div>
     </div>
-    <div style="padding:4mm 3mm;font-size:1.75mm;color:#333;line-height:1.5;">
-      <div>Cette carte est personnelle et ne peut être cédée ou prêtée.</div>
-      <div style="margin-top:1.5mm;">En cas de perte ou de détérioration, veuillez en informer immédiatement le service des Ressources Humaines.</div>
-      <div style="margin-top:1.5mm;">Toute carte retrouvée doit être remise à l'entreprise ou signalée aux coordonnées ci-dessous.</div>
-      <div style="margin-top:2.5mm;font-weight:800;color:var(--bdg-h1,#1A3A5C);">CARTE RETROUVÉE — MERCI DE CONTACTER ${org}</div>
-      <div>Tél. : <b>${companyUrgence||'—'}</b></div>
-      <div style="margin-top:2mm;font-style:italic;font-size:1.6mm;">Cette carte demeure la propriété de l'entreprise et doit être restituée à la fin du contrat.</div>
+    <div style="position:relative;flex:1;min-height:24mm;">
+      <svg viewBox="0 0 260 150" style="display:block;width:100%;height:100%;" preserveAspectRatio="none">
+        <path d="M0 45 C 80 0, 180 95, 260 35 L260 150 L0 150 Z" fill="var(--bdg-h1,#1A3A5C)"></path>
+      </svg>
+      <div style="position:absolute;bottom:3mm;left:0;right:0;text-align:center;">
+        ${companyLogo ? `<img src="${companyLogo}" style="width:8mm;height:8mm;object-fit:contain;border-radius:50%;background:#fff;padding:0.8mm;margin-bottom:1.2mm;" alt="Logo">` : ''}
+        <div style="color:#fff;font-weight:800;font-size:1.9mm;letter-spacing:.2mm;">${org}</div>
+        ${companyFullName ? `<div style="color:#C7D3E0;font-size:1.2mm;letter-spacing:.1mm;padding:0 3mm;margin-top:0.5mm;">${companyFullName.toUpperCase()}</div>` : ''}
+      </div>
     </div>
-    <div class="bpc-footer" style="margin-top:auto;">${org} · ${new Date().getFullYear()}</div>
   </div>`;
 
   const wrap=document.getElementById('printBadgeContent');
@@ -19258,16 +19270,24 @@ async function imprimerTousLesBadges(){
     // et même position dans la grille, pour que recto/verso s'alignent au découpage.
     const versoWrap = w.document.createElement('div');
     versoWrap.innerHTML = `<div class="badge-print-card" style="--bdg-h1:${cc.h1};--bdg-h2:${cc.h2};--bdg-f:${cc.f};${cc.texte?`--bdg-texte:${cc.texte};`:''}${cc.pied?`--bdg-pied:${cc.pied};`:''}">
-      <div class="bpc-verso-header"><div class="bpc-verso-title">Avis important</div></div>
-      <div class="bpc-verso-body">
-        <div>Cette carte est personnelle et ne peut être cédée ou prêtée.</div>
-        <div style="margin-top:1.2mm;">En cas de perte ou de détérioration, veuillez en informer immédiatement le service des Ressources Humaines.</div>
-        <div style="margin-top:1.2mm;">Toute carte retrouvée doit être remise à l'entreprise ou signalée aux coordonnées ci-dessous.</div>
-        <div class="bpc-verso-urgence-lbl">CARTE RETROUVÉE — MERCI DE CONTACTER ${org}</div>
-        <div>Tél. : <b>${companyUrgence||'—'}</b></div>
-        <div style="margin-top:1.5mm;font-style:italic;">Cette carte demeure la propriété de l'entreprise et doit être restituée à la fin du contrat.</div>
+      <div style="padding:3mm 3mm 0;">
+        <div style="font-size:1.7mm;color:#333;line-height:1.45;">
+          <div>Cette carte est personnelle et ne peut être cédée ou prêtée.</div>
+          <div style="margin-top:1.2mm;">En cas de perte ou de détérioration, veuillez en informer immédiatement le service des Ressources Humaines.</div>
+          <div style="margin-top:1.2mm;">Toute carte retrouvée doit être remise à l'entreprise ou signalée aux coordonnées ci-dessous.</div>
+          <div style="margin-top:1.2mm;">Tél. : <b>${companyUrgence||'—'}</b></div>
+        </div>
       </div>
-      <div class="bpc-footer">${org} · ${new Date().getFullYear()}</div>
+      <div style="position:relative;flex:1;min-height:24mm;">
+        <svg viewBox="0 0 260 150" style="display:block;width:100%;height:100%;" preserveAspectRatio="none">
+          <path d="M0 45 C 80 0, 180 95, 260 35 L260 150 L0 150 Z" fill="${cc.h1}"></path>
+        </svg>
+        <div style="position:absolute;bottom:3mm;left:0;right:0;text-align:center;">
+          ${companyLogo ? `<img src="${companyLogo}" style="width:8mm;height:8mm;object-fit:contain;border-radius:50%;background:#fff;padding:0.8mm;margin-bottom:1.2mm;" alt="Logo">` : ''}
+          <div style="color:#fff;font-weight:800;font-size:1.9mm;letter-spacing:.2mm;">${org}</div>
+          ${companyFullName ? `<div style="color:#C7D3E0;font-size:1.2mm;letter-spacing:.1mm;padding:0 3mm;margin-top:0.5mm;">${companyFullName.toUpperCase()}</div>` : ''}
+        </div>
+      </div>
     </div>`;
     plancheVerso.appendChild(versoWrap.firstElementChild);
 
@@ -22646,6 +22666,24 @@ async function _kioskOnBadgeDetected(id){
   }
   _kioskRenderEmpCard();
   _kioskAfficherActionPrevue(); // détermine si ce sera une arrivée ou un départ
+  // Vérification fraîche en tâche de fond : même si l'annuaire en cache avait
+  // déjà cette personne, on revérifie sa fiche EXACTE dans Supabase (une seule
+  // ligne, rapide) — pour ne jamais laisser affiché un nom/une fonction périmés
+  // si le rafraîchissement automatique de 10s n'avait pas encore rattrapé une
+  // modification récente faite côté admin. Corrige l'affichage en direct si un
+  // écart est trouvé, sans bloquer ni ralentir l'écran déjà affiché.
+  if(_kiosk.emp && !employes.length){
+    (async ()=>{
+      try{
+        const { data } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel').eq('id', String(_kiosk.emp.id)).maybeSingle();
+        if(data && _kiosk.empId===id){
+          const perime = data.fonc!==_kiosk.emp.fonc || data.nom!==_kiosk.emp.nom || data.prenom!==_kiosk.emp.prenom;
+          _kiosk.emp = { ..._kiosk.emp, nom:data.nom, prenom:data.prenom, fonc:data.fonc, site:data.site||_kiosk.emp.site };
+          if(perime) _kioskRenderEmpCard();
+        }
+      }catch(e){ /* pas grave — l'affichage déjà là reste valable en attendant */ }
+    })();
+  }
   if(!_kiosk.emp){
     // Vraiment introuvable après vérification directe — on retente une dernière
     // fois un peu plus tard (le temps qu'une synchronisation en cours se termine),
