@@ -13903,6 +13903,11 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
   50%{ box-shadow:0 0 0 3px rgba(22,163,74,.15); }
 }
 .equ-clignote-vert{ animation:equClignoteVert 1.2s ease-in-out infinite; border-radius:50%; }
+@keyframes congeClignoteBleu{
+  0%,100%{ box-shadow:0 0 0 3px #2563EB; }
+  50%{ box-shadow:0 0 0 3px rgba(37,99,235,.15); }
+}
+.conge-clignote-bleu{ animation:congeClignoteBleu 1.2s ease-in-out infinite; border-radius:50%; }
 .kiosk-done-msg{font-size:1.7rem;font-weight:800;text-align:center;line-height:1.5;letter-spacing:.2px;}
 .kiosk-done-msg b{font-size:1.9rem;}
 .kiosk-sub{font-size:.9rem;color:#B9E4F5;text-align:center;}
@@ -14396,6 +14401,10 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     <div class="stat g"><div class="stat-n" id="stApp">0</div><div class="stat-l">Approuvés</div></div>
     <div class="stat r"><div class="stat-n" id="stAtt">0</div><div class="stat-l">En attente</div></div>
   </div>
+  <div class="card" style="margin-bottom:12px;">
+    <div class="sec violet">🌴 En congé actuellement</div>
+    <div id="congeGaleriePhotos" style="display:flex;flex-wrap:wrap;gap:16px;padding:12px 4px 4px;justify-content:flex-start;"></div>
+  </div>
   <div class="two-col">
     <div class="card">
       <div class="sec violet">🌴 Nouvelle demande</div>
@@ -14450,6 +14459,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
             <option value="__nouvelle__" style="font-weight:800;">➕ Créer une nouvelle couleur...</option>
           </select>
         </div>
+        <button class="btn" style="width:100%;justify-content:center;background:#7C3AED;color:#fff;margin-top:4px;" onclick="appliquerCouleurATousLesBadges()">🎨 Appliquer cette couleur à tous les badges</button>
         <div id="bdgNouvCouleurBox" style="display:none;border:1.5px dashed #7C3AED;border-radius:8px;padding:10px;margin:6px 0;">
           <div style="font-weight:800;color:#7C3AED;font-size:.72rem;margin-bottom:8px;">🎨 Nouvelle couleur personnalisée</div>
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
@@ -16498,10 +16508,16 @@ async function rhValider() {
     const { data: admin } = await supabaseRH.from('admins').select('email').eq('email', email).maybeSingle();
     rhEstAdmin = !!admin;
     if (!admin) {
-      const { data: emp } = await supabaseRH.from('rh_employes').select('approuve').eq('email', email).maybeSingle();
+      const { data: emp } = await supabaseRH.from('rh_employes').select('approuve,bloque').eq('email', email).maybeSingle();
       if (!emp || !emp.approuve) {
         await supabaseRH.auth.signOut();
         rhAfficherErreur("Votre compte n'a pas encore été approuvé par un administrateur.");
+        btn.disabled = false; btn.textContent = texteOriginal;
+        return;
+      }
+      if (emp.bloque) {
+        await supabaseRH.auth.signOut();
+        rhAfficherErreur("Votre compte a été bloqué par un administrateur. Contactez-le pour plus d'informations.");
         btn.disabled = false; btn.textContent = texteOriginal;
         return;
       }
@@ -16523,6 +16539,7 @@ async function rhValider() {
     const badgeInit = document.getElementById('rhSyncBadge');
     if (badgeInit) badgeInit.textContent = '☁️ Synchronisé';
     rhEcouterChangementsEnLigne();
+    _rhRejoindrePresence(email); // signale "en ligne" pour que l'admin le voie dans son panneau de comptes
     init();
     setTimeout(checkUrlScan, 250);
     setTimeout(_verifierNouveautes, 600); // après le chargement, pour ne pas gêner l'affichage initial
@@ -16646,6 +16663,34 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 let rhListeEmployesCache = [];
+// Présence en ligne : chaque compte connecté "pointe" sa présence sur un canal
+// partagé — l'admin lit cet état pour savoir qui est actuellement connecté,
+// sans avoir besoin d'un système de suivi séparé côté serveur.
+let _rhCanalPresence = null;
+function _rhRejoindrePresence(email){
+  try{
+    if(_rhCanalPresence) return; // déjà rejoint cette session
+    _rhCanalPresence = supabaseRH.channel('rh-presence-en-ligne', { config: { presence: { key: email } } });
+    _rhCanalPresence.on('presence', { event: 'sync' }, () => {
+      // Rafraîchit le panneau des comptes s'il est ouvert, pour voir qui se
+      // connecte/déconnecte en direct sans avoir à rouvrir le panneau.
+      const modal = document.getElementById('rhModalEmployes');
+      if(modal && modal.style.display==='flex') rhOuvrirPanneauEmployes();
+    });
+    _rhCanalPresence.subscribe(async (statut) => {
+      if(statut === 'SUBSCRIBED'){
+        await _rhCanalPresence.track({ email, connecte_le: new Date().toISOString() });
+      }
+    });
+  }catch(e){ console.warn('Présence en ligne indisponible :', e); }
+}
+function _rhEstEnLigne(email){
+  if(!_rhCanalPresence) return false;
+  try{
+    const state = _rhCanalPresence.presenceState();
+    return Object.values(state).some(arr => arr.some(p => p.email === email));
+  }catch(e){ return false; }
+}
 
 async function rhChargerEmployes() {
   const { data } = await supabaseRH.from('rh_employes').select('*').order('demande_le', { ascending: false });
@@ -16668,11 +16713,12 @@ async function rhOuvrirPanneauEmployes() {
   // N'affiche que les demandes encore en attente — une fois approuvée, une
   // demande disparaît de ce panneau (elle reste bien sûr active pour l'employé).
   const enAttente = rhListeEmployesCache.filter(emp => !emp.approuve);
+  let html = '';
   if (enAttente.length === 0) {
-    conteneur.innerHTML = '<p style="color:rgba(255,255,255,.4);font-style:italic;text-align:center;padding:20px 0;">Aucune demande en attente pour l\'instant.</p>';
+    html += '<p style="color:rgba(255,255,255,.4);font-style:italic;text-align:center;padding:20px 0;">Aucune demande en attente pour l\'instant.</p>';
   } else {
     const zones = [...new Set(employes.map(e=>e.site).filter(Boolean))].sort();
-    conteneur.innerHTML = enAttente.map((emp,i) => `
+    html += enAttente.map((emp,i) => `
       <div style="border-bottom:1px solid rgba(255,255,255,.1);padding:10px 0;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
           <div>
@@ -16696,7 +16742,46 @@ async function rhOuvrirPanneauEmployes() {
         </div>
       </div>`).join('');
   }
+  // Comptes déjà approuvés — qui est en ligne en ce moment, et blocage/déblocage.
+  const approuves = rhListeEmployesCache.filter(emp => emp.approuve);
+  html += '<div style="margin-top:18px;padding-top:12px;border-top:1px solid rgba(255,255,255,.15);font-weight:800;font-size:.78rem;color:#fff;">👥 Comptes approuvés</div>';
+  if (!approuves.length) {
+    html += '<p style="color:rgba(255,255,255,.4);font-style:italic;text-align:center;padding:14px 0;">Aucun compte approuvé pour l\'instant.</p>';
+  } else {
+    html += approuves.map(emp => {
+      const enLigne = _rhEstEnLigne(emp.email);
+      const bloque = !!emp.bloque;
+      return `
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,.1);padding:8px 0;opacity:${bloque?.55:1};">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span title="${enLigne?'En ligne':'Hors ligne'}" style="width:9px;height:9px;border-radius:50%;background:${enLigne?'#16A34A':'#6B7280'};flex-shrink:0;"></span>
+          <div>
+            <div style="font-size:.82rem;font-weight:700;">${emp.email}</div>
+            <div style="font-size:.65rem;color:${enLigne?'#4ADE80':'rgba(255,255,255,.45)'};">${enLigne?'🟢 En ligne':'⚪ Hors ligne'}${bloque?' · ⛔ Bloqué':''}</div>
+          </div>
+        </div>
+        <button class="lock-btn" style="width:auto;padding:6px 12px;font-size:.72rem;background:${bloque?'#16A34A':'#e74c3c'};" onclick="${bloque?'rhDebloquerCompte':'rhBloquerCompte'}('${emp.email}')">${bloque?'✅ Débloquer':'⛔ Bloquer'}</button>
+      </div>`;
+    }).join('');
+  }
+  conteneur.innerHTML = html;
   document.getElementById('rhModalEmployes').style.display = 'flex';
+}
+// Bloque un compte déjà approuvé : il ne pourra plus se reconnecter (message
+// clair affiché à sa prochaine tentative), sans avoir à supprimer sa demande
+// ni à toucher à son rôle — réversible avec "Débloquer".
+async function rhBloquerCompte(email){
+  if(!confirm(`Bloquer l'accès de ${email} ? Il ne pourra plus se connecter tant qu'il n'est pas débloqué.`)) return;
+  const { error } = await supabaseRH.from('rh_employes').update({ bloque: true }).eq('email', email);
+  if(error){ toast('❌ Erreur : '+error.message,'err'); return; }
+  toast(`⛔ ${email} bloqué`,'warn');
+  await rhOuvrirPanneauEmployes();
+}
+async function rhDebloquerCompte(email){
+  const { error } = await supabaseRH.from('rh_employes').update({ bloque: false }).eq('email', email);
+  if(error){ toast('❌ Erreur : '+error.message,'err'); return; }
+  toast(`✅ ${email} débloqué`,'ok');
+  await rhOuvrirPanneauEmployes();
 }
 // Approuve la demande ET attribue le rôle choisi en une seule fois (au lieu
 // d'approuver puis devoir aller régler le rôle séparément dans Paramètres).
@@ -18324,6 +18409,20 @@ function onBdgClrChange(){
   prevBadge();
   renderTousLesBadges();
 }
+// Applique la couleur actuellement sélectionnée à TOUS les employés d'un coup
+// (au lieu de devoir changer la couleur badge par badge) — pratique pour
+// uniformiser tous les badges à une même identité visuelle en un clic.
+function appliquerCouleurATousLesBadges(){
+  const clr = document.getElementById('bdgClr').value;
+  if(!clr || clr==='__nouvelle__'){ toast('⚠️ Choisis d\'abord une couleur (pas "Créer une nouvelle couleur")','warn'); return; }
+  const label = document.getElementById('bdgClr').selectedOptions[0]?.textContent || clr;
+  if(!confirm(`Appliquer "${label}" à TOUS les badges (${employes.length} employé(s)) ? Les couleurs déjà choisies individuellement seront remplacées.`)) return;
+  employes.forEach(e=>{ e.bdgClr = clr; });
+  triggerSave();
+  prevBadge();
+  renderTousLesBadges();
+  toast(`✅ Couleur "${label}" appliquée à ${employes.length} badge(s)`,'ok');
+}
 function genererBadge(){
   const id=document.getElementById('fID').value;
   if(!id){toast('⚠️ Sélectionnez un employé','err');return;}
@@ -18456,7 +18555,7 @@ function prevBadge(){
     </div>
     <div style="position:relative;flex:1;min-height:110px;">
       <svg viewBox="0 0 260 150" style="display:block;width:100%;height:100%;" preserveAspectRatio="none">
-        <path d="M0 45 C 80 0, 180 95, 260 35 L260 150 L0 150 Z" fill="var(--bdg-h1,#1A3A5C)"></path>
+        <path d="M0 45 C 80 0, 180 95, 260 35 L260 150 L0 150 Z" fill="var(--bdg-pied,var(--bdg-h1,#1A3A5C))"></path>
       </svg>
       <div style="position:absolute;bottom:16px;left:0;right:0;text-align:center;">
         ${companyLogo ? `<img src="${companyLogo}" style="width:38px;height:38px;object-fit:contain;border-radius:50%;background:#fff;padding:4px;margin-bottom:6px;" alt="Logo">` : `<div style="width:38px;height:38px;border-radius:50%;background:#fff;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;">🏢</div>`}
@@ -19125,7 +19224,7 @@ function _buildBadgePrint(){
     </div>
     <div style="position:relative;flex:1;min-height:24mm;">
       <svg viewBox="0 0 260 150" style="display:block;width:100%;height:100%;" preserveAspectRatio="none">
-        <path d="M0 45 C 80 0, 180 95, 260 35 L260 150 L0 150 Z" fill="var(--bdg-h1,#1A3A5C)"></path>
+        <path d="M0 45 C 80 0, 180 95, 260 35 L260 150 L0 150 Z" fill="var(--bdg-pied,var(--bdg-h1,#1A3A5C))"></path>
       </svg>
       <div style="position:absolute;bottom:3mm;left:0;right:0;text-align:center;">
         ${companyLogo ? `<img src="${companyLogo}" style="width:8mm;height:8mm;object-fit:contain;border-radius:50%;background:#fff;padding:0.8mm;margin-bottom:1.2mm;" alt="Logo">` : ''}
@@ -19294,7 +19393,7 @@ async function imprimerTousLesBadges(){
       </div>
       <div style="position:relative;flex:1;min-height:24mm;">
         <svg viewBox="0 0 260 150" style="display:block;width:100%;height:100%;" preserveAspectRatio="none">
-          <path d="M0 45 C 80 0, 180 95, 260 35 L260 150 L0 150 Z" fill="${cc.h1}"></path>
+          <path d="M0 45 C 80 0, 180 95, 260 35 L260 150 L0 150 Z" fill="${cc.pied||cc.h1}"></path>
         </svg>
         <div style="position:absolute;bottom:3mm;left:0;right:0;text-align:center;">
           ${companyLogo ? `<img src="${companyLogo}" style="width:8mm;height:8mm;object-fit:contain;border-radius:50%;background:#fff;padding:0.8mm;margin-bottom:1.2mm;" alt="Logo">` : ''}
@@ -21173,6 +21272,31 @@ function afficherConges(liste){
     tb.appendChild(tr);
   });
   document.getElementById('cntCon').textContent=`${data.length} enregistrement(s)`;
+  renderCongeGaleriePhotos();
+}
+// Galerie photo des employés actuellement en congé APPROUVÉ (aujourd'hui
+// comprise entre le début et la fin) — photo dans un cercle avec un contour
+// bleu clignotant, nom et prénom en dessous.
+function renderCongeGaleriePhotos(){
+  const box = document.getElementById('congeGaleriePhotos');
+  if(!box) return;
+  const today = new Date().toISOString().slice(0,10);
+  const enConge = conges.filter(c => c.stat==='Approuvé' && c.deb<=today && today<=c.fin);
+  if(!enConge.length){
+    box.innerHTML = '<p style="color:#888;font-style:italic;font-size:.78rem;padding:6px 0;">Personne en congé approuvé aujourd\'hui.</p>';
+    return;
+  }
+  box.innerHTML = enConge.map(c=>{
+    const e = employes.find(x=>String(x.id)===String(c.emp));
+    const nom = e ? `${e.nom||''} ${e.prenom||''}`.trim() : c.emp;
+    const photoHTML = (e && e.photo)
+      ? `<img src="${e.photo}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;">`
+      : `<div style="width:64px;height:64px;border-radius:50%;background:#EEF0F2;display:flex;align-items:center;justify-content:center;font-size:1.6rem;">👤</div>`;
+    return `<div style="text-align:center;width:78px;">
+      <div class="conge-clignote-bleu" style="width:64px;height:64px;border-radius:50%;margin:0 auto;">${photoHTML}</div>
+      <div style="font-size:.68rem;font-weight:700;margin-top:6px;line-height:1.25;word-break:break-word;">${nom}</div>
+    </div>`;
+  }).join('');
 }
 function filtrerConges(){const q=document.getElementById('srchCon').value.toLowerCase();afficherConges(q?conges.filter(c=>(c.emp+c.type+c.stat).toLowerCase().includes(q)):conges);}
 function updateStats(){
@@ -22731,7 +22855,7 @@ function _kioskRenderEmpCard(){
     box.innerHTML = `
       <div class="kiosk-emp-photo">${_kiosk.emp.photo?`<img src="${_kiosk.emp.photo}">`:'👤'}</div>
       <div><b style="font-size:1.25rem;">${_kiosk.emp.nom} ${_kiosk.emp.prenom}</b><br><span style="opacity:.85;font-size:.95rem;">${fmtMatricule(_kiosk.emp.id)} — ${_kiosk.emp.fonc||''}</span></div>
-      <div id="kioskDebugSrc" style="font-size:.62rem;color:#FBBF24;margin-top:6px;opacity:.9;">🔧 Source : ${_kiosk.empSource||'?'} · employes[] chargés : ${employes.length}</div>`;
+      <div id="kioskDebugSrc" style="display:none;font-size:.62rem;color:#FBBF24;margin-top:6px;opacity:.9;">🔧 Source : ${_kiosk.empSource||'?'} · employes[] chargés : ${employes.length}</div>`;
   } else {
     box.innerHTML = `<div class="kiosk-emp-photo">⚠️</div><div><b style="font-size:1.15rem;">${_kiosk.empId}</b><br><span style="opacity:.85;font-size:.9rem;">Recherche en cours dans l'annuaire… patientez quelques secondes.</span></div>`;
   }
