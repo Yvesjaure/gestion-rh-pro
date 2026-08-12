@@ -16030,12 +16030,15 @@ async function init() {
   if(!window._absAutoTimer) window._absAutoTimer = setInterval(verifierAbsencesAutomatiques, 5*60*1000);
   verifierCongesTermines();
   if(!window._congesAutoTimer) window._congesAutoTimer = setInterval(verifierCongesTermines, 5*60*1000);
-  _purgerSelfiesAnciensSiBesoin();
-  if(!window._migrationStockageTimer) window._migrationStockageTimer = setInterval(_migrerFichiersSiBesoin, 2*60*1000);
+  // Cycle automatique Actualiser → Optimiser toutes les 60s (voir
+  // _demarrerCycleAutoActualiserOptimiser plus bas) — remplace les anciens
+  // minuteurs séparés de _migrerFichiersSiBesoin (toutes les 2 min) et l'appel
+  // isolé à _purgerSelfiesAnciensSiBesoin, pour éviter d'avoir deux systèmes
+  // qui tournent en même temps sur les mêmes tâches ("doublons de timers").
+  _demarrerCycleAutoActualiserOptimiser();
   // Vérifie toutes les 10 minutes si une nouvelle version a été déployée
   // pendant que la page est ouverte (voir _afficherBanniereNouvelleVersion).
   if(!window._majVersionTimer) window._majVersionTimer = setInterval(_verifierNouvelleVersionDisponible, 10*60*1000);
-  setTimeout(_migrerFichiersSiBesoin, 5000); // un premier passage discret peu après le démarrage
   document.getElementById('setCompanyName').value = companyName;
   document.getElementById('setCompanyFullName').value = companyFullName;
   document.getElementById('setCompanyAddr').value = companyAddr;
@@ -17685,9 +17688,11 @@ async function rhRecharger(){
   if (badge) badge.textContent = '☁️ Synchronisé';
   toast('✅ Données rechargées','ok');
 }
-// Bouton "Actualiser" — l'entretien (migration des fichiers vers le stockage
-// cloud, purge des vieux selfies) continue de tourner tout seul en arrière-plan
-// via ses propres minuteurs (voir init()), plus besoin de bouton dédié pour ça.
+// Bouton "Actualiser" — fonctionnement manuel inchangé. L'entretien (migration
+// vers le stockage cloud, purge des vieux selfies) n'a plus son propre minuteur
+// séparé : il est maintenant orchestré par le cycle automatique Actualiser→
+// Optimiser ci-dessous, pour éviter d'avoir deux systèmes qui tournent en
+// parallèle sur les mêmes tâches.
 async function rhActualiserAvecAnimation(){
   const btn = document.getElementById('btnActualiser');
   if(btn) btn.style.animation = 'spin .8s linear infinite';
@@ -17699,6 +17704,53 @@ async function rhActualiserAvecAnimation(){
     if(btn) btn.style.animation = '';
   }
 }
+// ============================================================
+// CYCLE AUTOMATIQUE "ACTUALISER" → "OPTIMISER" TOUTES LES 60 SECONDES
+// ============================================================
+// Réutilise EXACTEMENT les mêmes fonctions que les boutons (rhRecharger pour
+// Actualiser ; _purgerSelfiesAnciensSiBesoin + _migrerFichiersSiBesoin pour
+// Optimiser, les mêmes que l'ancien bouton "Optimiser" utilisait) — aucune
+// nouvelle logique métier, juste un ordonnancement automatique par-dessus.
+// Ordre strict : Actualiser → attend sa fin → Optimiser → attend sa fin →
+// attend 60s → recommence. Ne se répète jamais en parallèle (_cycleAutoEnCours).
+let _cycleAutoEnCours = false;   // empêche deux cycles de tourner en même temps
+let _cycleAutoTimeoutId = null;  // pour pouvoir arrêter proprement le minuteur
+let _cycleAutoDemarre = false;   // empêche de démarrer un 2e cycle si init() est rappelé
+
+// Étape "Optimiser" du cycle — mêmes fonctions que l'ancien bouton, réutilisées telles quelles.
+async function _executerOptimisation(){
+  await _purgerSelfiesAnciensSiBesoin();
+  await _migrerFichiersSiBesoin();
+}
+async function _cycleActualiserOptimiser(){
+  if(_cycleAutoEnCours) return; // un cycle est déjà en cours — jamais deux en parallèle
+  _cycleAutoEnCours = true;
+  try{
+    await rhRecharger();           // 1. Actualiser — on attend la fin complète
+    await _executerOptimisation(); // 2. Optimiser — on attend la fin complète
+  }catch(e){
+    console.warn('Cycle automatique Actualiser/Optimiser : erreur —', e);
+  }finally{
+    _cycleAutoEnCours = false;
+    // 3. Reprogrammé 60s APRÈS la fin de ce cycle (pas toutes les 60s pile) —
+    // si une étape a été lente, on ne chevauche jamais le cycle suivant.
+    _cycleAutoTimeoutId = setTimeout(_cycleActualiserOptimiser, 60*1000);
+  }
+}
+// À appeler au chargement de l'écran (fait dans init()) — démarre un premier
+// passage immédiat, puis le cycle se replanifie tout seul toutes les 60s.
+function _demarrerCycleAutoActualiserOptimiser(){
+  if(_cycleAutoDemarre) return; // déjà démarré, pas de minuteur en double
+  _cycleAutoDemarre = true;
+  _cycleActualiserOptimiser();
+}
+// Arrête proprement le cycle (page fermée/quittée) — pas de minuteur qui continue à tourner dans le vide.
+function _arreterCycleAutoActualiserOptimiser(){
+  if(_cycleAutoTimeoutId) clearTimeout(_cycleAutoTimeoutId);
+  _cycleAutoTimeoutId = null;
+  _cycleAutoDemarre = false;
+}
+window.addEventListener('beforeunload', _arreterCycleAutoActualiserOptimiser);
 function triggerSave(){
   clearTimeout(autoSaveTimer);
   document.getElementById('saveDot').className='save-dot saving';
