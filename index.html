@@ -17285,8 +17285,22 @@ async function rhSyncAnnuaire(){
       serviceHabituel: e.serviceHabituel || 'jour',
       modifie_le: new Date().toISOString(),
     }));
-    if(lignes.length) await supabaseRH.from('rh_annuaire').upsert(lignes, { onConflict: 'id' });
-    if(partis.length) await supabaseRH.from('rh_annuaire').delete().in('id', partis.map(e=>String(e.id)));
+    // IMPORTANT : Supabase ne lève pas d'exception sur un échec (RLS refusée,
+    // etc.) — il renvoie juste { error }. Sans vérifier ça explicitement, un
+    // échec passait totalement inaperçu (pas d'erreur affichée nulle part),
+    // ce qui pouvait laisser le pointage afficher des infos périmées SANS
+    // AUCUN signal que la synchronisation avait réellement échoué.
+    if(lignes.length){
+      const { error } = await supabaseRH.from('rh_annuaire').upsert(lignes, { onConflict: 'id' });
+      if(error){
+        console.error('❌ Échec synchronisation annuaire (pointage) :', error);
+        toast('⚠️ Le pointage risque de ne pas voir vos dernières modifications (annuaire non synchronisé) — voir la console', 'err');
+      }
+    }
+    if(partis.length){
+      const { error } = await supabaseRH.from('rh_annuaire').delete().in('id', partis.map(e=>String(e.id)));
+      if(error) console.error('❌ Échec suppression annuaire (employés partis) :', error);
+    }
   }catch(err){ console.warn('Erreur synchronisation annuaire:', err); }
 }
 
@@ -22637,6 +22651,12 @@ async function _kioskOnBadgeDetected(id){
   _kioskStopStream();
   _kiosk.empId = id;
   _kiosk.emp = employes.find(e=>fmtMatricule(e.id)===id) || null;
+  // Sur ce même appareil, s'il vient de trouver l'employé dans employes[] (la
+  // liste vivante déjà chargée, la même utilisée pour modifier ses infos), cette
+  // source est déjà la plus fraîche possible — pas besoin, et surtout pas
+  // question, d'aller ensuite l'écraser avec une copie de l'annuaire Supabase
+  // qui peut être en retard (c'était le bug de la correction précédente).
+  const depuisEmployesLocal = !!_kiosk.emp;
   if(!_kiosk.emp){
     // Pas trouvé en local (cas normal sur le téléphone de l'employé) — on cherche
     // dans l'annuaire public déjà récupéré depuis Supabase au démarrage du kiosque.
@@ -22666,22 +22686,21 @@ async function _kioskOnBadgeDetected(id){
   }
   _kioskRenderEmpCard();
   _kioskAfficherActionPrevue(); // détermine si ce sera une arrivée ou un départ
-  // Vérification fraîche en tâche de fond : même si l'annuaire en cache avait
-  // déjà cette personne, on revérifie sa fiche EXACTE dans Supabase (une seule
-  // ligne, rapide) — pour ne jamais laisser affiché un nom/une fonction périmés
-  // si le rafraîchissement automatique de 10s n'avait pas encore rattrapé une
-  // modification récente faite côté admin. Corrige l'affichage en direct si un
-  // écart est trouvé, sans bloquer ni ralentir l'écran déjà affiché.
-  if(_kiosk.emp && !employes.length){
+  // Vérification fraîche en tâche de fond, UNIQUEMENT si la source utilisée était
+  // l'annuaire (cache 10s ou requête directe) — jamais si c'était employes[] local,
+  // qui est toujours la donnée la plus à jour possible sur cet appareil. Corrige
+  // l'affichage en direct si un écart est trouvé, sans bloquer ni ralentir l'écran.
+  if(_kiosk.emp && !depuisEmployesLocal){
     (async ()=>{
       try{
-        const { data } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel').eq('id', String(_kiosk.emp.id)).maybeSingle();
+        const { data, error } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel').eq('id', String(_kiosk.emp.id)).maybeSingle();
+        if(error) console.warn('Revérification fraîche du badge échouée :', error);
         if(data && _kiosk.empId===id){
           const perime = data.fonc!==_kiosk.emp.fonc || data.nom!==_kiosk.emp.nom || data.prenom!==_kiosk.emp.prenom;
           _kiosk.emp = { ..._kiosk.emp, nom:data.nom, prenom:data.prenom, fonc:data.fonc, site:data.site||_kiosk.emp.site };
           if(perime) _kioskRenderEmpCard();
         }
-      }catch(e){ /* pas grave — l'affichage déjà là reste valable en attendant */ }
+      }catch(e){ console.warn('Revérification fraîche du badge échouée :', e); }
     })();
   }
   if(!_kiosk.emp){
