@@ -14115,7 +14115,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
   </div>
   <div class="header-right">
     <div class="save-status"><div class="save-dot" id="saveDot"></div><span id="saveLabel">Sauvegardé</span><span id="saveTime" style="opacity:.6;margin-left:3px;">16:44</span></div>
-    <button class="hdr-icon-btn" id="btnActualiser" onclick="rhActualiserAvecAnimation()" title="Actualiser les données (sans se déconnecter)">
+    <button class="hdr-icon-btn" id="btnActualiser" onclick="rhActualiserAvecAnimation()" title="Actualiser & optimiser (données à jour + nettoyage automatique)">
       🔄
     </button>
     <button class="hdr-icon-btn" id="btnAlertesRH" onclick="ouvrirAlertes()" title="Alertes">
@@ -17571,11 +17571,20 @@ async function rhRecharger(){
 // Version pour le bouton 🔄 bien visible de l'en-tête — recharge tout depuis
 // Supabase SANS se déconnecter ni fermer l'app (contrairement à "Verrouiller"
 // puis se reconnecter). Anime brièvement l'icône pour confirmer que ça tourne.
+// Bouton "Actualiser" combiné avec l'optimisation : en plus de récupérer les
+// données à jour, on lance au passage les tâches d'entretien déjà existantes
+// (migration des derniers fichiers restés en base64 vers le stockage cloud,
+// purge des vieux selfies de pointage) — au lieu d'avoir deux boutons séparés
+// pour "actualiser" et "optimiser", un seul geste fait les deux.
 async function rhActualiserAvecAnimation(){
   const btn = document.getElementById('btnActualiser');
   if(btn) btn.style.animation = 'spin .8s linear infinite';
   try{
     await rhRecharger();
+    // Tâches d'optimisation — silencieuses si rien à faire, discrètes sinon
+    // (déjà conçues pour ne jamais bloquer ni ralentir l'affichage).
+    _purgerSelfiesAnciensSiBesoin();
+    _migrerFichiersSiBesoin();
   }catch(e){
     toast('❌ Actualisation impossible : '+e.message,'err');
   }finally{
