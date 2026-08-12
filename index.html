@@ -19301,7 +19301,7 @@ async function imprimerTousLesBadges(){
       .bpc-org-tag{font-size:1.5mm;font-weight:600;opacity:.85;letter-spacing:.3mm;text-transform:uppercase;margin-top:0.3mm;}
       .bpc-org-fullname{font-size:1.4mm;font-weight:600;opacity:.85;line-height:1.2;margin-top:0.2mm;}
       .bpc-photo-zone{display:flex;justify-content:center;padding:2.2mm 0 1mm;flex-shrink:0;}
-      .bpc-photo,.bpc-photo-ph{width:16mm;height:16mm;border-radius:50%;object-fit:cover;border:0.6mm solid #fff;box-shadow:0 0 0 0.4mm var(--bdg-f);background:#eee;display:flex;align-items:center;justify-content:center;font-size:1.6mm;color:#888;text-align:center;}
+      .bpc-photo,.bpc-photo-ph{width:16mm;height:16mm;border-radius:50%;object-fit:cover;border:0.6mm solid #fff;box-shadow:0 0 0 0.4mm var(--bdg-f);background:linear-gradient(135deg,#e8e8e8,#cfcfcf);display:flex;align-items:center;justify-content:center;font-size:6mm;font-weight:800;color:#888;text-align:center;}
       .bpc-identity{text-align:center;padding:0 2.5mm 1.2mm;flex-shrink:0;}
       .bpc-name{font-size:3mm;font-weight:900;text-transform:uppercase;line-height:1.15;color:var(--bdg-texte,#0e1a2b);}
       .bpc-fonc{font-size:2.1mm;font-weight:700;color:var(--bdg-h2);margin-top:0.6mm;}
@@ -19356,9 +19356,10 @@ async function imprimerTousLesBadges(){
       badgesReduits.push(`${matricule} ${e.nom||''} ${e.prenom||''} — ${_dernierQRSyncDiag.echecs.join(' | ')}`);
     }
 
+    const initiales=((e.prenom||'').charAt(0)+(e.nom||'').charAt(0)).toUpperCase()||'?';
     const photoHTML = e.photo
       ? `<img src="${e.photo}" class="bpc-photo" alt="Photo">`
-      : `<div class="bpc-photo-ph">📷<br>Photo</div>`;
+      : `<div class="bpc-photo-ph">${initiales}</div>`;
     const nomComplet=`${(e.nom||'').toUpperCase().trim()} ${(e.prenom||'').trim()}`.trim()||'—';
     const fonction=(e.fonc||'').trim()||'—';
     const cc = _toutesLesCouleursBadge()[e.bdgClr||'bleu'] || BADGE_COLORS.bleu;
