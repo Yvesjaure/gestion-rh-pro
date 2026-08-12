@@ -20333,11 +20333,16 @@ function _enginEquipeActiveChaine(eng, dateStr){
 // appelant _serviceEffectifEmploye une fois par employé) — devient très lent une
 // fois qu'il y a des centaines d'employés (recherche linéaire répétée des
 // centaines de fois = des centaines de milliers d'opérations). Renvoie une Map
-// empId (en texte) → service ('jour'/'nuit'/'24h'/'repos').
-function _construireCarteServicesEffectifs(dateStr){
+// empId (en texte) → service ('jour'/'nuit'/'24h'/'repos'). 2ᵉ et 3ᵉ paramètres
+// optionnels : permet au scanner de pointage de vérifier le planning avec des
+// listes récupérées à la volée (téléphone jamais connecté, equipages[] local
+// vide) sans toucher aux variables globales ni au comportement par défaut.
+function _construireCarteServicesEffectifs(dateStr, listeEquipages, listeRemplacements){
   const date = dateStr || new Date().toISOString().slice(0,10);
+  const srcEquipages = listeEquipages || equipages;
+  const srcRemplacements = listeRemplacements || remplacements;
   const carte = new Map();
-  for(const eng of equipages){
+  for(const eng of srcEquipages){
     const chaineActiveId = _enginEquipeActiveChaine(eng, date);
     for(const eq of (eng.equipes||[])){
       const service = chaineActiveId ? (String(eq.id)===String(chaineActiveId) ? '24h' : 'repos') : _equServiceEffectif(eq);
@@ -20345,7 +20350,7 @@ function _construireCarteServicesEffectifs(dateStr){
       (eq.eboueurIds||[]).forEach(id=>carte.set(String(id), service));
     }
   }
-  const remJour = remplacements[date] || {};
+  const remJour = srcRemplacements[date] || {};
   Object.keys(remJour).forEach(empId=>{
     const rem = remJour[empId];
     carte.set(String(empId), (typeof rem==='object') ? rem.service : rem);
@@ -23466,6 +23471,41 @@ async function kioskValider(){
     catch(e){ console.warn('Écriture Firebase échouée (pointage local conservé) :',e); }
   }
 
+  // Vérifie si ce chauffeur/éboueur est bien programmé, dans le planning de son
+  // équipage, pour le service sur lequel il vient de pointer — n'affecte JAMAIS
+  // l'acceptation du pointage (déjà enregistré ci-dessus, quoi qu'il arrive),
+  // seulement le message affiché à l'écran. Réutilise le calcul déjà existant
+  // (_construireCarteServicesEffectifs — la même logique que le contrôle
+  // automatique des absences et la rotation du service 24h) : aucun nouveau
+  // système de planning n'est créé, on lit juste celui déjà en place. dateEcriture
+  // gère déjà le cas du service Nuit à cheval sur deux jours (voir plus haut),
+  // donc rien à ajouter pour ce cas particulier.
+  let nonProgramme = false;
+  const fonctionAgent = ((_kiosk.emp && _kiosk.emp.fonc) || '').toLowerCase();
+  const estChauffeurOuEboueur = fonctionAgent.includes('chauffeur') || fonctionAgent.includes('éboueur') || fonctionAgent.includes('eboueur');
+  if(estChauffeurOuEboueur){
+    try{
+      // Sur le téléphone d'un employé jamais connecté en admin, equipages/
+      // remplacements ne sont pas chargés localement (seul l'annuaire public
+      // l'est) — on va alors chercher ce même planning directement dans
+      // Supabase, juste pour cette vérification. Toujours les données déjà
+      // existantes (rh_equ/rh_rem), rien de nouveau créé ; si cette lecture
+      // échoue (droits d'accès, pas de réseau...), on n'affiche simplement pas
+      // le message plutôt que de risquer quoi que ce soit sur le pointage,
+      // déjà accepté et enregistré de toute façon.
+      let equipagesPourCheck = equipages, remplacementsPourCheck = remplacements;
+      if(!equipages.length){
+        const { data } = await supabaseRH.from('rh_donnees').select('cle,valeur').in('cle',['rh_equ','rh_rem']);
+        const parCle = {}; (data||[]).forEach(l=>{ parCle[l.cle]=l.valeur; });
+        equipagesPourCheck = parCle.rh_equ || [];
+        remplacementsPourCheck = parCle.rh_rem || {};
+      }
+      const carteServices = _construireCarteServicesEffectifs(dateEcriture, equipagesPourCheck, remplacementsPourCheck);
+      const serviceProgramme = carteServices.get(cle);
+      nonProgramme = !serviceProgramme || serviceProgramme !== service;
+    }catch(e){ console.warn('Vérification du programme échouée (pointage quand même accepté normalement) :', e); }
+  }
+
   const name = _kiosk.emp ? (_kiosk.emp.nom+' '+_kiosk.emp.prenom) : _kiosk.empId;
   const box = document.getElementById('kioskDoneMsg');
   const hhmm = new Date(now).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
@@ -23477,9 +23517,12 @@ async function kioskValider(){
         ? `<br><span style="color:#FCD34D;font-weight:800;font-size:1.05rem;">⚠️ Vous êtes en retard.<br>${horaireCheck.message}<br>Merci d'essayer de vous diriger vers la DRH si possible, pour justifier ce retard.</span>`
         : `<br><span style="color:#FCD34D;font-weight:800;font-size:1.05rem;">⚠️ ${horaireCheck.message}<br>Merci d'essayer de vous diriger vers la DRH si possible, pour justifier ce départ hors plage.</span>`)
     : '';
+  const noteProgramme = nonProgramme
+    ? `<br><span style="color:#FCD34D;font-weight:800;font-size:1.05rem;">POINTAGE ACCEPTÉ — MERCI DE VOUS RENDRE À L'EXPLOITATION POUR VÉRIFIER VOTRE PROGRAMME.</span>`
+    : '';
   box.innerHTML = (action==='arrival'
     ? `✅ Bienvenue <b>${name}</b><br>Arrivée enregistrée à ${hhmm}`
-    : `👋 Au revoir <b>${name}</b><br>Départ enregistré à ${hhmm}`) + noteZone + noteHoraire;
+    : `👋 Au revoir <b>${name}</b><br>Départ enregistré à ${hhmm}`) + noteZone + noteHoraire + noteProgramme;
   // Note : les notifications RH (retard/hors-zone/absence) sont désormais gérées
   // entièrement côté backend (voir /api/notify/check), pas déclenchées d'ici.
   // Pas de fermeture automatique : le message doit rester affiché le temps que
@@ -23487,8 +23530,8 @@ async function kioskValider(){
   // valide avec les boutons ci-dessous, pas un minuteur.
   const warnBox = document.getElementById('kioskDoneWarnBox');
   const okBtn = document.getElementById('kioskDoneOkBtn');
-  if(warnBox) warnBox.style.display = (noteZone || noteHoraire) ? 'flex' : 'none';
-  if(okBtn) okBtn.style.display = (noteZone || noteHoraire) ? 'inline-flex' : 'none';
+  if(warnBox) warnBox.style.display = (noteZone || noteHoraire || noteProgramme) ? 'flex' : 'none';
+  if(okBtn) okBtn.style.display = (noteZone || noteHoraire || noteProgramme) ? 'inline-flex' : 'none';
   _kioskShowStep('done');
 }
 function kioskAckDoneWarning(){
