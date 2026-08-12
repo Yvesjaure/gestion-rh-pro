@@ -12550,6 +12550,7 @@ body{font-family:'Nunito',sans-serif;background:#CACACA;min-height:100vh;}
 .save-dot{width:7px;height:7px;border-radius:50%;background:#2ECC71;animation:pulse 2s infinite;}
 .save-dot.saving{background:#F39C12;animation:none;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
 .btn-lock{background:rgba(255,255,255,.15);border:none;color:#fff;padding:4px 9px;border-radius:5px;cursor:pointer;font-size:.72rem;font-family:'Nunito',sans-serif;font-weight:700;white-space:nowrap;}
 .btn-lock:hover{background:rgba(255,255,255,.25);}
 /* En-tête compacte : icônes rondes (Alertes, Employés, menu ⋮) au lieu de
@@ -14114,6 +14115,9 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
   </div>
   <div class="header-right">
     <div class="save-status"><div class="save-dot" id="saveDot"></div><span id="saveLabel">Sauvegardé</span><span id="saveTime" style="opacity:.6;margin-left:3px;">16:44</span></div>
+    <button class="hdr-icon-btn" id="btnActualiser" onclick="rhActualiserAvecAnimation()" title="Actualiser les données (sans se déconnecter)">
+      🔄
+    </button>
     <button class="hdr-icon-btn" id="btnAlertesRH" onclick="ouvrirAlertes()" title="Alertes">
       🔔
       <span id="rhBadgeAlertes" class="hdr-icon-badge" style="display:none;"></span>
@@ -17563,6 +17567,20 @@ async function rhRecharger(){
   const badge = document.getElementById('rhSyncBadge');
   if (badge) badge.textContent = '☁️ Synchronisé';
   toast('✅ Données rechargées','ok');
+}
+// Version pour le bouton 🔄 bien visible de l'en-tête — recharge tout depuis
+// Supabase SANS se déconnecter ni fermer l'app (contrairement à "Verrouiller"
+// puis se reconnecter). Anime brièvement l'icône pour confirmer que ça tourne.
+async function rhActualiserAvecAnimation(){
+  const btn = document.getElementById('btnActualiser');
+  if(btn) btn.style.animation = 'spin .8s linear infinite';
+  try{
+    await rhRecharger();
+  }catch(e){
+    toast('❌ Actualisation impossible : '+e.message,'err');
+  }finally{
+    if(btn) btn.style.animation = '';
+  }
 }
 function triggerSave(){
   clearTimeout(autoSaveTimer);
