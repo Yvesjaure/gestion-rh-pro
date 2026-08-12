@@ -20809,6 +20809,13 @@ function renderPresenceTable(date){
     }
     if(rec.statut==='Absent' && rec.retardTexte) stTxt+=` <span style="font-size:.62rem;font-weight:600;" title="${rec.retardTexte.replace(/"/g,'&quot;')}">ℹ️</span>`;
     if(rec.geo && rec.geo.inZone===false) stTxt+=' <span title="Hors zone GPS" style="color:#DC2626;">⚠️</span>';
+    // Pointage marqué manuellement (bouton ✅P/❌A, pas un vrai scan) : heure du
+    // marquage + admin qui l'a fait, affichés sous le statut — restent visibles
+    // après actualisation puisque sauvegardés avec le reste du pointage.
+    if(rec.manuel_le && !rec.punch_in){
+      const heureManuel = new Date(rec.manuel_le).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      stTxt += `<br><span style="font-size:.6rem;color:#888;font-weight:600;">🕐 ${heureManuel} · par ${(rec.manuel_par||'admin').split('@')[0]}</span>`;
+    }
 
     // Colonnes Arrivée / Départ — professionnelles, bien visibles, dès que
     // l'employé a scanné (ou été pointé manuellement avec une heure).
@@ -20883,7 +20890,15 @@ async function supprimerPresence(date, empId, nom){
 function setPresence(date,empId,statut){
   if(!presences[date])presences[date]={};
   const prev=presences[date][empId]||{};
-  presences[date][empId]={...prev,statut};
+  // Enregistre l'heure réelle du marquage (heure de l'appareil, pas de saisie
+  // manuelle demandée) et qui l'a fait, pour un pointage manuel (Présent/Absent
+  // coché depuis ce tableau) — ces infos restent visibles après actualisation
+  // puisqu'elles sont sauvegardées avec le reste du pointage.
+  presences[date][empId]={
+    ...prev, statut,
+    manuel_le: new Date().toISOString(),
+    manuel_par: (rhSessionActuelle && rhSessionActuelle.user && rhSessionActuelle.user.email) || 'admin',
+  };
   triggerSave();renderPresenceTable(date);updatePrzStats();
 }
 // Marque automatiquement "Absent" tout employé actif qui n'a fait AUCUN pointage
@@ -21015,14 +21030,18 @@ async function verifierAbsencesAutomatiques(){
 function marquerTousPresents(){
   const date=document.getElementById('przDate').value;if(!date)return;
   if(!presences[date])presences[date]={};
-  employes.forEach(e=>{presences[date][e.id]={...(presences[date][e.id]||{}),statut:'Présent'};});
+  const manuel_le=new Date().toISOString();
+  const manuel_par=(rhSessionActuelle && rhSessionActuelle.user && rhSessionActuelle.user.email) || 'admin';
+  employes.forEach(e=>{presences[date][e.id]={...(presences[date][e.id]||{}),statut:'Présent',manuel_le,manuel_par};});
   triggerSave();renderPresenceTable(date);updatePrzStats();
   toast('✅ Tous marqués présents','ok');
 }
 function marquerTousAbsents(){
   const date=document.getElementById('przDate').value;if(!date)return;
   if(!presences[date])presences[date]={};
-  employes.forEach(e=>{presences[date][e.id]={...(presences[date][e.id]||{}),statut:'Absent'};});
+  const manuel_le=new Date().toISOString();
+  const manuel_par=(rhSessionActuelle && rhSessionActuelle.user && rhSessionActuelle.user.email) || 'admin';
+  employes.forEach(e=>{presences[date][e.id]={...(presences[date][e.id]||{}),statut:'Absent',manuel_le,manuel_par};});
   triggerSave();renderPresenceTable(date);updatePrzStats();
   toast('⚠️ Tous marqués absents','warn');
 }
