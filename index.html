@@ -17561,16 +17561,30 @@ function rhEcouterChangementsEnLigne(){
   }
 }
 
+// Version pour le bouton 🔄 bien visible de l'en-tête — recharge tout depuis
+// Supabase SANS se déconnecter ni fermer l'app (contrairement à "Verrouiller"
+// puis se reconnecter). Anime brièvement l'icône pour confirmer que ça tourne.
 async function rhRecharger(){
   await rhChargerDepuisLigne();
-  init();
+  // IMPORTANT : on n'appelle PAS init() ici — c'était le bug. init() relance
+  // verifierAbsencesAutomatiques() et verifierCongesTermines() à chaque appel,
+  // qui peuvent marquer des employés "Absent" si les données viennent d'être
+  // rechargées avant qu'un pointage/marquage manuel tout juste fait ait fini
+  // de se synchroniser vers Supabase (léger délai de sauvegarde) — l'actualisation
+  // écrasait alors ce marquage encore local par une version plus ancienne, puis
+  // le recalcul automatique passait tout le monde "Absent" faute de statut trouvé.
+  // On se contente de rafraîchir l'AFFICHAGE avec les nouvelles données ; les
+  // vérifications automatiques ont déjà leur propre minuteur (toutes les 5 min),
+  // pas besoin de les relancer ici.
+  afficherTableau(); updateNavInfo(); renderDashboard(); rafraichirBadgeAlertes();
+  const przDateEl = document.getElementById('przDate');
+  if(przDateEl && typeof renderPresenceTable==='function') renderPresenceTable(przDateEl.value);
+  if(typeof afficherConges==='function') afficherConges();
+  if(typeof updateStats==='function') updateStats();
   const badge = document.getElementById('rhSyncBadge');
   if (badge) badge.textContent = '☁️ Synchronisé';
   toast('✅ Données rechargées','ok');
 }
-// Version pour le bouton 🔄 bien visible de l'en-tête — recharge tout depuis
-// Supabase SANS se déconnecter ni fermer l'app (contrairement à "Verrouiller"
-// puis se reconnecter). Anime brièvement l'icône pour confirmer que ça tourne.
 // Bouton "Actualiser" combiné avec l'optimisation : en plus de récupérer les
 // données à jour, on lance au passage les tâches d'entretien déjà existantes
 // (migration des derniers fichiers restés en base64 vers le stockage cloud,
