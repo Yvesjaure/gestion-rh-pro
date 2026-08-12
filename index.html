@@ -14115,7 +14115,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
   </div>
   <div class="header-right">
     <div class="save-status"><div class="save-dot" id="saveDot"></div><span id="saveLabel">Sauvegardé</span><span id="saveTime" style="opacity:.6;margin-left:3px;">16:44</span></div>
-    <button class="hdr-icon-btn" id="btnActualiser" onclick="rhActualiserAvecAnimation()" title="Actualiser & optimiser (données à jour + nettoyage automatique)">
+    <button class="hdr-icon-btn" id="btnActualiser" onclick="rhActualiserAvecAnimation()" title="Actualiser les données (sans se déconnecter)">
       🔄
     </button>
     <button class="hdr-icon-btn" id="btnAlertesRH" onclick="ouvrirAlertes()" title="Alertes">
@@ -14519,7 +14519,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
         </div>
         <button class="btn b-prt" style="width:100%;justify-content:center;margin-top:10px;" onclick="imprimerBadge()">🖨️ Imprimer / PDF</button>
         <button class="btn" style="width:100%;justify-content:center;margin-top:6px;background:#2B579A;color:#fff;" onclick="exporterBadgeWord()">📝 Exporter en Word</button>
-        <button class="btn" style="width:100%;justify-content:center;margin-top:6px;background:#1D6F42;color:#fff;" onclick="imprimerTousLesBadges()">🖨️ Imprimer TOUS les badges (planche à découper)</button>
+        <button class="btn" style="width:100%;justify-content:center;margin-top:6px;background:#1D6F42;color:#fff;" onclick="ouvrirPlageBadges()">🖨️ Imprimer TOUS les badges (planche à découper)</button>
       </div>
       <div style="margin-top:10px;background:rgba(200,134,10,.09);border:1.5px solid var(--or);border-radius:5px;padding:8px;font-size:.67rem;color:#555;line-height:1.55;">
         💡 Le <b>QR code</b> contient toutes les infos de l'employé. La <b>photo</b> et le <b>logo</b> sont récupérés depuis la fiche employé et les paramètres. La <b>date de validité</b> est calculée à partir de la durée choisie.
@@ -14528,6 +14528,21 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     <div class="card">
       <div class="sec violet">👁️ Aperçu du badge</div>
       <div id="badgePreview" style="margin-top:8px;"><div style="color:#aaa;text-align:center;padding:30px;"><div style="font-size:3rem;">🪪</div><div style="font-size:.8rem;margin-top:8px;">Sélectionnez un employé</div></div></div>
+    </div>
+  </div>
+  <!-- Fenêtre : choix de la plage avant l'impression en masse des badges -->
+  <div class="modal-overlay" id="mPlageBadges" style="display:none;">
+    <div class="modal-box" style="max-width:340px;">
+      <div class="modal-title"><span>🖨️ Imprimer une plage de badges</span><button class="modal-close" onclick="document.getElementById('mPlageBadges').style.display='none';">✕</button></div>
+      <div style="padding:6px 0;">
+        <div class="cf"><span class="cl" style="background:var(--bleu);">Badge de</span><input type="number" id="plageDebut" class="ci" min="1" value="1"></div>
+        <div class="cf"><span class="cl" style="background:var(--bleu);">Badge jusqu'à</span><input type="number" id="plageFin" class="ci" min="1"></div>
+        <div style="font-size:.68rem;color:#666;margin-top:8px;" id="plageInfo"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn b-clr" onclick="document.getElementById('mPlageBadges').style.display='none';">Annuler</button>
+        <button class="btn b-prt" onclick="lancerImpressionPlageBadges()">🖨️ Générer / Imprimer</button>
+      </div>
     </div>
   </div>
   <div class="card" style="margin-top:10px;">
@@ -15991,6 +16006,9 @@ async function init() {
   if(!window._congesAutoTimer) window._congesAutoTimer = setInterval(verifierCongesTermines, 5*60*1000);
   _purgerSelfiesAnciensSiBesoin();
   if(!window._migrationStockageTimer) window._migrationStockageTimer = setInterval(_migrerFichiersSiBesoin, 2*60*1000);
+  // Vérifie toutes les 10 minutes si une nouvelle version a été déployée
+  // pendant que la page est ouverte (voir _afficherBanniereNouvelleVersion).
+  if(!window._majVersionTimer) window._majVersionTimer = setInterval(_verifierNouvelleVersionDisponible, 10*60*1000);
   setTimeout(_migrerFichiersSiBesoin, 5000); // un premier passage discret peu après le démarrage
   document.getElementById('setCompanyName').value = companyName;
   document.getElementById('setCompanyFullName').value = companyFullName;
@@ -16075,9 +16093,11 @@ let _demandeRoleVoulu = null;
 // nouvelle version, tant qu'on change CHANGELOG_VERSION (et la liste) en
 // même temps qu'on livre une mise à jour.
 // ============================================================
-const CHANGELOG_VERSION = '2026-08-11-12';
+const CHANGELOG_VERSION = '2026-08-12-13';
 const CHANGELOG_ITEMS = [
-  "Impression du badge : recto et verso maintenant chacun sur leur propre page",
+  "Pointage manuel : heure et administrateur enregistrés automatiquement",
+  "Impression des badges : choix d'une plage (ex: 1 à 100) avant de lancer l'impression en masse",
+  "Détection automatique d'une nouvelle mise à jour disponible, sans avoir à réinstaller l'app",
 ];
 function _verifierNouveautes(){
   try{
@@ -16092,6 +16112,39 @@ function _verifierNouveautes(){
 function fermerNouveautes(){
   try{ localStorage.setItem('rh_derniere_maj_vue', CHANGELOG_VERSION); }catch(e){}
   document.getElementById('mNouveautes').style.display='none';
+}
+// ============================================================
+// DÉTECTION D'UNE NOUVELLE MISE À JOUR DÉPLOYÉE PENDANT QUE LA PAGE EST OUVERTE
+// ============================================================
+// Contrairement à la fenêtre "Nouveautés" ci-dessus (qui compare la version de
+// CETTE page déjà chargée à ce qui a été vu sur l'appareil), ceci vérifie
+// périodiquement si le fichier EN LIGNE a changé PENDANT que quelqu'un est en
+// train d'utiliser l'app — utile pour ne pas travailler sans le savoir sur une
+// version qui vient d'être remplacée sur le serveur. N'affiche le bandeau que
+// si une version réellement différente est trouvée ; jamais de rechargement
+// automatique (pas de perte de saisie en cours) — juste un bouton pour le
+// faire volontairement.
+let _majDejaSignalee = false;
+async function _verifierNouvelleVersionDisponible(){
+  if(_majDejaSignalee) return; // déjà affiché, pas la peine de revérifier
+  try{
+    const rep = await fetch(location.pathname + '?v=' + Date.now(), { cache:'no-store' });
+    if(!rep.ok) return;
+    const texte = await rep.text();
+    const m = texte.match(/const CHANGELOG_VERSION\s*=\s*'([^']+)'/);
+    if(m && m[1] && m[1] !== CHANGELOG_VERSION){
+      _majDejaSignalee = true;
+      _afficherBanniereNouvelleVersion();
+    }
+  }catch(e){ /* pas grave, on retentera au prochain passage */ }
+}
+function _afficherBanniereNouvelleVersion(){
+  if(document.getElementById('banniereMajDispo')) return; // déjà affichée
+  const div = document.createElement('div');
+  div.id = 'banniereMajDispo';
+  div.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1A3A5C;color:#fff;padding:10px 16px;text-align:center;font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.25);';
+  div.innerHTML = `<span>🔔 Une nouvelle mise à jour est disponible. Veuillez actualiser la page pour utiliser la dernière version.</span><button onclick="location.reload()" style="background:#fff;color:#1A3A5C;border:none;border-radius:6px;padding:6px 14px;font-weight:800;cursor:pointer;font-size:.78rem;">🔄 Actualiser maintenant</button>`;
+  document.body.prepend(div);
 }
 
 let rhSessionActuelle = null;
@@ -17585,20 +17638,14 @@ async function rhRecharger(){
   if (badge) badge.textContent = '☁️ Synchronisé';
   toast('✅ Données rechargées','ok');
 }
-// Bouton "Actualiser" combiné avec l'optimisation : en plus de récupérer les
-// données à jour, on lance au passage les tâches d'entretien déjà existantes
-// (migration des derniers fichiers restés en base64 vers le stockage cloud,
-// purge des vieux selfies de pointage) — au lieu d'avoir deux boutons séparés
-// pour "actualiser" et "optimiser", un seul geste fait les deux.
+// Bouton "Actualiser" — l'entretien (migration des fichiers vers le stockage
+// cloud, purge des vieux selfies) continue de tourner tout seul en arrière-plan
+// via ses propres minuteurs (voir init()), plus besoin de bouton dédié pour ça.
 async function rhActualiserAvecAnimation(){
   const btn = document.getElementById('btnActualiser');
   if(btn) btn.style.animation = 'spin .8s linear infinite';
   try{
     await rhRecharger();
-    // Tâches d'optimisation — silencieuses si rien à faire, discrètes sinon
-    // (déjà conçues pour ne jamais bloquer ni ralentir l'affichage).
-    _purgerSelfiesAnciensSiBesoin();
-    _migrerFichiersSiBesoin();
   }catch(e){
     toast('❌ Actualisation impossible : '+e.message,'err');
   }finally{
@@ -19283,9 +19330,43 @@ function _buildBadgePrint(){
   return true;
 }
 
-async function imprimerTousLesBadges(){
+// Ouvre la fenêtre de choix de plage avant l'impression en masse — au lieu de
+// lancer directement l'impression de TOUS les badges d'un coup, ce qui peut
+// être énorme et peu pratique à gérer (planches à découper) avec des centaines
+// d'employés. Pré-remplit avec la plage complète, modifiable.
+function ouvrirPlageBadges(){
   const actifs = employes.filter(e=>e.statutEmploi!=='Parti');
   if(!actifs.length){ toast('⚠️ Aucun employé actif à imprimer','warn'); return; }
+  document.getElementById('plageDebut').value = 1;
+  document.getElementById('plageFin').value = actifs.length;
+  document.getElementById('plageInfo').textContent = `${actifs.length} employé(s) actif(s) au total (triés par ordre alphabétique). "1" = le premier, "${actifs.length}" = le dernier.`;
+  document.getElementById('mPlageBadges').style.display = 'flex';
+}
+function lancerImpressionPlageBadges(){
+  const actifs = employes.filter(e=>e.statutEmploi!=='Parti');
+  let debut = parseInt(document.getElementById('plageDebut').value,10);
+  let fin = parseInt(document.getElementById('plageFin').value,10);
+  // Garde-fou : valeurs incohérentes ou impossibles ramenées à des bornes valides
+  // plutôt que de planter ou de générer n'importe quoi.
+  if(!Number.isFinite(debut) || debut<1) debut = 1;
+  if(!Number.isFinite(fin) || fin<debut) fin = actifs.length;
+  if(debut > actifs.length) debut = actifs.length;
+  if(fin > actifs.length) fin = actifs.length;
+  document.getElementById('mPlageBadges').style.display='none';
+  imprimerTousLesBadges(debut, fin);
+}
+async function imprimerTousLesBadges(debutPlage, finPlage){
+  let actifs = employes.filter(e=>e.statutEmploi!=='Parti');
+  if(!actifs.length){ toast('⚠️ Aucun employé actif à imprimer','warn'); return; }
+  // Plage optionnelle (1-indexée, comme affiché à l'utilisateur) — si absente,
+  // comportement inchangé : tout le monde.
+  const totalAvantPlage = actifs.length;
+  if(debutPlage || finPlage){
+    const d = Math.max(1, debutPlage||1);
+    const f = Math.min(totalAvantPlage, finPlage||totalAvantPlage);
+    actifs = actifs.slice(d-1, f);
+    if(!actifs.length){ toast('⚠️ Plage vide — aucun badge à générer','warn'); return; }
+  }
 
   // À grande échelle (plusieurs centaines d'employés), des photos encore en
   // base64 (pas encore migrées vers le stockage cloud) alourdissent énormément
