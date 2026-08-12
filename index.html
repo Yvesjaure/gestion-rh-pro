@@ -22651,6 +22651,7 @@ async function _kioskOnBadgeDetected(id){
   _kioskStopStream();
   _kiosk.empId = id;
   _kiosk.emp = employes.find(e=>fmtMatricule(e.id)===id) || null;
+  _kiosk.empSource = _kiosk.emp ? `employes[] local (${employes.length} chargés)` : null;
   // Sur ce même appareil, s'il vient de trouver l'employé dans employes[] (la
   // liste vivante déjà chargée, la même utilisée pour modifier ses infos), cette
   // source est déjà la plus fraîche possible — pas besoin, et surtout pas
@@ -22663,6 +22664,7 @@ async function _kioskOnBadgeDetected(id){
     const trouve = _kioskAnnuaire.find(a=>fmtMatricule(a.id)===id);
     if(trouve){
       _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: '', fonc: trouve.fonc, site: trouve.site||'' };
+      _kiosk.empSource = `annuaire (cache mémoire, modifié_le: ${trouve.modifie_le||'?'})`;
       _kioskChargerPhotoAnnuaire(trouve.id); // photo chargée à part, sans bloquer l'affichage
     }
   }
@@ -22679,6 +22681,7 @@ async function _kioskOnBadgeDetected(id){
       const trouve = (data||[]).find(a=>fmtMatricule(a.id)===id);
       if(trouve){
         _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: '', fonc: trouve.fonc, site: trouve.site||'' };
+        _kiosk.empSource = `annuaire (requête directe, modifié_le: ${trouve.modifie_le||'?'})`;
         _kioskChargerPhotoAnnuaire(trouve.id);
       }
     }catch(e){ console.warn('Vérification directe du badge échouée :', e); }
@@ -22693,11 +22696,12 @@ async function _kioskOnBadgeDetected(id){
   if(_kiosk.emp && !depuisEmployesLocal){
     (async ()=>{
       try{
-        const { data, error } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel').eq('id', String(_kiosk.emp.id)).maybeSingle();
+        const { data, error } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,modifie_le').eq('id', String(_kiosk.emp.id)).maybeSingle();
         if(error) console.warn('Revérification fraîche du badge échouée :', error);
         if(data && _kiosk.empId===id){
           const perime = data.fonc!==_kiosk.emp.fonc || data.nom!==_kiosk.emp.nom || data.prenom!==_kiosk.emp.prenom;
           _kiosk.emp = { ..._kiosk.emp, nom:data.nom, prenom:data.prenom, fonc:data.fonc, site:data.site||_kiosk.emp.site };
+          _kiosk.empSource = `annuaire revérifié (modifié_le: ${data.modifie_le||'?'})${perime?' — CORRIGÉ':' — déjà à jour'}`;
           if(perime) _kioskRenderEmpCard();
         }
       }catch(e){ console.warn('Revérification fraîche du badge échouée :', e); }
@@ -22728,7 +22732,8 @@ function _kioskRenderEmpCard(){
   if(_kiosk.emp){
     box.innerHTML = `
       <div class="kiosk-emp-photo">${_kiosk.emp.photo?`<img src="${_kiosk.emp.photo}">`:'👤'}</div>
-      <div><b style="font-size:1.25rem;">${_kiosk.emp.nom} ${_kiosk.emp.prenom}</b><br><span style="opacity:.85;font-size:.95rem;">${fmtMatricule(_kiosk.emp.id)} — ${_kiosk.emp.fonc||''}</span></div>`;
+      <div><b style="font-size:1.25rem;">${_kiosk.emp.nom} ${_kiosk.emp.prenom}</b><br><span style="opacity:.85;font-size:.95rem;">${fmtMatricule(_kiosk.emp.id)} — ${_kiosk.emp.fonc||''}</span></div>
+      <div id="kioskDebugSrc" style="font-size:.62rem;color:#FBBF24;margin-top:6px;opacity:.9;">🔧 Source : ${_kiosk.empSource||'?'} · employes[] chargés : ${employes.length}</div>`;
   } else {
     box.innerHTML = `<div class="kiosk-emp-photo">⚠️</div><div><b style="font-size:1.15rem;">${_kiosk.empId}</b><br><span style="opacity:.85;font-size:.9rem;">Recherche en cours dans l'annuaire… patientez quelques secondes.</span></div>`;
   }
