@@ -18050,11 +18050,37 @@ async function _uploaderVersStorage(dataUrl, chemin){
     const { error } = await supabaseRH.storage.from(STORAGE_BUCKET).upload(chemin, blob, { upsert:true, contentType: blob.type });
     if(error) throw error;
     const { data } = supabaseRH.storage.from(STORAGE_BUCKET).getPublicUrl(chemin);
-    return (data && data.publicUrl) ? data.publicUrl : null;
+    const url = data && data.publicUrl;
+    if(!url) return null;
+    // Vérification RÉELLE avant de considérer le transfert sûr : construire
+    // l'URL ne prouve pas que le fichier y est vraiment accessible — on fait
+    // un vrai aller-retour réseau pour le confirmer. Tant que cette
+    // vérification échoue, le fichier local (base64) n'est JAMAIS remplacé —
+    // aucune donnée ne peut donc se retrouver perdue entre les deux.
+    const verifie = await _verifierFichierAccessible(url);
+    if(!verifie){
+      console.warn('Fichier envoyé mais impossible à re-vérifier (', chemin, ') — on garde le fichier local pour l\'instant, on retentera plus tard.');
+      return null;
+    }
+    return url;
   }catch(err){
     console.warn('Upload stockage échoué (', chemin, ') — fichier gardé en local pour le moment :', err.message||err);
     return null;
   }
+}
+// Confirme qu'un fichier fraîchement envoyé est RÉELLEMENT récupérable à son
+// URL publique — pas juste que l'envoi n'a pas renvoyé d'erreur. C'est cette
+// vérification, et elle seule, qui autorise l'appelant à remplacer le fichier
+// local (base64) par ce lien.
+async function _verifierFichierAccessible(url){
+  try{
+    const rep = await fetch(url, { method:'HEAD', cache:'no-store' });
+    if(rep.ok) return true;
+  }catch(e){ /* certains réglages CORS/hébergeurs bloquent HEAD — on retente en GET */ }
+  try{
+    const rep2 = await fetch(url, { method:'GET', cache:'no-store' });
+    return rep2.ok;
+  }catch(e2){ return false; }
 }
 // Parcourt les données déjà en mémoire et upload tout fichier encore en
 // base64 (photo employé, documents du dossier, selfies de pointage) vers le
