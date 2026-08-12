@@ -15359,10 +15359,22 @@ function kvSet(key,value){
 // kiosque) — kvSet seul ne suffit pas, il ne touche que cet appareil-ci.
 // Ce helper pousse la valeur vers la base partagée Supabase en plus du local.
 function kvSetPartage(key, value){
-  kvSet(key, value);
+  kvSet(key, value); // IndexedDB : valeur telle quelle (inchangé)
   if(!rhSessionActuelle) return; // pas connecté : on synchronisera à la prochaine connexion
+  // Si "value" est en réalité un objet/tableau encodé en texte (JSON.stringify côté
+  // appelant, ex: les couleurs de badge personnalisées), on le redécode avant l'envoi.
+  // Sinon Supabase enregistre le TEXTE lui-même comme valeur au lieu de l'objet — et
+  // toute relecture récupère une chaîne de caractères au lieu d'un objet utilisable.
+  // C'était la cause exacte des "undefined" dans le menu Couleur après une
+  // actualisation : couleursPersonnalisees devenait une chaîne de caractères, et
+  // l'étaler (...) dans un objet donnait une entrée à un caractère chacune, sans
+  // .label ni .h1 — d'où les options vides "undefined" affichées.
+  let valeurPourSupabase = value;
+  if(typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))){
+    try{ valeurPourSupabase = JSON.parse(value); }catch(e){ /* ce n'était pas du JSON, on garde tel quel */ }
+  }
   supabaseRH.from('rh_donnees').upsert(
-    { cle:key, valeur:value, modifie_par:rhSessionActuelle.user.email, modifie_le:new Date().toISOString() },
+    { cle:key, valeur:valeurPourSupabase, modifie_par:rhSessionActuelle.user.email, modifie_le:new Date().toISOString() },
     { onConflict:'cle' }
   ).then(()=>{}).catch(err=>console.warn('Synchronisation partagée échouée pour', key, ':', err));
 }
@@ -15920,8 +15932,22 @@ const BADGE_COLORS = {
 // Couleurs personnalisées créées par la RH (nom + 3 couleurs au choix) —
 // stockées à part, fusionnées avec les couleurs prédéfinies ci-dessus.
 let couleursPersonnalisees = {}; // {cle: {h1,h2,f,label}}
+// Ne renvoie que des entrées de couleur VALIDES (objet avec au moins .h1 et
+// .label) — une entrée corrompue ou incomplète ne doit jamais atteindre le
+// menu Couleur (c'est ce qui provoquait les "undefined" affichés). Filtre
+// aussi le cas où couleursPersonnalisees ne serait pas un objet exploitable
+// (ex: resterait une chaîne de caractères suite à une ancienne donnée
+// corrompue côté Supabase, avant le correctif de kvSetPartage).
 function _toutesLesCouleursBadge(){
-  return { ...BADGE_COLORS, ...couleursPersonnalisees };
+  const brut = (couleursPersonnalisees && typeof couleursPersonnalisees==='object' && !Array.isArray(couleursPersonnalisees))
+    ? couleursPersonnalisees : {};
+  const fusion = { ...BADGE_COLORS, ...brut };
+  const propre = {};
+  for(const cle in fusion){
+    const c = fusion[cle];
+    if(c && typeof c==='object' && c.h1 && c.label) propre[cle] = c;
+  }
+  return propre;
 }
 function enregistrerCouleurPersonnalisee(){
   const nom = document.getElementById('bdgNouvCouleurNom').value.trim();
@@ -17466,7 +17492,22 @@ async function rhChargerDepuisLigne(){
       if (parCle.rh_fer !== undefined) joursFeries = parCle.rh_fer;
       if (parCle.rh_cor !== undefined) corbeille = parCle.rh_cor;
       if (parCle.rh_hist !== undefined) historique = parCle.rh_hist;
-      if (parCle.rh_couleurs_perso !== undefined) couleursPersonnalisees = parCle.rh_couleurs_perso;
+      if (parCle.rh_couleurs_perso !== undefined){
+        // Auto-réparation : si une ancienne donnée corrompue (chaîne de
+        // caractères au lieu d'un objet, à cause du bug maintenant corrigé
+        // dans kvSetPartage) traîne encore côté Supabase, on la redécode ici
+        // au lieu de propager le problème dans l'app — sans action manuelle
+        // à faire, ça se répare tout seul dès la prochaine connexion.
+        let cp = parCle.rh_couleurs_perso;
+        const etaitCorrompu = typeof cp === 'string';
+        if(etaitCorrompu){
+          try{ cp = JSON.parse(cp); }catch(e){ cp = {}; }
+        }
+        couleursPersonnalisees = (cp && typeof cp==='object' && !Array.isArray(cp)) ? cp : {};
+        // Réenregistre la version corrigée pour de bon, une seule fois — sinon
+        // la réparation devrait se refaire à chaque connexion indéfiniment.
+        if(etaitCorrompu) kvSetPartage('rh_couleurs_perso', JSON.stringify(couleursPersonnalisees));
+      }
       // États des alertes (lues/supprimées) — stockés en texte JSON dans rh_donnees,
       // reconvertis ici en Set pour l'usage courant. Survit même si l'adresse
       // de déploiement change (contrairement au localStorage seul).
@@ -17634,6 +17675,12 @@ async function rhRecharger(){
   if(przDateEl && typeof renderPresenceTable==='function') renderPresenceTable(przDateEl.value);
   if(typeof afficherConges==='function') afficherConges();
   if(typeof updateStats==='function') updateStats();
+  // Reconstruit le menu Couleur avec les données (corrigées si besoin) — garde
+  // la couleur et l'employé déjà sélectionnés, ne réinitialise rien du badge.
+  if(document.getElementById('bdgClr')){
+    _remplirSelectCouleursBadge();
+    if(document.getElementById('bdgEmp') && document.getElementById('bdgEmp').value) prevBadge();
+  }
   const badge = document.getElementById('rhSyncBadge');
   if (badge) badge.textContent = '☁️ Synchronisé';
   toast('✅ Données rechargées','ok');
