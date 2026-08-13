@@ -16799,6 +16799,18 @@ function togglePanneau(idLayout, idBouton){
 // Équipage) où faire défiler une liste alphabétique brute est pénible. Ne
 // modifie jamais la LISTE réelle : cache juste les options qui ne
 // correspondent pas, garde la sélection actuelle si elle correspond toujours.
+// Affiche/cache le champ de recherche associé à un select — bouton loupe
+// compact à côté du menu au lieu d'un champ toujours visible en dessous
+// (garde la carte plus courte). Le champ recherché est le prochain élément
+// juste après la ligne (select + bouton).
+function _toggleRechercheSelect(bouton){
+  const ligne = bouton.parentElement;
+  const champRecherche = ligne.nextElementSibling;
+  if(!champRecherche) return;
+  const visible = champRecherche.style.display !== 'none';
+  champRecherche.style.display = visible ? 'none' : 'block';
+  if(!visible) champRecherche.focus();
+}
 function _filtrerOptionsSelect(inputRecherche, select){
   if(!select) return;
   const q = inputRecherche.value.trim().toLowerCase();
@@ -20967,16 +20979,16 @@ function renderEquipages(){
         <div onclick="equBasculerOuvert(${eng.id},${eq.id})" style="flex:1;min-width:110px;cursor:pointer;background:${estOuverte?style.couleur:style.fond};display:flex;align-items:center;gap:6px;padding:8px 10px;transition:background .15s;">
           ${eq.chauffeurId ? _equPhotoRonde(eq.chauffeurId,26) : `<span style="font-size:1.1rem;">${style.lbl.split(' ')[0]}</span>`}
           <div style="min-width:0;">
-            <div style="font-size:.68rem;font-weight:800;color:${estOuverte?'#fff':style.couleur};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${style.lbl.split(' ')[0]} ${nomCourtChauffeur}</div>
+            <div style="font-size:.82rem;font-weight:800;color:${estOuverte?'#fff':style.couleur};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${style.lbl.split(' ')[0]} ${nomCourtChauffeur}</div>
           </div>
           <span style="margin-left:auto;font-size:.6rem;color:${estOuverte?'#fff':style.couleur};">${estOuverte?'▲':'▼'}</span>
         </div>`;
       if(!estOuverte) return {segment:segmentHTML, detail:''};
       const eboueursTags = (eq.eboueurIds||[]).map(id=>`
-        <span style="background:#fff;color:#1A3A5C;padding:3px 9px 3px 3px;border-radius:999px;font-size:.68rem;display:inline-flex;align-items:center;gap:5px;border:1px solid #ddd;">
+        <span style="background:#fff;color:#1A3A5C;padding:4px 10px 4px 4px;border-radius:999px;font-size:.85rem;display:inline-flex;align-items:center;gap:5px;border:1px solid #ddd;max-width:100%;">
           ${_equPhotoRonde(id,22)}
-          ${_equNomEmploye(id)||'(supprimé)'}
-          <span style="cursor:pointer;font-weight:800;" onclick="event.stopPropagation();equRetirerEboueur(${eng.id},${eq.id},'${id}')">✕</span>
+          <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;">${_equNomEmploye(id)||'(supprimé)'}</span>
+          <span style="cursor:pointer;font-weight:800;flex-shrink:0;" onclick="event.stopPropagation();equRetirerEboueur(${eng.id},${eq.id},'${id}')">✕</span>
         </span>`).join('');
       // Options du chauffeur : exclut tout employé déjà pris ailleurs, mais
       // garde toujours le chauffeur actuel de CETTE équipe dans la liste.
@@ -21029,32 +21041,30 @@ function renderEquipages(){
         <div style="font-size:.66rem;color:#555;margin-bottom:3px;">👨‍✈️ Chauffeur</div>
         <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;">
           ${eq.chauffeurId ? _equPhotoRonde(eq.chauffeurId,26) : ''}
-          <select class="equ-select-nom" style="flex:1;padding:5px 6px;border:1px solid #ddd;border-radius:5px;font-size:.95rem;background:#fff;" onchange="equModifierChampEquipe(${eng.id},${eq.id},'chauffeurId',this.value)">
+          <select class="equ-select-nom" style="flex:1;min-width:0;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:1.05rem;background:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" onchange="equModifierChampEquipe(${eng.id},${eq.id},'chauffeurId',this.value)">
             <option value="">— Choisir —</option>${optsEmpChauffeur}
           </select>
+          <button type="button" onclick="_toggleRechercheSelect(this)" aria-label="Rechercher un chauffeur" style="width:38px;height:38px;flex-shrink:0;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;padding:0;">🔎</button>
         </div>
-        <div style="display:flex;align-items:center;gap:4px;margin-bottom:6px;">
-          <span style="font-size:.72rem;">🔎</span>
-          <input type="text" placeholder="Rechercher un chauffeur..." style="flex:1;padding:4px 6px;border:1px solid #ddd;border-radius:5px;font-size:.7rem;background:#fff;"
-            oninput="_filtrerOptionsSelect(this, this.parentElement.previousElementSibling.querySelector('select'))">
-        </div>
+        <input type="text" placeholder="Rechercher un chauffeur..." style="display:none;width:100%;padding:7px 9px;border:1px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;margin-bottom:6px;"
+          oninput="_filtrerOptionsSelect(this, this.previousElementSibling.querySelector('select'))">
         <div style="font-size:.66rem;color:#555;margin-bottom:3px;">🧹 Éboueurs</div>
         <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px;">${eboueursTags||'<span style="font-size:.65rem;color:#999;font-style:italic;">Aucun pour l\'instant</span>'}</div>
-        <select class="equ-select-nom" style="width:100%;padding:5px 6px;border:1px solid #ddd;border-radius:5px;font-size:.95rem;background:#fff;" onchange="equAjouterEboueur(${eng.id},${eq.id},this.value);this.value='';">
-          <option value="">+ Ajouter un éboueur...</option>${optsEmpEboueur}
-        </select>
-        <div style="display:flex;align-items:center;gap:4px;margin-top:4px;">
-          <span style="font-size:.72rem;">🔎</span>
-          <input type="text" placeholder="Rechercher un éboueur..." style="flex:1;padding:4px 6px;border:1px solid #ddd;border-radius:5px;font-size:.7rem;background:#fff;"
-            oninput="_filtrerOptionsSelect(this, this.parentElement.previousElementSibling)">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;">
+          <select class="equ-select-nom" style="flex:1;min-width:0;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:1.05rem;background:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" onchange="equAjouterEboueur(${eng.id},${eq.id},this.value);this.value='';">
+            <option value="">+ Ajouter un éboueur...</option>${optsEmpEboueur}
+          </select>
+          <button type="button" onclick="_toggleRechercheSelect(this)" aria-label="Rechercher un éboueur" style="width:38px;height:38px;flex-shrink:0;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;padding:0;">🔎</button>
         </div>
+        <input type="text" placeholder="Rechercher un éboueur..." style="display:none;width:100%;padding:7px 9px;border:1px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;"
+          oninput="_filtrerOptionsSelect(this, this.previousElementSibling.querySelector('select'))">
       </div>`;
       return {segment:segmentHTML, detail:detailHTML};
     });
     const barreHTML = `<div style="display:flex;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:2px;">${equipesHTML.map(x=>x.segment).join('<div style="width:2px;background:rgba(255,255,255,.6);"></div>')}</div>`;
     const detailsHTML = equipesHTML.map(x=>x.detail).join('');
     return `
-    <div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px;background:#fff;">
+    <div style="border:1px solid #e5e7eb;border-radius:15px;padding:20px;background:#fff;max-width:380px;margin:0 auto;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:6px;">
         <input type="text" value="${(eng.nom||'').replace(/"/g,'&quot;')}" placeholder="Nom de l'engin (ex: Camion Benne 1)"
           style="font-weight:800;color:#1A3A5C;font-size:.88rem;border:none;border-bottom:1.5px dashed #ccc;flex:1;padding:2px 0;"
@@ -21160,6 +21170,15 @@ function renderPresenceTable(date){
     if(rec.manuel_le && !rec.punch_in){
       const heureManuel = new Date(rec.manuel_le).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
       stTxt += `<br><span style="font-size:.6rem;color:#888;font-weight:600;">🕐 ${heureManuel} · par ${(rec.manuel_par||'admin').split('@')[0]}</span>`;
+    }
+    // "En congé" : précise le TYPE exact (Congé Maladie, Congé Annuel...) à
+    // côté, récupéré directement depuis la demande de congé approuvée
+    // correspondante — plus utile qu'un simple "En congé" générique.
+    if(rec.statut==='En congé' && rec.congeId){
+      const congeAssocie = conges.find(c=>c.id===rec.congeId);
+      if(congeAssocie && congeAssocie.type){
+        stTxt += ` <span style="background:#E6F1FB;color:#185FA5;font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:5px;">${congeAssocie.type}</span>`;
+      }
     }
 
     // Colonnes Arrivée / Départ — professionnelles, bien visibles, dès que
@@ -21385,8 +21404,9 @@ async function verifierAbsencesAutomatiques(){
       const cur = presences[today][e.id];
       if(cur && cur.statut) return; // déjà un pointage ou un marquage — on ne touche pas
       // En congé approuvé aujourd'hui → jamais "Absent", peu importe l'heure
-      if(_estEnCongeApprouve(e.id, today)){
-        presences[today][e.id] = { statut:'En congé', auto:true };
+      const congeActif = conges.find(c => String(c.emp)===String(e.id) && c.stat==='Approuvé' && c.deb<=today && today<=c.fin);
+      if(congeActif){
+        presences[today][e.id] = { statut:'En congé', auto:true, congeId:congeActif.id };
         modifie = true;
         return;
       }
