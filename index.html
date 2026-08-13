@@ -14434,7 +14434,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <div class="sec violet">🌴 Nouvelle demande</div>
       <div style="margin-top:6px;">
         <div class="cf"><span class="cl">Employé</span><select id="cEmp" class="ci" style="font-size:.95rem;"><option value="">-- Choisir --</option></select></div>
-        <div class="cf"><span class="cl">🔎</span><input type="text" id="cEmpRecherche" class="ci" placeholder="Rechercher un employé..." oninput="_comboAfficherListe(this, document.getElementById('cEmp'))" onfocus="_comboAfficherListe(this, document.getElementById('cEmp'))"></div>
+        <div class="cf"><span class="cl">🔎</span><input type="text" id="cEmpRecherche" class="ci" placeholder="Rechercher un employé..." oninput="_comboAfficherListe(this, document.getElementById('cEmp'))"></div>
         <div class="cf"><span class="cl">Type</span>
           <select id="cType" class="ci" onchange="document.getElementById('cTypeAutre').style.display=(this.value==='Autre')?'block':'none';">
             <option value="">--</option><option>Congé Annuel</option><option>Congé Maladie</option>
@@ -14475,7 +14475,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <div class="sec violet">🪪 Options du badge</div>
       <div style="margin-top:6px;">
         <div class="cf"><span class="cl" style="background:var(--bleu);">Employé</span><select id="bdgEmp" class="ci" style="font-size:.95rem;" onchange="onBdgEmpChange()"><option value="">-- Choisir --</option></select></div>
-        <div class="cf"><span class="cl" style="background:var(--bleu);">🔎</span><input type="text" id="bdgEmpRecherche" class="ci" placeholder="Rechercher un employé..." oninput="_comboAfficherListe(this, document.getElementById('bdgEmp'))" onfocus="_comboAfficherListe(this, document.getElementById('bdgEmp'))"></div>
+        <div class="cf"><span class="cl" style="background:var(--bleu);">🔎</span><input type="text" id="bdgEmpRecherche" class="ci" placeholder="Rechercher un employé..." oninput="_comboAfficherListe(this, document.getElementById('bdgEmp'))"></div>
         <div class="cf"><span class="cl" style="background:var(--bleu);">Organisation</span><input type="text" id="bdgOrg" class="ci" value="MON ENTREPRISE" oninput="_prevBadgeDebounce()"></div>
         <div class="cf"><span class="cl" style="background:var(--bleu);">Couleur</span>
           <select id="bdgClr" class="ci" onchange="onBdgClrChange();afficherCreationCouleur(this);">
@@ -16892,7 +16892,10 @@ function _comboAfficherListe(inputEl, selectEl){
     inputEl.addEventListener('blur', ()=>setTimeout(()=>{ liste.innerHTML=''; }, 200));
   }
   const q = inputEl.value.trim().toLowerCase();
-  const options = Array.from(selectEl.options).filter(o=>o.value && (!q || o.textContent.toLowerCase().includes(q)));
+  // Champ vide : pas de liste affichée du tout (seulement une fois qu'on
+  // commence vraiment à taper quelque chose).
+  if(!q){ liste.innerHTML = ''; return; }
+  const options = Array.from(selectEl.options).filter(o=>o.value && o.textContent.toLowerCase().includes(q));
   if(!options.length){
     liste.innerHTML = '<div style="padding:8px 10px;font-size:.75rem;color:#999;">Aucun résultat</div>';
     return;
@@ -21211,7 +21214,7 @@ function renderEquipages(){
           <button type="button" onclick="_toggleRechercheSelect(this)" aria-label="Rechercher un chauffeur" style="width:38px;height:38px;flex-shrink:0;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;padding:0;">🔎</button>
         </div>
         <input type="text" placeholder="Rechercher un chauffeur..." style="display:none;width:100%;padding:7px 9px;border:1px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;margin-bottom:6px;"
-          oninput="_comboAfficherListe(this, this.previousElementSibling.querySelector('select'))" onfocus="_comboAfficherListe(this, this.previousElementSibling.querySelector('select'))">
+          oninput="_comboAfficherListe(this, this.previousElementSibling.querySelector('select'))">
         <div style="font-size:.66rem;color:#555;margin-bottom:3px;">🧹 Éboueurs</div>
         <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px;">${eboueursTags||'<span style="font-size:.65rem;color:#999;font-style:italic;">Aucun pour l\'instant</span>'}</div>
         <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;">
@@ -21221,7 +21224,7 @@ function renderEquipages(){
           <button type="button" onclick="_toggleRechercheSelect(this)" aria-label="Rechercher un éboueur" style="width:38px;height:38px;flex-shrink:0;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;padding:0;">🔎</button>
         </div>
         <input type="text" placeholder="Rechercher un éboueur..." style="display:none;width:100%;padding:7px 9px;border:1px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;"
-          oninput="_comboAfficherListe(this, this.previousElementSibling.querySelector('select'))" onfocus="_comboAfficherListe(this, this.previousElementSibling.querySelector('select'))">
+          oninput="_comboAfficherListe(this, this.previousElementSibling.querySelector('select'))">
       </div>`;
       return {segment:segmentHTML, detail:detailHTML};
     });
