@@ -12725,7 +12725,7 @@ tbody td{padding:3px 4px;border:1px solid #E8E8E8;white-space:nowrap;max-width:1
 .two-col>.panneau-repliable{overflow:hidden;transition:width .2s;min-width:0;}
 .card{background:var(--gris);border-radius:8px;padding:10px;box-shadow:var(--ombre);}
 .cf{display:flex;align-items:center;gap:5px;margin-bottom:5px;}
-.cl{background:var(--violet);color:#fff;font-size:.66rem;font-weight:700;padding:2px 7px;border-radius:3px;min-width:110px;text-align:right;white-space:nowrap;flex-shrink:0;}
+.cl{background:var(--violet);color:#fff;font-size:.66rem;font-weight:700;padding:2px 7px;border-radius:3px;min-width:110px;text-align:right;white-space:nowrap;flex-shrink:0;overflow:hidden;line-height:1.4;}
 .ci{flex:1;border:1.5px solid #ccc;border-radius:3px;padding:3px 5px;font-family:'Nunito',sans-serif;font-size:.74rem;background:#fff;min-width:0;}
 .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:8px;}
 .stat{background:#fff;border-radius:6px;padding:8px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08);}
@@ -14434,7 +14434,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <div class="sec violet">🌴 Nouvelle demande</div>
       <div style="margin-top:6px;">
         <div class="cf"><span class="cl">Employé</span><select id="cEmp" class="ci" style="font-size:.95rem;"><option value="">-- Choisir --</option></select></div>
-        <div class="cf"><span class="cl">🔎</span><input type="text" id="cEmpRecherche" class="ci" placeholder="Rechercher un employé..." oninput="_comboAfficherListe(this, document.getElementById('cEmp'))"></div>
+        <div class="cf"><span class="cl" style="font-size:.85rem;line-height:1;overflow:hidden;">🔎</span><input type="text" id="cEmpRecherche" class="ci" placeholder="Rechercher un employé..." oninput="_comboAfficherListe(this, document.getElementById('cEmp'))"></div>
         <div class="cf"><span class="cl">Type</span>
           <select id="cType" class="ci" onchange="document.getElementById('cTypeAutre').style.display=(this.value==='Autre')?'block':'none';">
             <option value="">--</option><option>Congé Annuel</option><option>Congé Maladie</option>
@@ -14475,7 +14475,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <div class="sec violet">🪪 Options du badge</div>
       <div style="margin-top:6px;">
         <div class="cf"><span class="cl" style="background:var(--bleu);">Employé</span><select id="bdgEmp" class="ci" style="font-size:.95rem;" onchange="onBdgEmpChange()"><option value="">-- Choisir --</option></select></div>
-        <div class="cf"><span class="cl" style="background:var(--bleu);">🔎</span><input type="text" id="bdgEmpRecherche" class="ci" placeholder="Rechercher un employé..." oninput="_comboAfficherListe(this, document.getElementById('bdgEmp'))"></div>
+        <div class="cf"><span class="cl" style="background:var(--bleu);font-size:.85rem;line-height:1;overflow:hidden;">🔎</span><input type="text" id="bdgEmpRecherche" class="ci" placeholder="Rechercher un employé..." oninput="_comboAfficherListe(this, document.getElementById('bdgEmp'))"></div>
         <div class="cf"><span class="cl" style="background:var(--bleu);">Organisation</span><input type="text" id="bdgOrg" class="ci" value="MON ENTREPRISE" oninput="_prevBadgeDebounce()"></div>
         <div class="cf"><span class="cl" style="background:var(--bleu);">Couleur</span>
           <select id="bdgClr" class="ci" onchange="onBdgClrChange();afficherCreationCouleur(this);">
@@ -15471,6 +15471,32 @@ function _corbeilleAjouter(type, label, data){
   corbeille.unshift({ id: Date.now()+Math.random(), type, label, data, supprimeLe: new Date().toISOString() });
   if(corbeille.length>500) corbeille = corbeille.slice(0,500);
 }
+// Supprime les VRAIS fichiers du stockage cloud (photo + documents) d'un
+// employé supprimé DÉFINITIVEMENT — sans ça, ces fichiers restent pour
+// toujours dans le bucket, jamais réclamés par rien : des fichiers orphelins
+// qui s'accumulent indéfiniment et finissent par occuper de l'espace pour
+// rien. Ne touche qu'aux champs déjà migrés vers le stockage (une URL) — un
+// champ encore en base64 n'existe nulle part ailleurs que dans les données
+// elles-mêmes, donc rien à nettoyer côté serveur pour lui.
+async function _supprimerFichiersStorageEmploye(emp){
+  if(!emp) return;
+  const cheminDepuisUrl = (url) => {
+    if(!_estUrlStockage(url)) return null;
+    const marqueur = `/${STORAGE_BUCKET}/`;
+    const i = url.indexOf(marqueur);
+    return i>=0 ? url.slice(i+marqueur.length) : null;
+  };
+  const chemins = [];
+  const cheminPhoto = cheminDepuisUrl(emp.photo);
+  if(cheminPhoto) chemins.push(cheminPhoto);
+  (emp.dossier||[]).forEach(d=>{
+    const chemin = cheminDepuisUrl(d.data);
+    if(chemin) chemins.push(chemin);
+  });
+  if(!chemins.length) return;
+  try{ await supabaseRH.storage.from(STORAGE_BUCKET).remove(chemins); }
+  catch(e){ console.warn("Suppression des fichiers de stockage échouée (l'employé reste supprimé quand même) :", e); }
+}
 // Ajoute une ligne au journal d'activité, plafonné à 1000 entrées.
 function _historiqueAjouter(type, action, description){
   historique.unshift({ id: Date.now()+Math.random(), date: new Date().toISOString(), type, action, description });
@@ -15509,13 +15535,16 @@ function restaurerElement(id){
 }
 function supprimerDefinitivement(id){
   if(!confirm('Supprimer définitivement cet élément ? Il ne pourra plus être restauré.'))return;
+  const item = corbeille.find(c=>c.id===id);
   corbeille = corbeille.filter(c=>c.id!==id);
   triggerSave();
   renderCorbeille();
+  if(item && item.type==='employe') _supprimerFichiersStorageEmploye(item.data);
 }
 function viderCorbeille(){
   if(!corbeille.length) return;
   if(!confirm(`Supprimer définitivement les ${corbeille.length} élément(s) de la corbeille ? Cette action est irréversible.`))return;
+  corbeille.forEach(c=>{ if(c.type==='employe') _supprimerFichiersStorageEmploye(c.data); });
   corbeille = [];
   triggerSave();
   renderCorbeille();
@@ -15550,6 +15579,7 @@ function supprimerSelectionCorbeille(){
   if(!cases.length){ toast('⚠️ Coche au moins un élément','warn'); return; }
   if(!confirm(`Supprimer définitivement les ${cases.length} élément(s) cochés ? Cette action est irréversible.`))return;
   const idsACocher = new Set([...cases].map(c=>c.value));
+  corbeille.forEach(c=>{ if(idsACocher.has(String(c.id)) && c.type==='employe') _supprimerFichiersStorageEmploye(c.data); });
   corbeille = corbeille.filter(c=>!idsACocher.has(String(c.id)));
   triggerSave();
   renderCorbeille();
