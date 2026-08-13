@@ -14413,14 +14413,16 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     <div class="card">
       <div class="sec violet">🌴 Nouvelle demande</div>
       <div style="margin-top:6px;">
-        <div class="cf"><span class="cl">Employé</span><select id="cEmp" class="ci"><option value="">-- Choisir --</option></select></div>
+        <div class="cf"><span class="cl">Employé</span><select id="cEmp" class="ci" style="font-size:.95rem;"><option value="">-- Choisir --</option></select></div>
         <div class="cf"><span class="cl">Type</span>
-          <select id="cType" class="ci">
+          <select id="cType" class="ci" onchange="document.getElementById('cTypeAutre').style.display=(this.value==='Autre')?'block':'none';">
             <option value="">--</option><option>Congé Annuel</option><option>Congé Maladie</option>
             <option>Congé Maternité</option><option>Congé Sans Solde</option><option>Congé Spécial</option>
             <option>Contrat CDD</option><option>Contrat CDI</option><option>Renouvellement</option><option>Fin de Contrat</option>
+            <option>Autre</option>
           </select>
         </div>
+        <div class="cf" id="cTypeAutre" style="display:none;"><span class="cl">Préciser</span><input type="text" id="cTypeAutreTexte" class="ci" placeholder="Préciser le type..."></div>
         <div class="cf"><span class="cl">Date Début</span><input type="date" id="cDeb" class="ci"></div>
         <div class="cf"><span class="cl">Date Fin</span><input type="date" id="cFin" class="ci" onchange="calcDur()"></div>
         <div class="cf"><span class="cl">Durée (jours)</span><input type="number" id="cDur" class="ci" readonly="" style="background:#f0f0f0;"></div>
@@ -20981,13 +20983,13 @@ function renderEquipages(){
         <div style="font-size:.66rem;color:#555;margin-bottom:3px;">👨‍✈️ Chauffeur</div>
         <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
           ${eq.chauffeurId ? _equPhotoRonde(eq.chauffeurId,26) : ''}
-          <select style="flex:1;padding:5px 6px;border:1px solid #ddd;border-radius:5px;font-size:.7rem;background:#fff;" onchange="equModifierChampEquipe(${eng.id},${eq.id},'chauffeurId',this.value)">
+          <select class="equ-select-nom" style="flex:1;padding:5px 6px;border:1px solid #ddd;border-radius:5px;font-size:.95rem;background:#fff;" onchange="equModifierChampEquipe(${eng.id},${eq.id},'chauffeurId',this.value)">
             <option value="">— Choisir —</option>${optsEmpChauffeur}
           </select>
         </div>
         <div style="font-size:.66rem;color:#555;margin-bottom:3px;">🧹 Éboueurs</div>
         <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px;">${eboueursTags||'<span style="font-size:.65rem;color:#999;font-style:italic;">Aucun pour l\'instant</span>'}</div>
-        <select style="width:100%;padding:5px 6px;border:1px solid #ddd;border-radius:5px;font-size:.7rem;background:#fff;" onchange="equAjouterEboueur(${eng.id},${eq.id},this.value);this.value='';">
+        <select class="equ-select-nom" style="width:100%;padding:5px 6px;border:1px solid #ddd;border-radius:5px;font-size:.95rem;background:#fff;" onchange="equAjouterEboueur(${eng.id},${eq.id},this.value);this.value='';">
           <option value="">+ Ajouter un éboueur...</option>${optsEmpEboueur}
         </select>
       </div>`;
@@ -21621,7 +21623,15 @@ function calcDur(){
   if(d1&&d2){const d=(new Date(d2)-new Date(d1))/(1000*60*60*24);document.getElementById('cDur').value=d>=0?d+1:'';}
 }
 function ajouterConge(){
-  const emp=document.getElementById('cEmp').value,type=document.getElementById('cType').value;
+  const emp=document.getElementById('cEmp').value;
+  let type=document.getElementById('cType').value;
+  // Si "Autre" est choisi, on utilise le texte libre saisi juste en dessous
+  // comme type réel — plus flexible pour les cas non prévus dans la liste.
+  if(type==='Autre'){
+    const texteLibre = document.getElementById('cTypeAutreTexte').value.trim();
+    if(!texteLibre){ toast('⚠️ Précise le type dans le champ "Préciser"','err'); return; }
+    type = texteLibre;
+  }
   const deb=document.getElementById('cDeb').value,fin=document.getElementById('cFin').value;
   const stat=document.getElementById('cStat').value,motif=document.getElementById('cMotif').value.trim();
   const dur=document.getElementById('cDur').value;
@@ -21634,6 +21644,8 @@ function ajouterConge(){
 function viderConge(){
   ['cEmp','cType','cDeb','cFin','cDur','cMotif'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('cStat').value='En attente';
+  document.getElementById('cTypeAutreTexte').value='';
+  document.getElementById('cTypeAutre').style.display='none';
 }
 function supprConge(id){
   if(!confirm('Supprimer ?'))return;
@@ -21685,8 +21697,12 @@ function afficherConges(liste){
   data.forEach((c,i)=>{
     const bc=c.stat==='Approuvé'?'bs-app':c.stat==='Refusé'?'bs-ref':c.stat==='Terminé'?'bs-fin':'bs-att';
     const isC=c.type&&c.type.includes('Contrat');
+    // c.emp est l'identifiant de l'employé (pas son nom) — on retrouve le nom
+    // à afficher ici plutôt que de montrer le numéro brut, illisible.
+    const empObj = employes.find(x=>String(x.id)===String(c.emp));
+    const nomAffiche = empObj ? `${empObj.nom} ${empObj.prenom}` : c.emp;
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${i+1}</td><td><b>${c.emp}</b></td>
+    tr.innerHTML=`<td>${i+1}</td><td><b style="font-size:.95em;">${nomAffiche}</b></td>
       <td>${isC?`<span class="bstat bs-con">${c.type}</span>`:c.type}</td>
       <td>${fmt(c.deb)}</td><td>${fmt(c.fin)}</td><td>${c.dur||'—'} j</td>
       <td><span class="bstat ${bc}">${c.stat}</span></td>
@@ -21724,7 +21740,16 @@ function renderCongeGaleriePhotos(){
     </div>`;
   }).join('');
 }
-function filtrerConges(){const q=document.getElementById('srchCon').value.toLowerCase();afficherConges(q?conges.filter(c=>(c.emp+c.type+c.stat).toLowerCase().includes(q)):conges);}
+function filtrerConges(){
+  const q=document.getElementById('srchCon').value.toLowerCase();
+  if(!q){ afficherConges(conges); return; }
+  // Recherche sur le NOM affiché (pas l'identifiant brut) en plus du type/statut.
+  afficherConges(conges.filter(c=>{
+    const empObj = employes.find(x=>String(x.id)===String(c.emp));
+    const nomAffiche = empObj ? `${empObj.nom} ${empObj.prenom}` : c.emp;
+    return (nomAffiche+c.type+c.stat).toLowerCase().includes(q);
+  }));
+}
 function updateStats(){
   document.getElementById('stTot').textContent=conges.length;
   document.getElementById('stApp').textContent=conges.filter(c=>c.stat==='Approuvé').length;
