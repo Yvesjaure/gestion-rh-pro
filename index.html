@@ -14434,7 +14434,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <div class="sec violet">🌴 Nouvelle demande</div>
       <div style="margin-top:6px;">
         <div class="cf"><span class="cl">Employé</span><select id="cEmp" class="ci" style="font-size:.95rem;"><option value="">-- Choisir --</option></select></div>
-        <div class="cf"><span class="cl">🔎</span><input type="text" id="cEmpRecherche" class="ci" placeholder="Rechercher un employé..." oninput="_filtrerOptionsSelect(this, document.getElementById('cEmp'))"></div>
+        <div class="cf"><span class="cl">🔎</span><input type="text" id="cEmpRecherche" class="ci" placeholder="Rechercher un employé..." oninput="_comboAfficherListe(this, document.getElementById('cEmp'))" onfocus="_comboAfficherListe(this, document.getElementById('cEmp'))"></div>
         <div class="cf"><span class="cl">Type</span>
           <select id="cType" class="ci" onchange="document.getElementById('cTypeAutre').style.display=(this.value==='Autre')?'block':'none';">
             <option value="">--</option><option>Congé Annuel</option><option>Congé Maladie</option>
@@ -14475,7 +14475,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <div class="sec violet">🪪 Options du badge</div>
       <div style="margin-top:6px;">
         <div class="cf"><span class="cl" style="background:var(--bleu);">Employé</span><select id="bdgEmp" class="ci" style="font-size:.95rem;" onchange="onBdgEmpChange()"><option value="">-- Choisir --</option></select></div>
-        <div class="cf"><span class="cl" style="background:var(--bleu);">🔎</span><input type="text" id="bdgEmpRecherche" class="ci" placeholder="Rechercher un employé..." oninput="_filtrerOptionsSelect(this, document.getElementById('bdgEmp'))"></div>
+        <div class="cf"><span class="cl" style="background:var(--bleu);">🔎</span><input type="text" id="bdgEmpRecherche" class="ci" placeholder="Rechercher un employé..." oninput="_comboAfficherListe(this, document.getElementById('bdgEmp'))" onfocus="_comboAfficherListe(this, document.getElementById('bdgEmp'))"></div>
         <div class="cf"><span class="cl" style="background:var(--bleu);">Organisation</span><input type="text" id="bdgOrg" class="ci" value="MON ENTREPRISE" oninput="_prevBadgeDebounce()"></div>
         <div class="cf"><span class="cl" style="background:var(--bleu);">Couleur</span>
           <select id="bdgClr" class="ci" onchange="onBdgClrChange();afficherCreationCouleur(this);">
@@ -16869,6 +16869,43 @@ function _filtrerOptionsSelect(inputRecherche, select){
     opt.hidden = !correspond;
     if(correspond && !premierVisible) premierVisible = opt;
   });
+}
+// Affiche sous un champ de recherche une liste cliquable des options d'un
+// select cible, filtrée selon ce qui est tapé — remplace le filtrage par
+// "hidden" sur les <option> (_filtrerOptionsSelect ci-dessus), qui ne
+// fonctionne pas de façon fiable sur mobile : le sélecteur natif du
+// téléphone (une fenêtre du système, pas un vrai menu web) ignore souvent cet
+// attribut et continue d'afficher toute la liste sans jamais se filtrer.
+// Cliquer un élément de cette liste met à jour le VRAI select (et déclenche
+// un vrai événement "change"), donc toute la logique métier déjà en place
+// (onchange=...) continue de fonctionner sans rien changer d'autre.
+function _comboAfficherListe(inputEl, selectEl){
+  if(!selectEl) return;
+  let liste = inputEl._comboListe;
+  if(!liste){
+    liste = document.createElement('div');
+    liste.style.cssText = 'position:absolute;left:0;right:0;background:#fff;border:1px solid #ddd;border-radius:6px;margin-top:2px;max-height:220px;overflow-y:auto;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,.15);';
+    const parent = inputEl.parentElement;
+    if(getComputedStyle(parent).position==='static') parent.style.position='relative';
+    parent.appendChild(liste);
+    inputEl._comboListe = liste;
+    inputEl.addEventListener('blur', ()=>setTimeout(()=>{ liste.innerHTML=''; }, 200));
+  }
+  const q = inputEl.value.trim().toLowerCase();
+  const options = Array.from(selectEl.options).filter(o=>o.value && (!q || o.textContent.toLowerCase().includes(q)));
+  if(!options.length){
+    liste.innerHTML = '<div style="padding:8px 10px;font-size:.75rem;color:#999;">Aucun résultat</div>';
+    return;
+  }
+  liste.innerHTML = options.slice(0,100).map(o=>`<div data-val="${o.value.replace(/"/g,'&quot;')}" style="padding:7px 10px;font-size:.78rem;cursor:pointer;border-bottom:1px solid #f0f0f0;">${o.textContent}</div>`).join('');
+  liste.onmousedown = (e)=>{
+    const item = e.target.closest('[data-val]');
+    if(!item) return;
+    selectEl.value = item.dataset.val;
+    selectEl.dispatchEvent(new Event('change'));
+    inputEl.value = '';
+    liste.innerHTML = '';
+  };
 }
 function toggleMenuActionsPresence(){
   const menu = document.getElementById('menuActionsPresence');
@@ -21174,7 +21211,7 @@ function renderEquipages(){
           <button type="button" onclick="_toggleRechercheSelect(this)" aria-label="Rechercher un chauffeur" style="width:38px;height:38px;flex-shrink:0;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;padding:0;">🔎</button>
         </div>
         <input type="text" placeholder="Rechercher un chauffeur..." style="display:none;width:100%;padding:7px 9px;border:1px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;margin-bottom:6px;"
-          oninput="_filtrerOptionsSelect(this, this.previousElementSibling.querySelector('select'))">
+          oninput="_comboAfficherListe(this, this.previousElementSibling.querySelector('select'))" onfocus="_comboAfficherListe(this, this.previousElementSibling.querySelector('select'))">
         <div style="font-size:.66rem;color:#555;margin-bottom:3px;">🧹 Éboueurs</div>
         <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px;">${eboueursTags||'<span style="font-size:.65rem;color:#999;font-style:italic;">Aucun pour l\'instant</span>'}</div>
         <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;">
@@ -21184,7 +21221,7 @@ function renderEquipages(){
           <button type="button" onclick="_toggleRechercheSelect(this)" aria-label="Rechercher un éboueur" style="width:38px;height:38px;flex-shrink:0;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;padding:0;">🔎</button>
         </div>
         <input type="text" placeholder="Rechercher un éboueur..." style="display:none;width:100%;padding:7px 9px;border:1px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;"
-          oninput="_filtrerOptionsSelect(this, this.previousElementSibling.querySelector('select'))">
+          oninput="_comboAfficherListe(this, this.previousElementSibling.querySelector('select'))" onfocus="_comboAfficherListe(this, this.previousElementSibling.querySelector('select'))">
       </div>`;
       return {segment:segmentHTML, detail:detailHTML};
     });
@@ -23454,12 +23491,13 @@ function _kioskBipScan(){
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    gain.gain.setValueAtTime(0.9, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+    // Bip aigu et court façon caisse de supermarché (onde carrée, pas sinusoïdale)
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(2800, ctx.currentTime);
+    gain.gain.setValueAtTime(0.5, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.09);
     osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.22);
+    osc.stop(ctx.currentTime + 0.09);
   }catch(e){ /* audio non disponible sur cet appareil — on ignore silencieusement */ }
 }
 async function _kioskOnBadgeDetected(id){
