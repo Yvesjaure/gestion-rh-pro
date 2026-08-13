@@ -14932,6 +14932,15 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     <div id="przEquListe"></div>
   </div>
   <div class="settings-card">
+    <div class="sec">👔 Comptes DRH</div>
+    <div style="font-size:.7rem;color:#666;margin:8px 0;">Ce compte voit Présence, Employés, Congés, Équipage et la Corbeille, avec accès complet — rien d'autre (pas de Paramètres, IA, Historique, réservés à l'admin).</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+      <input type="email" id="drhEmailInput" class="ci" placeholder="Email" style="max-width:240px;">
+      <button class="btn b-add" onclick="ajouterDRH()">➕ Ajouter</button>
+    </div>
+    <div id="drhListe"></div>
+  </div>
+  <div class="settings-card">
     <div class="sec">🖼️ Logo &amp; Nom de l'entreprise</div>
     <div style="margin-top:8px;display:flex;align-items:center;gap:12px;background:#fff;padding:10px;border-radius:6px;border:1.5px solid #ddd;">
       <div id="settingsLogoPreview" style="width:60px;height:60px;border-radius:6px;background:#eee;display:flex;align-items:center;justify-content:center;font-size:1.8rem;overflow:hidden;border:1.5px solid #ccc;">🏢</div>
@@ -15873,7 +15882,14 @@ function _creerQRDataURL(texte, tailleCiblePx, niveauCorrection){
 // texte encodé dans data-qr (utilisé aussi par l'impression du badge, pour
 // garantir exactement le même contenu que l'aperçu — et survoler le QR
 // affiche ce contenu exact, pratique pour vérifier).
-async function _genererQREmploye(targetEl, e, org, size){
+// "size" = résolution de la grille QR générée (en pixels, pour la netteté —
+// plus c'est grand, plus c'est net à l'impression). "tailleAffichage" (optionnel)
+// = taille RÉELLEMENT affichée/imprimée, en unité CSS (ex: "33mm") — si fourni,
+// remplace l'affichage en pixels par cette taille physique. Sans ça, une image
+// générée à haute résolution (ex: 340px) s'affichait à 340px CSS aussi, soit
+// environ 90mm à l'impression — largement plus grand que le badge de 54mm de
+// large, d'où le débordement du QR sur le PDF/l'impression.
+async function _genererQREmploye(targetEl, e, org, size, tailleAffichage){
   if(!targetEl) return false;
   let waited=0;
   while(typeof qrcode==='undefined' && waited<3000){
@@ -15887,7 +15903,10 @@ async function _genererQREmploye(targetEl, e, org, size){
   const texte = _buildQrEIDA1(e, org);
   const dataUrl = _creerQRDataURL(texte, size, 'M');
   if(dataUrl){
-    targetEl.innerHTML = `<img src="${dataUrl}" style="width:${size}px;height:${size}px;image-rendering:pixelated;" alt="QR">`;
+    const styleTaille = tailleAffichage
+      ? `width:${tailleAffichage};height:${tailleAffichage};`
+      : `width:${size}px;height:${size}px;`;
+    targetEl.innerHTML = `<img src="${dataUrl}" style="${styleTaille}image-rendering:pixelated;" alt="QR">`;
     targetEl.dataset.qr = encodeURIComponent(texte);
     targetEl.dataset.qrMode = 'eida1';
     targetEl.title = texte;
@@ -16254,6 +16273,17 @@ function _appliquerRestrictionsSuperviseur(){
     });
     setTimeout(()=>{ showPage('pgPrz'); }, 50);
   }
+  if(monRole==='drh'){
+    // Rôle DRH : accès COMPLET (lecture + écriture) à Présence, Employés,
+    // Congés et Équipage, PLUS la Corbeille. Paramètres, IA et Historique
+    // restent réservés à l'admin (l'utilisateur tient à garder ça pour lui,
+    // notamment pour gérer les mises à jour de l'app).
+    ['tabDash','tabBdg','tabMen','tabAbs','tabIA','tabParametres','menuHistorique'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.style.display='none';
+    });
+    setTimeout(()=>{ showPage('pgEmp'); }, 50);
+  }
 }
 // Pages que chaque rôle restreint a le droit de voir — utilisé par showPage()
 // comme véritable verrou (pas juste un masquage de bouton) : même un appel
@@ -16264,6 +16294,7 @@ const PAGES_AUTORISEES_PAR_ROLE = {
   lecteur_presence: ['pgPrz'],
   gestion_equipage: ['pgEqu'],
   presence_equipage: ['pgPrz','pgEqu'],
+  drh: ['pgPrz','pgEmp','pgCon','pgEqu'],
 };
 // Rend la page Présence en lecture seule : retire les boutons d'action
 // (Présent/Absent/Justifier/Supprimer) et les contrôles de la barre latérale
@@ -16427,6 +16458,41 @@ async function renderPresenceEquipage(){
       <div style="display:flex;justify-content:space-between;align-items:center;background:#F2F5F8;border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:.78rem;">
         <div><b>${u.email}</b> <span style="color:#666;">— Présence + Équipage, accès complet</span></div>
         <button class="btn" style="background:#e74c3c;color:#fff;font-size:.68rem;" onclick="retirerPresenceEquipage('${u.email}')">🗑️ Retirer</button>
+      </div>`).join('');
+  }catch(e){ box.innerHTML = '<p style="font-size:.72rem;color:#e74c3c;">Erreur de chargement.</p>'; }
+}
+async function ajouterDRH(){
+  const email = document.getElementById('drhEmailInput').value.trim().toLowerCase();
+  if(!email || !email.includes('@')){ toast('⚠️ Adresse email invalide','warn'); return; }
+  try{
+    const { error } = await supabaseRH.from('rh_utilisateurs').upsert({ email, role:'drh', zone:null }, {onConflict:'email'});
+    if(error) throw error;
+    document.getElementById('drhEmailInput').value='';
+    renderDRH();
+    toast(`✅ ${email} ajouté — accès DRH (Présence, Employés, Congés, Équipage)`,'ok');
+  }catch(e){ toast('❌ Erreur : '+e.message,'err'); }
+}
+async function retirerDRH(email){
+  if(!confirm(`Retirer les droits de ${email} ? Il redeviendra admin (accès complet).`))return;
+  try{
+    await supabaseRH.from('rh_utilisateurs').delete().eq('email', email);
+    renderDRH();
+    toast('✅ Retiré','ok');
+  }catch(e){ toast('❌ Erreur : '+e.message,'err'); }
+}
+async function renderDRH(){
+  const box = document.getElementById('drhListe');
+  if(!box) return;
+  try{
+    const { data } = await supabaseRH.from('rh_utilisateurs').select('email').eq('role','drh').order('email');
+    if(!data || !data.length){
+      box.innerHTML = '<p style="font-size:.72rem;color:#888;font-style:italic;">Aucun compte DRH pour l\'instant.</p>';
+      return;
+    }
+    box.innerHTML = data.map(u=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;background:#F2F5F8;border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:.78rem;">
+        <div><b>${u.email}</b> <span style="color:#666;">— DRH : Présence, Employés, Congés, Équipage, Corbeille</span></div>
+        <button class="btn" style="background:#e74c3c;color:#fff;font-size:.68rem;" onclick="retirerDRH('${u.email}')">🗑️ Retirer</button>
       </div>`).join('');
   }catch(e){ box.innerHTML = '<p style="font-size:.72rem;color:#e74c3c;">Erreur de chargement.</p>'; }
 }
@@ -16820,6 +16886,7 @@ async function rhOuvrirPanneauEmployes() {
             <option value="lecteur_presence">👁️ Lecture seule — Présence</option>
             <option value="gestion_equipage" ${emp.role_demande==='gestion_equipage'?'selected':''}>🚛 Équipage uniquement (planification)</option>
             <option value="presence_equipage" ${emp.role_demande==='presence_equipage'?'selected':''}>📅🚛 Présence + Équipage uniquement</option>
+            <option value="drh" ${emp.role_demande==='drh'?'selected':''}>👔 DRH — Présence + Employés + Congés + Équipage</option>
           </select>
           <select id="zoneApprobation_${i}" style="display:none;padding:5px;border-radius:5px;font-size:.72rem;">
             ${zones.map(z=>`<option value="${z}">${z}</option>`).join('')}
@@ -17025,7 +17092,7 @@ function showPage(id) {
   if (id==='pgMen'){renderMensuel();}
   if (id==='pgAbs'){renderAbsences();}
   if (id==='pgAI'){aiInit();}
-  if (id==='pgSet'){updateSettingsInfo();renderSuperviseurs();renderLecteursPresence();renderGestionEquipage();renderPresenceEquipage();_remplirLienDemandeAcces();}
+  if (id==='pgSet'){updateSettingsInfo();renderSuperviseurs();renderLecteursPresence();renderGestionEquipage();renderPresenceEquipage();renderDRH();_remplirLienDemandeAcces();}
 }
 
 // ==================== CENTRE D'ALERTES ====================
@@ -18266,6 +18333,15 @@ function triggerFile(id){document.getElementById(id).click();}
 function loadDoc(key,input){
   if(!input.files[0])return;
   const file=input.files[0];
+  // Formats acceptés pour un document RH : PDF ou image — jamais autre chose
+  // (un .exe, .zip ou script quelconque n'a rien à faire dans un dossier
+  // employé, et pourrait ne même pas s'afficher correctement ensuite).
+  const formatsAcceptes = ['application/pdf','image/jpeg','image/jpg','image/png','image/webp'];
+  if(!formatsAcceptes.includes(file.type)){
+    toast(`⚠️ Format non accepté pour "${file.name}" — seuls PDF et images (JPG/PNG/WEBP) sont autorisés.`,'err');
+    input.value='';
+    return;
+  }
   // Limite : 8 Mo max avant traitement
   if(file.size>8*1024*1024){
     toast(`⚠️ "${file.name}" est trop lourd (>8 Mo). Compressez le fichier.`,'err');
@@ -19451,7 +19527,7 @@ function _buildBadgePrint(){
   const wrap=document.getElementById('printBadgeContent');
   wrap.innerHTML = `<div class="print-badge-page">${rectoHTML}</div><div class="print-badge-page" style="break-before:page;page-break-before:always;">${versoHTML}</div>`;
   const qrEl=document.getElementById('bpcQR');
-  if(qrEl) _genererQREmploye(qrEl, e, org, 340);
+  if(qrEl) _genererQREmploye(qrEl, e, org, 340, '33mm');
   return true;
 }
 
@@ -21677,6 +21753,18 @@ function importJSON(input){
   reader.onload=e=>{
     try{
       const d=JSON.parse(e.target.result);
+      // Détecte les doublons d'ID DANS le fichier importé lui-même — deux
+      // employés avec le même identifiant casseraient les recherches
+      // (employes.find), le pointage et les badges (impossible de savoir
+      // lequel des deux est le bon). On avertit clairement au lieu de laisser
+      // l'import se faire silencieusement avec des données ambiguës.
+      const idsVus = new Map(); // id -> nombre d'occurrences
+      (d.employes||[]).forEach(e=>{ idsVus.set(e.id, (idsVus.get(e.id)||0)+1); });
+      const doublons = [...idsVus.entries()].filter(([,n])=>n>1).map(([id])=>id);
+      if(doublons.length){
+        const continuer = confirm(`⚠️ ${doublons.length} identifiant(s) en double trouvé(s) dans ce fichier (ex: ${doublons.slice(0,5).join(', ')}${doublons.length>5?'...':''}) — ça peut fausser les recherches, le pointage et les badges pour ces employés.\n\nContinuer quand même l'import ?`);
+        if(!continuer) return;
+      }
       // Garde-fou : un import remplace TOUT (employés, présences, congés...) sans
       // aucune sauvegarde automatique côté Supabase (le plan gratuit n'en fait
       // aucune) — donc AVANT d'écraser quoi que ce soit, on force une sauvegarde
