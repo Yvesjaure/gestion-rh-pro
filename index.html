@@ -12706,6 +12706,8 @@ input[type="file"]{display:none;}
 /* ========== TABLE ========== */
 .table-wrap{overflow-x:auto;border-radius:5px;box-shadow:var(--ombre);max-height:calc(100vh - 320px);min-height:300px;overflow-y:auto;}
 table{width:100%;border-collapse:collapse;font-size:.67rem;min-width:1000px;}
+#tableEmployes{font-size:.98rem;}
+#tableEmployes td,#tableEmployes th{padding:9px 10px;}
 thead tr{background:var(--or);color:#fff;position:sticky;top:0;z-index:2;}
 thead th{padding:5px 4px;text-align:left;font-weight:800;font-size:.63rem;white-space:nowrap;border-right:1px solid rgba(255,255,255,.25);}
 tbody tr{background:#fff;cursor:pointer;transition:background .12s;}
@@ -14431,7 +14433,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <button class="btn-sm" onclick="document.getElementById(&#39;srch&#39;).value=&#39;&#39;;filtrer()">✕</button>
     </div>
     <div class="table-wrap">
-      <table><thead><tr>
+      <table id="tableEmployes"><thead><tr>
         <th style="width:26px;"></th>
         <th>ID</th><th>Nom</th><th>Prénom</th><th>Fonction</th><th>Contrat</th><th>Photo</th>
       </tr></thead>
@@ -18294,6 +18296,22 @@ function getCurrentList(){
   return _filtrerParMaZone(pagFiltered !== null ? pagFiltered : employes);
 }
 
+// Petit avatar rond réutilisable pour le tableau Employés — vraie photo si
+// disponible, sinon initiales sur un fond coloré (couleur stable par employé,
+// dérivée de son identifiant, pour le reconnaître facilement d'un coup d'œil).
+function _avatarEmploye(e, taille){
+  taille = taille || 40;
+  if(e.photo){
+    return `<img src="${e.photo}" style="width:${taille}px;height:${taille}px;object-fit:cover;border-radius:50%;">`;
+  }
+  const palette = ['#0F6E56','#C8860A','#7C3AED','#1A3A5C','#991B1B','#166534','#9D174D','#0E7490'];
+  const idStr = String(e.id||'');
+  let hash = 0;
+  for(let i=0;i<idStr.length;i++){ hash = (hash*31 + idStr.charCodeAt(i)) >>> 0; }
+  const couleur = palette[hash % palette.length];
+  const initiales = `${(e.nom||'?')[0]}${(e.prenom||'?')[0]}`.toUpperCase();
+  return `<div style="width:${taille}px;height:${taille}px;border-radius:50%;background:${couleur};color:#fff;display:flex;align-items:center;justify-content:center;font-size:${Math.round(taille*0.38)}px;font-weight:800;">${initiales}</div>`;
+}
 function afficherTableau(liste){
   // Si on passe une liste, on l'utilise comme nouvelle liste filtrée
   if(liste !== undefined){
@@ -18315,7 +18333,7 @@ function afficherTableau(liste){
       <td><b>${e.nom}</b>${badgeParti}</td><td>${e.prenom}</td>
       <td>${e.fonc||''}</td>
       <td>${e.contrat?`<span class="tag" style="background:var(--bleu2);color:#fff;">${e.contrat}</span>`:''}</td>
-      <td>${e.photo?`<img src="${e.photo}" style="width:24px;height:30px;object-fit:cover;border-radius:2px;">`:'—'}</td>
+      <td>${_avatarEmploye(e, 40)}</td>
     `;
     tr.addEventListener('click',()=>{
       document.querySelectorAll('#tBody tr').forEach(r=>r.classList.remove('sel'));
@@ -19805,10 +19823,6 @@ function _buildFichePrint(){
         <div class="print-card-title">${secTitre(4,'🚨','Contact en cas d\'urgence')}</div>
         ${urgenceHTML}
       </div>
-      <div class="print-card print-full" style="text-align:center;">
-        <div style="font-size:7.5pt;font-weight:800;color:#1E3A5F;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">QR Code</div>
-        <div id="ficheQRGrand" style="display:inline-block;"></div>
-      </div>
     </div>
     <div class="print-signatures">
       <div class="print-sig">
@@ -19821,20 +19835,12 @@ function _buildFichePrint(){
       </div>
     </div>
     <div class="print-footer">
-      <span class="ft-l"><span class="ft-qr" id="ficheQR"></span>📄 ${docNum}</span>
+      <span class="ft-l">📄 ${docNum}</span>
       <span class="ft-c">Document confidentiel — Usage interne uniquement</span>
       <span class="ft-r">${dateNow}</span>
     </div>`;
 
   document.getElementById('printFicheContent').innerHTML = content;
-
-  // Générer le QR code juste après injection (petit dans le pied de page, grand dans la section Pointage)
-  setTimeout(()=>{
-    const qrEl=document.getElementById('ficheQR');
-    _genererQREmploye(qrEl, emp, _qrOrg, 60);
-    const qrElGrand=document.getElementById('ficheQRGrand');
-    if(qrElGrand) _genererQREmploye(qrElGrand, emp, _qrOrg, 220, '28mm');
-  },50);
 
   return true;
 }
