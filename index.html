@@ -12720,7 +12720,9 @@ tbody td{padding:3px 4px;border:1px solid #E8E8E8;white-space:nowrap;max-width:1
 .sep{border:none;border-top:2px solid #ccc;margin:5px 0;}
 
 /* ========== PAGE CONGÉS ========== */
-.two-col{display:grid;grid-template-columns:310px 1fr;gap:10px;}
+.two-col{display:grid;grid-template-columns:310px 22px 1fr;gap:8px;align-items:start;}
+.two-col.panneau-ferme{grid-template-columns:0px 22px 1fr;}
+.two-col>.panneau-repliable{overflow:hidden;transition:width .2s;min-width:0;}
 .card{background:var(--gris);border-radius:8px;padding:10px;box-shadow:var(--ombre);}
 .cf{display:flex;align-items:center;gap:5px;margin-bottom:5px;}
 .cl{background:var(--violet);color:#fff;font-size:.66rem;font-weight:700;padding:2px 7px;border-radius:3px;min-width:110px;text-align:right;white-space:nowrap;flex-shrink:0;}
@@ -12980,7 +12982,11 @@ tbody td{padding:3px 4px;border:1px solid #E8E8E8;white-space:nowrap;max-width:1
 }
 
 /* ========== PRÉSENCE ========== */
-.presence-layout{display:grid;grid-template-columns:300px 1fr;gap:10px;}
+.presence-layout{display:grid;grid-template-columns:300px 22px 1fr;gap:8px;align-items:start;}
+.presence-layout.panneau-ferme{grid-template-columns:0px 22px 1fr;}
+.presence-layout>.panneau-repliable{overflow:hidden;transition:width .2s;min-width:0;}
+.panneau-toggle-btn{width:22px;align-self:stretch;min-height:200px;border:1px solid #ddd;background:#fff;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#666;font-size:.75rem;}
+.panneau-toggle-btn:hover{background:#F2F5F8;}
 .pres-stat{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;}
 .pres-card{background:#fff;border-radius:6px;padding:8px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.1);}
 .pres-n{font-size:1.4rem;font-weight:900;}
@@ -14409,11 +14415,12 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     <div class="sec violet">🌴 En congé actuellement</div>
     <div id="congeGaleriePhotos" style="display:flex;flex-wrap:wrap;gap:16px;padding:12px 4px 4px;justify-content:flex-start;"></div>
   </div>
-  <div class="two-col">
-    <div class="card">
+  <div class="two-col" id="congeLayout">
+    <div class="card panneau-repliable" id="congePanneauCarte">
       <div class="sec violet">🌴 Nouvelle demande</div>
       <div style="margin-top:6px;">
         <div class="cf"><span class="cl">Employé</span><select id="cEmp" class="ci" style="font-size:.95rem;"><option value="">-- Choisir --</option></select></div>
+        <div class="cf"><span class="cl">🔎</span><input type="text" id="cEmpRecherche" class="ci" placeholder="Rechercher un employé..." oninput="_filtrerOptionsSelect(this, document.getElementById('cEmp'))"></div>
         <div class="cf"><span class="cl">Type</span>
           <select id="cType" class="ci" onchange="document.getElementById('cTypeAutre').style.display=(this.value==='Autre')?'block':'none';">
             <option value="">--</option><option>Congé Annuel</option><option>Congé Maladie</option>
@@ -14434,6 +14441,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
         <button class="btn b-clr" onclick="viderConge()">🧹 Vider</button>
       </div>
     </div>
+    <button class="panneau-toggle-btn" id="congeToggleBtn" onclick="togglePanneau('congeLayout','congeToggleBtn')" title="Replier/déplier le panneau">◀</button>
     <div class="card">
       <div class="sec violet">📋 Historique des congés &amp; contrats</div>
       <div class="search-bar" style="margin:6px 0;"><span>🔍</span><input type="text" id="srchCon" placeholder="Rechercher..." oninput="filtrerConges()"><button class="btn-sm" onclick="document.getElementById(&#39;srchCon&#39;).value=&#39;&#39;;filtrerConges()">✕</button></div>
@@ -14562,8 +14570,8 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     <div class="pres-card pres-absent"><div class="pres-n" id="pAbs">0</div><div class="pres-l">Absents</div></div>
     <div class="pres-card pres-justif"><div class="pres-n" id="pJus">0</div><div class="pres-l">Justifiés</div></div>
   </div>
-  <div class="presence-layout">
-    <div class="card">
+  <div class="presence-layout" id="przLayout">
+    <div class="card panneau-repliable" id="przPanneauCarte">
       <div class="sec vert">📅 Session de présence</div>
       <div style="margin-top:8px;">
         <div class="cf"><span class="cl" style="background:var(--vert);">Date</span><input type="date" id="przDate" class="ci"></div>
@@ -14608,6 +14616,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
         <div id="punchSyncMeta" style="font-size:.65rem;color:#666;margin-top:4px;"></div>
       </div>
     </div>
+    <button class="panneau-toggle-btn" id="przToggleBtn" onclick="togglePanneau('przLayout','przToggleBtn')" title="Replier/déplier le panneau">◀</button>
     <div class="card">
       <div class="sec vert" style="display:flex;justify-content:space-between;align-items:center;">
         <span>📋 Liste de présence</span>
@@ -16764,6 +16773,32 @@ document.addEventListener('click', (e)=>{
 // Menu "☰ Actions" de la page Présence — regroupe les boutons occasionnels
 // (impressions, export, historique...) derrière un seul bouton pour libérer
 // de la hauteur au tableau de présence.
+// Replie/déplie un panneau latéral (Session de présence, Nouvelle demande de
+// congé...) pour libérer de la place à la liste à côté — générique, réutilisé
+// sur plusieurs pages. La flèche du bouton s'inverse selon l'état.
+function togglePanneau(idLayout, idBouton){
+  const layout = document.getElementById(idLayout);
+  const btn = document.getElementById(idBouton);
+  if(!layout || !btn) return;
+  const ferme = layout.classList.toggle('panneau-ferme');
+  btn.textContent = ferme ? '▶' : '◀';
+}
+// Filtre les <option> d'un <select> selon le texte tapé dans un champ de
+// recherche à côté — utile pour les select à des centaines d'employés (Congés,
+// Équipage) où faire défiler une liste alphabétique brute est pénible. Ne
+// modifie jamais la LISTE réelle : cache juste les options qui ne
+// correspondent pas, garde la sélection actuelle si elle correspond toujours.
+function _filtrerOptionsSelect(inputRecherche, select){
+  if(!select) return;
+  const q = inputRecherche.value.trim().toLowerCase();
+  let premierVisible = null;
+  Array.from(select.options).forEach(opt=>{
+    if(!opt.value){ opt.hidden = false; return; } // garde toujours "-- Choisir --" / "+ Ajouter..."
+    const correspond = !q || opt.textContent.toLowerCase().includes(q);
+    opt.hidden = !correspond;
+    if(correspond && !premierVisible) premierVisible = opt;
+  });
+}
 function toggleMenuActionsPresence(){
   const menu = document.getElementById('menuActionsPresence');
   const fleche = document.getElementById('menuActionsPrzFleche');
@@ -20981,17 +21016,27 @@ function renderEquipages(){
           style="width:100%;padding:5px 6px;border:1px solid #ddd;border-radius:5px;font-size:.7rem;margin-bottom:6px;background:#fff;"
           onchange="equModifierChampEquipe(${eng.id},${eq.id},'zone',this.value)">
         <div style="font-size:.66rem;color:#555;margin-bottom:3px;">👨‍✈️ Chauffeur</div>
-        <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;">
           ${eq.chauffeurId ? _equPhotoRonde(eq.chauffeurId,26) : ''}
           <select class="equ-select-nom" style="flex:1;padding:5px 6px;border:1px solid #ddd;border-radius:5px;font-size:.95rem;background:#fff;" onchange="equModifierChampEquipe(${eng.id},${eq.id},'chauffeurId',this.value)">
             <option value="">— Choisir —</option>${optsEmpChauffeur}
           </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:6px;">
+          <span style="font-size:.72rem;">🔎</span>
+          <input type="text" placeholder="Rechercher un chauffeur..." style="flex:1;padding:4px 6px;border:1px solid #ddd;border-radius:5px;font-size:.7rem;background:#fff;"
+            oninput="_filtrerOptionsSelect(this, this.parentElement.previousElementSibling.querySelector('select'))">
         </div>
         <div style="font-size:.66rem;color:#555;margin-bottom:3px;">🧹 Éboueurs</div>
         <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px;">${eboueursTags||'<span style="font-size:.65rem;color:#999;font-style:italic;">Aucun pour l\'instant</span>'}</div>
         <select class="equ-select-nom" style="width:100%;padding:5px 6px;border:1px solid #ddd;border-radius:5px;font-size:.95rem;background:#fff;" onchange="equAjouterEboueur(${eng.id},${eq.id},this.value);this.value='';">
           <option value="">+ Ajouter un éboueur...</option>${optsEmpEboueur}
         </select>
+        <div style="display:flex;align-items:center;gap:4px;margin-top:4px;">
+          <span style="font-size:.72rem;">🔎</span>
+          <input type="text" placeholder="Rechercher un éboueur..." style="flex:1;padding:4px 6px;border:1px solid #ddd;border-radius:5px;font-size:.7rem;background:#fff;"
+            oninput="_filtrerOptionsSelect(this, this.parentElement.previousElementSibling)">
+        </div>
       </div>`;
       return {segment:segmentHTML, detail:detailHTML};
     });
@@ -22898,6 +22943,7 @@ async function startKiosk(){
   try{ if(localStorage.getItem('rh_kiosk_soleil')==='1') document.getElementById('kioskApp').classList.add('kiosk-soleil'); }catch(_){}
   await _kioskLoadCfg();
   _kioskChargerAnnuaire(); // annuaire public Supabase — fonctionne même sur un téléphone jamais connecté
+  _kioskFlusherPointagesEnAttente(); // rétablit tout pointage resté coincé depuis une session précédente
   fbInit(); // tentative silencieuse (ancien système, optionnel) — n'empêche pas le pointage si absent/échec
   _kioskShowStep('scan');
   _kioskMettreAJourHorloge(); // affiche tout de suite, sans attendre la 1ère seconde
@@ -23622,6 +23668,50 @@ function _kioskVerifierHoraire(service, action, nowDate){
 }
 
 // ---- Étape 4 : enregistrement dans "presences" ----
+// Écrit un pointage vers Supabase, en vérifiant RÉELLEMENT le résultat (voir
+// note plus bas — Supabase ne lève pas d'exception sur un refus d'écriture,
+// juste { error }), avec plusieurs tentatives avant d'abandonner.
+async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, tentatives=2){
+  for(let i=0;i<=tentatives;i++){
+    try{
+      const { error } = await supabaseRH.from('rh_pointages').upsert({
+        date_jour: dateEcriture, emp_id: cle, data: rec, modifie_le: now,
+      }, { onConflict: 'date_jour,emp_id' });
+      if(!error) return true;
+      console.warn(`Écriture du pointage refusée par Supabase (tentative ${i+1}/${tentatives+1}) :`, error);
+    }catch(e){
+      console.warn(`Écriture du pointage échouée (tentative ${i+1}/${tentatives+1}) :`, e);
+    }
+    if(i<tentatives) await new Promise(r=>setTimeout(r, 800));
+  }
+  return false;
+}
+// File d'attente locale (localStorage, survit à la fermeture de l'onglet) pour
+// les pointages qui n'ont pas pu être transmis malgré les tentatives — se
+// rétablit toute seule au prochain scan ou chargement du kiosque, sans action
+// manuelle. C'est ce qui garantit qu'un pointage existant en local finit
+// toujours par apparaître dans Présence, même après une coupure passagère.
+function _kioskAjouterPointageEnAttente(dateEcriture, cle, rec, now){
+  try{
+    const liste = JSON.parse(localStorage.getItem('rh_pointages_en_attente')||'[]');
+    liste.push({dateEcriture, cle, rec, now});
+    localStorage.setItem('rh_pointages_en_attente', JSON.stringify(liste));
+  }catch(e){ /* pas grave — la version locale (presences) reste correcte de toute façon */ }
+}
+async function _kioskFlusherPointagesEnAttente(){
+  let liste;
+  try{ liste = JSON.parse(localStorage.getItem('rh_pointages_en_attente')||'[]'); }catch(e){ return; }
+  if(!liste || !liste.length) return;
+  const restants = [];
+  for(const item of liste){
+    const ok = await _kioskEnvoyerPointageAvecReessai(item.dateEcriture, item.cle, item.rec, item.now, 1);
+    if(!ok) restants.push(item);
+  }
+  try{ localStorage.setItem('rh_pointages_en_attente', JSON.stringify(restants)); }catch(e){}
+  if(restants.length < liste.length){
+    console.log(`✅ ${liste.length-restants.length} pointage(s) en attente retransmis vers Supabase avec succès.`);
+  }
+}
 async function kioskValider(){
   const today = new Date().toISOString().slice(0,10);
   const nowDate = new Date();
@@ -23705,14 +23795,18 @@ async function kioskValider(){
 
   // Remonte immédiatement vers Supabase : c'est ce qui permet à l'admin (et à
   // tout autre téléphone) de voir ce pointage, même si ce téléphone n'a jamais
-  // été connecté à l'application.
-  try{
-    await supabaseRH.from('rh_pointages').upsert({
-      date_jour: dateEcriture, emp_id: cle, data: rec, modifie_le: now,
-    }, { onConflict: 'date_jour,emp_id' });
-  }catch(e){
-    console.warn('Écriture Supabase échouée (pointage local conservé) :',e);
-    _kioskSetMsg('⚠️ Pointage enregistré sur ce téléphone, mais pas encore transmis (connexion instable) — réessayez plus tard si besoin.','warn');
+  // été connecté à l'application. IMPORTANT : Supabase ne lève PAS d'exception
+  // sur un refus d'écriture (droits d'accès, etc.) — il renvoie juste
+  // { error }. Sans le vérifier explicitement, un refus passait totalement
+  // inaperçu : le pointage restait correct EN LOCAL (d'où "déjà pointé"
+  // affiché correctement sur ce même téléphone), mais n'atteignait jamais
+  // Supabase — donc jamais visible dans Présence côté admin. C'était la cause
+  // exacte du bug. Corrigé avec une vérification réelle + nouvelles tentatives
+  // automatiques, et une file d'attente qui se rétablit toute seule.
+  const succes = await _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now);
+  if(!succes){
+    _kioskAjouterPointageEnAttente(dateEcriture, cle, rec, now);
+    _kioskSetMsg('⚠️ Pointage enregistré sur ce téléphone, mais pas encore transmis — nouvelle tentative automatique au prochain scan ou chargement.','warn');
   }
 
   if(cloudRef){
