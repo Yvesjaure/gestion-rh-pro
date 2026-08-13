@@ -14435,7 +14435,16 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
         <th>ID</th><th>Nom</th><th>Prénom</th><th>Sexe</th><th>Naissance</th>
         <th>Adresse</th><th>Embauche</th><th>État Civil</th><th>Enf.</th>
         <th>Tel</th><th>Fonction</th><th>Contrat</th><th>N°CNI</th><th>N°CMU</th>
-        <th>Père</th><th>Mère</th><th>CNI</th><th>Extrait</th><th>Dossier</th><th>Photo</th>
+        <th>Père</th><th>Mère</th>
+        <th colspan="2" style="background:#0F6E56;color:#fff;text-align:center;">📞 Contact principal</th>
+        <th colspan="2" style="background:#C8860A;color:#fff;text-align:center;">📞 Contact d'urgence 2</th>
+        <th>CNI</th><th>Extrait</th><th>Dossier</th><th>Photo</th>
+      </tr>
+      <tr>
+        <th colspan="16"></th>
+        <th style="font-size:.65rem;">Lien</th><th style="font-size:.65rem;">Numéro</th>
+        <th style="font-size:.65rem;">Lien</th><th style="font-size:.65rem;">Numéro</th>
+        <th colspan="4"></th>
       </tr></thead>
       <tbody id="tBody"></tbody></table>
     </div>
@@ -18321,6 +18330,10 @@ function afficherTableau(liste){
       <td style="font-family:'Roboto Mono',monospace;">${e.cni||''}</td>
       <td style="font-family:'Roboto Mono',monospace;">${e.cmu||''}</td>
       <td>${e.pere||''}</td><td>${e.mere||''}</td>
+      <td style="font-size:.95rem;">${(e.urgence1&&e.urgence1.lien)||'—'}</td>
+      <td style="font-size:.95rem;white-space:nowrap;">${(e.urgence1&&e.urgence1.tel)?`📞 ${e.urgence1.tel}`:'—'}</td>
+      <td style="font-size:.95rem;">${(e.urgence2&&e.urgence2.lien)||'—'}</td>
+      <td style="font-size:.95rem;white-space:nowrap;">${(e.urgence2&&e.urgence2.tel)?`📞 ${e.urgence2.tel}`:'—'}</td>
       <td>${e.docCni?'<span class="tag tag-pdf">PDF</span>':'—'}</td>
       <td>${e.docExt?'<span class="tag tag-pdf">PDF</span>':'—'}</td>
       <td>${nb?`<span class="tag tag-nb">${nb}</span>`:'—'}</td>
@@ -23717,11 +23730,17 @@ async function _kioskOnBadgeDetected(id){
     })();
   }
   if(!_kiosk.emp){
-    // Vraiment introuvable après vérification directe — on retente une dernière
-    // fois un peu plus tard (le temps qu'une synchronisation en cours se termine),
-    // et le bouton de confirmation reste bloqué en attendant (voir kioskConfirmBadge).
-    setTimeout(async ()=>{
-      if(_kiosk.emp || _kiosk.empId!==id) return;
+    // Vraiment introuvable après vérification directe — on retente PLUSIEURS
+    // fois sur une fenêtre plus longue (le temps qu'une sauvegarde récente +
+    // sa synchronisation vers l'annuaire se terminent, ce qui peut prendre
+    // plus de 2 secondes) au lieu d'une seule tentative qui abandonnait trop
+    // vite. Le bouton de confirmation reste bloqué en attendant (voir
+    // kioskConfirmBadge).
+    let tentative = 0;
+    const NB_TENTATIVES = 6; // 6 × 3s = 18s de fenêtre totale
+    const essayerTrouverEmploye = async ()=>{
+      tentative++;
+      if(_kiosk.emp || _kiosk.empId!==id) return; // trouvé entre-temps, ou l'utilisateur a scanné autre chose
       try{
         const { data } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,sexe,statutEmploi,modifie_le');
         const trouve = (data||[]).find(a=>fmtMatricule(a.id)===id);
@@ -23729,9 +23748,17 @@ async function _kioskOnBadgeDetected(id){
           _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: '', fonc: trouve.fonc, site: trouve.site||'', sexe: trouve.sexe||'', statutEmploi: trouve.statutEmploi||'Actif' };
           _kioskRenderEmpCard();
           _kioskChargerPhotoAnnuaire(trouve.id);
+          return;
         }
-      }catch(e){ /* on retentera au prochain scan si besoin */ }
-    }, 2000);
+      }catch(e){ /* on retente quand même à la prochaine tentative */ }
+      if(tentative < NB_TENTATIVES && _kiosk.empId===id && !_kiosk.emp){
+        _kioskAfficherAttenteRecherche(tentative, NB_TENTATIVES);
+        setTimeout(essayerTrouverEmploye, 3000);
+      } else if(_kiosk.empId===id && !_kiosk.emp){
+        _kioskAfficherAttenteRecherche(NB_TENTATIVES, NB_TENTATIVES); // affiche le message d'échec final
+      }
+    };
+    setTimeout(essayerTrouverEmploye, 2000);
   }
   document.getElementById('kioskBadgeManual').value='';
   _kioskShowStep('confirmBadge');
@@ -23746,6 +23773,19 @@ function _kioskRenderEmpCard(){
   } else {
     box.innerHTML = `<div class="kiosk-emp-photo">⚠️</div><div><b style="font-size:1.15rem;">${_kiosk.empId}</b><br><span style="opacity:.85;font-size:.9rem;">Recherche en cours dans l'annuaire… patientez quelques secondes.</span></div>`;
   }
+}
+// Met à jour le message d'attente pendant les tentatives successives, pour
+// que ça reste visiblement actif (pas juste figé) — puis affiche un message
+// d'échec clair si toutes les tentatives sont épuisées, au lieu de laisser
+// l'écran bloqué sur "patientez" indéfiniment sans jamais rien dire de plus.
+function _kioskAfficherAttenteRecherche(tentative, total){
+  const box = document.getElementById('kioskEmpCard');
+  if(!box) return;
+  if(tentative >= total){
+    box.innerHTML = `<div class="kiosk-emp-photo">❌</div><div><b style="font-size:1.1rem;">${_kiosk.empId}</b><br><span style="opacity:.9;font-size:.85rem;color:#FCA5A5;">Employé introuvable dans l'annuaire après plusieurs tentatives.<br>Si cet employé vient d'être créé, patientez une minute puis rescannez.</span></div>`;
+    return;
+  }
+  box.innerHTML = `<div class="kiosk-emp-photo">⚠️</div><div><b style="font-size:1.15rem;">${_kiosk.empId}</b><br><span style="opacity:.85;font-size:.9rem;">Recherche en cours dans l'annuaire… tentative ${tentative}/${total}.</span></div>`;
 }
 
 // Détermine si ce scan correspondra à une arrivée ou un départ, et l'affiche
