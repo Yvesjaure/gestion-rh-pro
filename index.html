@@ -24090,16 +24090,47 @@ function _kioskVerifierHoraire(service, action, nowDate){
 // Écrit un pointage vers Supabase, en vérifiant RÉELLEMENT le résultat (voir
 // note plus bas — Supabase ne lève pas d'exception sur un refus d'écriture,
 // juste { error }), avec plusieurs tentatives avant d'abandonner.
+// Envoie le pointage à la fonction serveur de validation (Edge Function
+// "pointage") au lieu d'écrire directement dans Supabase — c'est ELLE qui
+// revérifie indépendamment la position GPS et le statut de l'employé, puis
+// écrit la ligne finale avec une clé qui n'existe jamais dans le navigateur.
+// En cas d'échec (fonction indisponible, panne réseau), on retombe sur
+// l'écriture directe habituelle — le pointage n'est JAMAIS bloqué pour
+// autant, seule la revérification serveur est alors absente pour cette
+// tentative-là (elle sera refaite normalement à la prochaine synchronisation
+// depuis un appareil qui a accès à la fonction).
 async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, tentatives=2){
+  const urlFonction = `${SUPABASE_URL}/functions/v1/pointage`;
   for(let i=0;i<=tentatives;i++){
     try{
-      const { error } = await supabaseRH.from('rh_pointages').upsert({
-        date_jour: dateEcriture, emp_id: cle, data: rec, modifie_le: now,
-      }, { onConflict: 'date_jour,emp_id' });
-      if(!error) return true;
-      console.warn(`Écriture du pointage refusée par Supabase (tentative ${i+1}/${tentatives+1}) :`, error);
+      const reponse = await fetch(urlFonction, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+        body: JSON.stringify({
+          empId: cle,
+          dateEcriture,
+          rec,
+          lat: _kiosk.geo ? _kiosk.geo.lat : null,
+          lng: _kiosk.geo ? _kiosk.geo.lng : null,
+          geoDisponible: !!_kiosk.geo,
+        }),
+      });
+      if(reponse.ok){
+        const resultat = await reponse.json().catch(()=>({}));
+        if(resultat && resultat.success) return true;
+      }
+      console.warn(`Fonction serveur de pointage refusée (tentative ${i+1}/${tentatives+1}) :`, reponse.status);
     }catch(e){
-      console.warn(`Écriture du pointage échouée (tentative ${i+1}/${tentatives+1}) :`, e);
+      console.warn(`Fonction serveur de pointage injoignable (tentative ${i+1}/${tentatives+1}) — repli sur l'écriture directe :`, e);
+      // Repli : la fonction serveur est peut-être temporairement indisponible
+      // (déploiement en cours, coupure ciblée) — on écrit quand même
+      // directement, pour ne jamais perdre ou bloquer un pointage réel.
+      try{
+        const { error } = await supabaseRH.from('rh_pointages').upsert({
+          date_jour: dateEcriture, emp_id: cle, data: rec, modifie_le: now,
+        }, { onConflict: 'date_jour,emp_id' });
+        if(!error) return true;
+      }catch(e2){ /* nouvelle tentative au tour suivant */ }
     }
     if(i<tentatives) await new Promise(r=>setTimeout(r, 800));
   }
@@ -24286,9 +24317,29 @@ async function kioskValider(){
   const noteProgramme = nonProgramme
     ? `<br><span style="color:#FCD34D;font-weight:800;font-size:1.05rem;">POINTAGE ACCEPTÉ — MERCI DE VOUS RENDRE À L'EXPLOITATION POUR VÉRIFIER VOTRE PROGRAMME.</span>`
     : '';
+  // Règle stricte : ne jamais donner l'IMPRESSION visuelle d'une confirmation
+  // serveur (coche verte pleine) tant que Supabase n'a pas réellement confirmé
+  // l'écriture — même si le pointage est déjà en sécurité en local et sera
+  // retransmis automatiquement (voir _kioskEnvoyerPointageAvecReessai plus haut).
+  // Cercle orange + texte "en attente" au lieu du ✓ vert quand ce n'est pas
+  // encore confirmé, pour rester honnête sur l'état réel.
+  const cercle = document.getElementById('kioskDoneCercle');
+  if(cercle){
+    if(succes){
+      cercle.style.background = ''; cercle.querySelector('span').textContent = '✓';
+      cercle.classList.remove('kiosk-done-attente');
+    } else {
+      cercle.style.background = 'linear-gradient(135deg,#D97706,#F59E0B)';
+      cercle.querySelector('span').textContent = '⏳';
+      cercle.classList.add('kiosk-done-attente');
+    }
+  }
+  const noteEnAttente = !succes
+    ? `<br><span style="color:#FCD34D;font-weight:800;font-size:1.05rem;">⏳ Pas encore confirmé par le serveur — enregistré sur cet appareil, transmission automatique en cours. Ne fermez pas l'application si possible.</span>`
+    : '';
   box.innerHTML = (action==='arrival'
-    ? `✅ Bienvenue <b>${name}</b><br>Arrivée enregistrée à ${hhmm}`
-    : `👋 Au revoir <b>${name}</b><br>Départ enregistré à ${hhmm}`) + noteZone + noteHoraire + noteProgramme;
+    ? `${succes?'✅':'⏳'} Bienvenue <b>${name}</b><br>Arrivée ${succes?'enregistrée':'notée'} à ${hhmm}`
+    : `${succes?'👋':'⏳'} Au revoir <b>${name}</b><br>Départ ${succes?'enregistré':'noté'} à ${hhmm}`) + noteEnAttente + noteZone + noteHoraire + noteProgramme;
   // Note : les notifications RH (retard/hors-zone/absence) sont désormais gérées
   // entièrement côté backend (voir /api/notify/check), pas déclenchées d'ici.
   // Pas de fermeture automatique : le message doit rester affiché le temps que
@@ -24296,8 +24347,8 @@ async function kioskValider(){
   // valide avec les boutons ci-dessous, pas un minuteur.
   const warnBox = document.getElementById('kioskDoneWarnBox');
   const okBtn = document.getElementById('kioskDoneOkBtn');
-  if(warnBox) warnBox.style.display = (noteZone || noteHoraire || noteProgramme) ? 'flex' : 'none';
-  if(okBtn) okBtn.style.display = (noteZone || noteHoraire || noteProgramme) ? 'inline-flex' : 'none';
+  if(warnBox) warnBox.style.display = (noteZone || noteHoraire || noteProgramme || !succes) ? 'flex' : 'none';
+  if(okBtn) okBtn.style.display = (noteZone || noteHoraire || noteProgramme || !succes) ? 'inline-flex' : 'none';
   _kioskShowStep('done');
 }
 function kioskAckDoneWarning(){
