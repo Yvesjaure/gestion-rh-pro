@@ -14933,7 +14933,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
   </div>
   <div class="settings-card">
     <div class="sec">👔 Comptes DRH</div>
-    <div style="font-size:.7rem;color:#666;margin:8px 0;">Ce compte voit Présence, Employés, Congés, Équipage et la Corbeille, avec accès complet — rien d'autre (pas de Paramètres, IA, Historique, réservés à l'admin).</div>
+    <div style="font-size:.7rem;color:#666;margin:8px 0;">Ce compte voit le Tableau de bord, Présence, Employés, Congés, Équipage et la Corbeille, avec accès complet — rien d'autre (pas de Paramètres, IA, Historique, réservés à l'admin).</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
       <input type="email" id="drhEmailInput" class="ci" placeholder="Email" style="max-width:240px;">
       <button class="btn b-add" onclick="ajouterDRH()">➕ Ajouter</button>
@@ -16274,11 +16274,11 @@ function _appliquerRestrictionsSuperviseur(){
     setTimeout(()=>{ showPage('pgPrz'); }, 50);
   }
   if(monRole==='drh'){
-    // Rôle DRH : accès COMPLET (lecture + écriture) à Présence, Employés,
-    // Congés et Équipage, PLUS la Corbeille. Paramètres, IA et Historique
-    // restent réservés à l'admin (l'utilisateur tient à garder ça pour lui,
-    // notamment pour gérer les mises à jour de l'app).
-    ['tabDash','tabBdg','tabMen','tabAbs','tabIA','tabParametres','menuHistorique'].forEach(id=>{
+    // Rôle DRH : accès COMPLET (lecture + écriture) à Tableau de bord,
+    // Présence, Employés, Congés, Équipage et la Corbeille. Paramètres, IA et
+    // Historique restent réservés à l'admin (l'utilisateur tient à garder ça
+    // pour lui, notamment pour gérer les mises à jour de l'app).
+    ['tabBdg','tabMen','tabAbs','tabIA','tabParametres','menuHistorique'].forEach(id=>{
       const el=document.getElementById(id);
       if(el) el.style.display='none';
     });
@@ -16294,7 +16294,7 @@ const PAGES_AUTORISEES_PAR_ROLE = {
   lecteur_presence: ['pgPrz'],
   gestion_equipage: ['pgEqu'],
   presence_equipage: ['pgPrz','pgEqu'],
-  drh: ['pgPrz','pgEmp','pgCon','pgEqu'],
+  drh: ['pgDash','pgPrz','pgEmp','pgCon','pgEqu'],
 };
 // Rend la page Présence en lecture seule : retire les boutons d'action
 // (Présent/Absent/Justifier/Supprimer) et les contrôles de la barre latérale
