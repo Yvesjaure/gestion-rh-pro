@@ -14432,19 +14432,8 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
     <div class="table-wrap">
       <table><thead><tr>
-        <th>ID</th><th>Nom</th><th>Prénom</th><th>Sexe</th><th>Naissance</th>
-        <th>Adresse</th><th>Embauche</th><th>État Civil</th><th>Enf.</th>
-        <th>Tel</th><th>Fonction</th><th>Contrat</th><th>N°CNI</th><th>N°CMU</th>
-        <th>Père</th><th>Mère</th>
-        <th colspan="2" style="background:#0F6E56;color:#fff;text-align:center;">📞 Contact principal</th>
-        <th colspan="2" style="background:#C8860A;color:#fff;text-align:center;">📞 Contact d'urgence 2</th>
-        <th>CNI</th><th>Extrait</th><th>Dossier</th><th>Photo</th>
-      </tr>
-      <tr>
-        <th colspan="16"></th>
-        <th style="font-size:.65rem;">Lien</th><th style="font-size:.65rem;">Numéro</th>
-        <th style="font-size:.65rem;">Lien</th><th style="font-size:.65rem;">Numéro</th>
-        <th colspan="4"></th>
+        <th style="width:26px;"></th>
+        <th>ID</th><th>Nom</th><th>Prénom</th><th>Fonction</th><th>Contrat</th><th>Photo</th>
       </tr></thead>
       <tbody id="tBody"></tbody></table>
     </div>
@@ -18321,22 +18310,11 @@ function afficherTableau(liste){
     : e.statutEmploi==='Suspendu' ? ` <span class="tag" style="background:#C8860A;color:#fff;">⏸️ Suspendu</span>`
     : e.statutEmploi==='Inactif' ? ` <span class="tag" style="background:#888;color:#fff;">💤 Inactif</span>` : '';
     tr.innerHTML=`
+      <td style="text-align:center;cursor:pointer;" onclick="event.stopPropagation();_toggleDetailsEmp(this)">▶</td>
       <td style="font-family:'Roboto Mono',monospace;font-weight:700;">${fmtMatricule(e.id)}</td>
-      <td><b>${e.nom}</b>${badgeParti}</td><td>${e.prenom}</td><td>${e.sexe||''}</td>
-      <td>${fmt(e.dateNais)}</td><td>${e.adr||''}</td><td>${fmt(e.emb)}</td>
-      <td>${e.etatCivil||''}</td><td>${e.hasEnf?`<span class="tag tag-nb">${e.nbEnf}</span>`:'Non'}</td>
-      <td>${e.tel||''}</td><td>${e.fonc||''}</td>
+      <td><b>${e.nom}</b>${badgeParti}</td><td>${e.prenom}</td>
+      <td>${e.fonc||''}</td>
       <td>${e.contrat?`<span class="tag" style="background:var(--bleu2);color:#fff;">${e.contrat}</span>`:''}</td>
-      <td style="font-family:'Roboto Mono',monospace;">${e.cni||''}</td>
-      <td style="font-family:'Roboto Mono',monospace;">${e.cmu||''}</td>
-      <td>${e.pere||''}</td><td>${e.mere||''}</td>
-      <td style="font-size:.95rem;">${(e.urgence1&&e.urgence1.lien)||'—'}</td>
-      <td style="font-size:.95rem;white-space:nowrap;">${(e.urgence1&&e.urgence1.tel)?`📞 ${e.urgence1.tel}`:'—'}</td>
-      <td style="font-size:.95rem;">${(e.urgence2&&e.urgence2.lien)||'—'}</td>
-      <td style="font-size:.95rem;white-space:nowrap;">${(e.urgence2&&e.urgence2.tel)?`📞 ${e.urgence2.tel}`:'—'}</td>
-      <td>${e.docCni?'<span class="tag tag-pdf">PDF</span>':'—'}</td>
-      <td>${e.docExt?'<span class="tag tag-pdf">PDF</span>':'—'}</td>
-      <td>${nb?`<span class="tag tag-nb">${nb}</span>`:'—'}</td>
       <td>${e.photo?`<img src="${e.photo}" style="width:24px;height:30px;object-fit:cover;border-radius:2px;">`:'—'}</td>
     `;
     tr.addEventListener('click',()=>{
@@ -18347,11 +18325,48 @@ function afficherTableau(liste){
       remplirForm(e);updateNavInfo();
     });
     tb.appendChild(tr);
+
+    // Ligne de détails, repliée par défaut — tout ce qui ne tenait pas dans
+    // la largeur de l'écran (Père/Mère, contacts d'urgence, CNI, CMU,
+    // documents...) sans avoir à faire défiler horizontalement.
+    const trDetail=document.createElement('tr');
+    trDetail.className='ligne-details';
+    trDetail.style.display='none';
+    trDetail.style.background='#F8FAFB';
+    trDetail.innerHTML=`<td colspan="7" style="padding:10px 16px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:6px 20px;font-size:.78rem;">
+        <div><span style="color:#888;">Sexe :</span> ${e.sexe||'—'}</div>
+        <div><span style="color:#888;">Naissance :</span> ${fmt(e.dateNais)||'—'}</div>
+        <div><span style="color:#888;">Adresse :</span> ${e.adr||'—'}</div>
+        <div><span style="color:#888;">Embauche :</span> ${fmt(e.emb)||'—'}</div>
+        <div><span style="color:#888;">État civil :</span> ${e.etatCivil||'—'}</div>
+        <div><span style="color:#888;">Enfants :</span> ${e.hasEnf?`${e.nbEnf} enfant(s)`:'Non'}</div>
+        <div><span style="color:#888;">Tel :</span> ${e.tel||'—'}</div>
+        <div><span style="color:#888;">N°CNI :</span> ${e.cni||'—'}</div>
+        <div><span style="color:#888;">N°CMU :</span> ${e.cmu||'—'}</div>
+        <div><span style="color:#888;">Père :</span> ${e.pere||'—'}</div>
+        <div><span style="color:#888;">Mère :</span> ${e.mere||'—'}</div>
+        <div><span style="color:#0F6E56;font-weight:700;">📞 Contact principal :</span> ${(e.urgence1&&e.urgence1.tel)?`${e.urgence1.lien} — ${e.urgence1.tel}`:'—'}</div>
+        <div><span style="color:#C8860A;font-weight:700;">📞 Contact urgence 2 :</span> ${(e.urgence2&&e.urgence2.tel)?`${e.urgence2.lien} — ${e.urgence2.tel}`:'—'}</div>
+        <div><span style="color:#888;">CNI (doc) :</span> ${e.docCni?'<span class="tag tag-pdf">PDF</span>':'—'}</div>
+        <div><span style="color:#888;">Extrait :</span> ${e.docExt?'<span class="tag tag-pdf">PDF</span>':'—'}</div>
+        <div><span style="color:#888;">Dossier :</span> ${nb?`${nb} fichier(s)`:'—'}</div>
+      </div>
+    </td>`;
+    tb.appendChild(trDetail);
   });
   document.getElementById('countLbl').textContent =
     data.length === employes.length
       ? `${data.length} enregistrement(s)`
       : `${data.length} résultat(s) sur ${employes.length}`;
+}
+// Déplie/replie la ligne de détails juste en dessous de la ligne cliquée.
+function _toggleDetailsEmp(cellule){
+  const ligneDetails = cellule.parentElement.nextElementSibling;
+  if(!ligneDetails || !ligneDetails.classList.contains('ligne-details')) return;
+  const ouvert = ligneDetails.style.display !== 'none';
+  ligneDetails.style.display = ouvert ? 'none' : 'table-row';
+  cellule.textContent = ouvert ? '▶' : '▼';
 }
 function fmt(d){if(!d)return'';const p=d.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d;}
 function filtrer(){
