@@ -12988,6 +12988,16 @@ tbody td{padding:3px 4px;border:1px solid #E8E8E8;white-space:nowrap;max-width:1
 .panneau-toggle-btn{width:22px;align-self:stretch;min-height:200px;border:1px solid #ddd;background:#fff;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#666;font-size:.75rem;}
 .panneau-toggle-btn:hover{background:#F2F5F8;}
 .pres-stat{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;}
+.dash-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.dash-stat-icone{display:flex;align-items:center;gap:10px;text-align:left;padding:12px;}
+.dash-stat-icone>span{font-size:1.5rem;flex-shrink:0;}
+.dash-stat-icone .pres-n{font-size:1.15rem;line-height:1.2;}
+.dash-stat-icone .pres-l{white-space:nowrap;}
+.dash-cards-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;align-items:start;}
+@media (max-width:900px){
+  .dash-stats-row{grid-template-columns:repeat(2,1fr);}
+  .dash-cards-row{grid-template-columns:1fr;}
+}
 .pres-card{background:#fff;border-radius:6px;padding:8px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.1);}
 .pres-n{font-size:1.4rem;font-weight:900;}
 .pres-l{font-size:.6rem;font-weight:700;color:#888;text-transform:uppercase;}
@@ -14223,13 +14233,13 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
 
 <!-- ======= PAGE EMPLOYÉS ======= -->
 <div class="page active" id="pgDash">
-  <div class="pres-stat">
-    <div class="pres-card pres-total"><div class="pres-n" id="dashEffectif">0</div><div class="pres-l">Employés actifs</div></div>
-    <div class="pres-card pres-present"><div class="pres-n" id="dashPresentPct">0%</div><div class="pres-l">Présence aujourd'hui</div></div>
-    <div class="pres-card pres-justif"><div class="pres-n" id="dashCongesAttente">0</div><div class="pres-l">Congés en attente</div></div>
-    <div class="pres-card pres-absent"><div class="pres-n" id="dashContratsExp">0</div><div class="pres-l">Contrats bientôt expirés</div></div>
+  <div class="dash-stats-row">
+    <div class="pres-card pres-total dash-stat-icone"><span>👥</span><div><div class="pres-n" id="dashEffectif">0</div><div class="pres-l">Employés actifs</div></div></div>
+    <div class="pres-card pres-present dash-stat-icone"><span>✅</span><div><div class="pres-n" id="dashPresentPct">0%</div><div class="pres-l">Présence aujourd'hui</div></div></div>
+    <div class="pres-card pres-justif dash-stat-icone"><span>🌴</span><div><div class="pres-n" id="dashCongesAttente">0</div><div class="pres-l">Congés en attente</div></div></div>
+    <div class="pres-card pres-absent dash-stat-icone"><span>📋</span><div><div class="pres-n" id="dashContratsExp">0</div><div class="pres-l">Contrats bientôt expirés</div></div></div>
   </div>
-  <div class="presence-layout">
+  <div class="dash-cards-row">
     <div class="card">
       <div class="sec vert">📅 Présence du jour</div>
       <div id="dashPresenceDetail" style="padding:10px 4px;font-size:.8rem;"></div>
@@ -14238,10 +14248,10 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <div class="sec violet">🌴 Demandes de congé en attente</div>
       <div id="dashCongesListe" style="padding:10px 4px;font-size:.8rem;"></div>
     </div>
-  </div>
-  <div class="card" style="margin-top:12px;">
-    <div class="sec" style="background:#B7950B;">📋 Contrats arrivant à échéance (30 prochains jours)</div>
-    <div id="dashContratsListe" style="padding:10px 4px;font-size:.8rem;"></div>
+    <div class="card">
+      <div class="sec" style="background:#B7950B;">📋 Contrats à échéance (30j)</div>
+      <div id="dashContratsListe" style="padding:10px 4px;font-size:.8rem;"></div>
+    </div>
   </div>
 </div>
 <div class="page" id="pgEmp">
@@ -14460,7 +14470,8 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     <div class="card">
       <div class="sec violet">🪪 Options du badge</div>
       <div style="margin-top:6px;">
-        <div class="cf"><span class="cl" style="background:var(--bleu);">Employé</span><select id="bdgEmp" class="ci" onchange="onBdgEmpChange()"><option value="">-- Choisir --</option></select></div>
+        <div class="cf"><span class="cl" style="background:var(--bleu);">Employé</span><select id="bdgEmp" class="ci" style="font-size:.95rem;" onchange="onBdgEmpChange()"><option value="">-- Choisir --</option></select></div>
+        <div class="cf"><span class="cl" style="background:var(--bleu);">🔎</span><input type="text" id="bdgEmpRecherche" class="ci" placeholder="Rechercher un employé..." oninput="_filtrerOptionsSelect(this, document.getElementById('bdgEmp'))"></div>
         <div class="cf"><span class="cl" style="background:var(--bleu);">Organisation</span><input type="text" id="bdgOrg" class="ci" value="MON ENTREPRISE" oninput="_prevBadgeDebounce()"></div>
         <div class="cf"><span class="cl" style="background:var(--bleu);">Couleur</span>
           <select id="bdgClr" class="ci" onchange="onBdgClrChange();afficherCreationCouleur(this);">
