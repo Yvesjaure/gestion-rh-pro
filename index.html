@@ -13518,6 +13518,17 @@ tbody td{padding:3px 4px;border:1px solid #E8E8E8;white-space:nowrap;max-width:1
   letter-spacing:.5px;
 }
 .print-card-title .ico{font-size:1rem;}
+.print-sec-num{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:18px;height:18px;border-radius:3px;
+  background:#1E3A5F;color:#fff;font-size:9pt;font-weight:900;
+  margin-right:6px;flex-shrink:0;
+}
+.print-full{grid-column:1/-1;}
+.print-obs-box{border:1px solid #d8dce2;border-radius:4px;min-height:60px;padding:8px;font-size:8.5pt;color:#333;white-space:pre-wrap;}
+.print-hist-table{width:100%;border-collapse:collapse;font-size:8pt;}
+.print-hist-table th{background:#F2F5F8;color:#1E3A5F;text-align:left;padding:4px 6px;border:1px solid #d8dce2;}
+.print-hist-table td{padding:4px 6px;border:1px solid #d8dce2;color:#555;height:18px;}
 .print-row{
   display:grid;
   grid-template-columns:110px 1fr;
@@ -14298,6 +14309,22 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
         <div class="fr"><span class="lbl">Nom du Père</span><input type="text" id="fPere" class="inp"></div>
         <div class="fr"><span class="lbl">Nom de la Mère</span><input type="text" id="fMere" class="inp"></div>
         <div class="fr"><span class="lbl">Tuteur / Autre</span><input type="text" id="fAutre" class="inp"></div>
+        <div style="font-size:.7rem;font-weight:800;color:#666;margin:10px 0 4px;">📞 Contact d'urgence 1</div>
+        <div class="fr"><span class="lbl" style="background:var(--vert);">Lien</span>
+          <select id="fUrgLien1" class="inp" onchange="_toggleNomUrgence(1)">
+            <option>Père</option><option>Mère</option><option>Frère</option><option>Sœur</option><option>Autre</option>
+          </select>
+        </div>
+        <div class="fr" id="fUrgNomLigne1" style="display:none;"><span class="lbl" style="background:var(--vert);">Nom et prénom</span><input type="text" id="fUrgNom1" class="inp" placeholder="Ex: Koffi Jean"></div>
+        <div class="fr"><span class="lbl" style="background:var(--vert);">Numéro</span><input type="tel" id="fUrgTel1" class="inp" placeholder="Ex: 07 58 97 86 87"></div>
+        <div style="font-size:.7rem;font-weight:800;color:#666;margin:10px 0 4px;">📞 Contact d'urgence 2</div>
+        <div class="fr"><span class="lbl" style="background:var(--vert);">Lien</span>
+          <select id="fUrgLien2" class="inp" onchange="_toggleNomUrgence(2)">
+            <option>Père</option><option>Mère</option><option>Frère</option><option>Sœur</option><option>Autre</option>
+          </select>
+        </div>
+        <div class="fr" id="fUrgNomLigne2" style="display:none;"><span class="lbl" style="background:var(--vert);">Nom et prénom</span><input type="text" id="fUrgNom2" class="inp" placeholder="Ex: Koffi Jean"></div>
+        <div class="fr"><span class="lbl" style="background:var(--vert);">Numéro</span><input type="tel" id="fUrgTel2" class="inp" placeholder="Optionnel"></div>
       </div>
 
       <!-- COL DROITE -->
@@ -14315,12 +14342,14 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
           </select>
         </div>
         <div class="fr"><span class="lbl">Statut</span>
-          <select id="fStatutEmploi" class="inp" onchange="document.getElementById('frDateDepart').style.display=this.value==='Parti'?'flex':'none';">
+          <select id="fStatutEmploi" class="inp" onchange="document.getElementById('frDateDepart').style.display=this.value==='Sorti'?'flex':'none';">
             <option value="Actif">✅ Actif</option>
-            <option value="Parti">🚪 Parti</option>
+            <option value="Suspendu">⏸️ Suspendu</option>
+            <option value="Inactif">💤 Inactif</option>
+            <option value="Sorti">🚪 Sorti</option>
           </select>
         </div>
-        <div class="fr" id="frDateDepart" style="display:none;"><span class="lbl">Date de départ</span><input type="date" id="fDateDepart" class="inp"></div>
+        <div class="fr" id="frDateDepart" style="display:none;"><span class="lbl">Date de sortie</span><input type="date" id="fDateDepart" class="inp"></div>
         <div class="fr"><span class="lbl">Date d'Embauche</span><input type="date" id="fEmb" class="inp"></div>
         <div class="fr"><span class="lbl">Fin de contrat (si CDD/Stage...)</span><input type="date" id="fFinContrat" class="inp"></div>
         <div class="fr"><span class="lbl">Salaire (FCFA)</span><input type="number" id="fSal" class="inp" placeholder="0"></div>
@@ -15902,7 +15931,7 @@ function _buildQrEIDA1(e, org){
     dateNais = isNaN(d) ? e.dateNais : d.toLocaleDateString('fr-FR');
   }
   dateNais = _champQR(dateNais);
-  const statut = _champQR((e.statutEmploi==='Parti' ? 'INACTIF' : 'ACTIF'));
+  const statut = _champQR((e.statutEmploi && e.statutEmploi!=='Actif' ? e.statutEmploi.toUpperCase() : 'ACTIF'));
   const fonction = _champQR((e.fonc||'').toUpperCase());
   const urgence = _champQR((companyUrgence||'').replace(/\s*\/\s*/g,'/'));
   return [QR_SIGNATURE_DEBUT, matricule, nom, prenom, dateNais, statut, fonction, urgence, QR_SIGNATURE].join(QR_SEP);
@@ -17300,7 +17329,7 @@ const SEUIL_ABSENCES = 2;  // nombre d'absences non justifiées dans le mois ava
 
 async function calculerAlertes(){
   const alertes = [];
-  const actifs = employes.filter(e=>e.statutEmploi!=='Parti');
+  const actifs = employes.filter(e=>e.statutEmploi!=='Sorti');
   const now = new Date();
   const y = now.getFullYear(), m = now.getMonth(), jourActuel = now.getDate();
 
@@ -17583,7 +17612,7 @@ function renderDashboard(){
   if(!presences[today]) presences[today]={};
 
   // Effectif
-  document.getElementById('dashEffectif').textContent = employes.filter(e=>e.statutEmploi!=='Parti').length;
+  document.getElementById('dashEffectif').textContent = employes.filter(e=>e.statutEmploi!=='Sorti').length;
 
   // Présence du jour
   let pres=0, abs=0, just=0, nonSaisi=0;
@@ -17749,13 +17778,13 @@ async function rhSyncAnnuaire(){
   try{
     // Un employé "Parti" ne doit plus pouvoir badger — on le retire de l'annuaire
     // public au lieu de le publier, et on supprime toute entrée existante pour lui.
-    const actifs = employes.filter(e => e.statutEmploi !== 'Parti');
-    const partis = employes.filter(e => e.statutEmploi === 'Parti');
+    const actifs = employes.filter(e => e.statutEmploi !== 'Sorti');
+    const partis = employes.filter(e => e.statutEmploi === 'Sorti');
 
     const lignes = actifs.map(e => ({
       id: String(e.id), // identifiant brut — doit correspondre exactement aux clés utilisées dans "presences"
       nom: e.nom || '', prenom: e.prenom || '', photo: e.photo || '', fonc: e.fonc || '', site: e.site || '',
-      serviceHabituel: e.serviceHabituel || 'jour',
+      serviceHabituel: e.serviceHabituel || 'jour', sexe: e.sexe || '', statutEmploi: e.statutEmploi || 'Actif',
       modifie_le: new Date().toISOString(),
     }));
     // IMPORTANT : Supabase ne lève pas d'exception sur un échec (RLS refusée,
@@ -18134,10 +18163,28 @@ function lireForm(){
     pere:document.getElementById('fPere').value.trim(),
     mere:document.getElementById('fMere').value.trim(),
     autre:document.getElementById('fAutre').value.trim(),
+    urgence1: {
+      lien: document.getElementById('fUrgLien1').value,
+      nom: document.getElementById('fUrgNom1').value.trim(),
+      tel: document.getElementById('fUrgTel1').value.trim(),
+    },
+    urgence2: {
+      lien: document.getElementById('fUrgLien2').value,
+      nom: document.getElementById('fUrgNom2').value.trim(),
+      tel: document.getElementById('fUrgTel2').value.trim(),
+    },
     hasEnf,nbEnf:hasEnf?document.getElementById('fNbEnf').value:0,
     photo:currentPhoto,docCni:currentDocs.cni,docExt:currentDocs.ext,docAut:currentDocs.aut,
     dossier:[]
   };
+}
+// Le champ "Nom et prénom" du contact d'urgence n'est utile que si le lien
+// choisi est "Autre" (pour Père/Mère/Frère/Sœur, le nom est déjà connu
+// ailleurs dans la fiche ou implicite) — cache/affiche cette ligne en
+// conséquence, pour le contact 1 ou 2 selon le numéro passé.
+function _toggleNomUrgence(n){
+  const lien = document.getElementById('fUrgLien'+n).value;
+  document.getElementById('fUrgNomLigne'+n).style.display = (lien==='Autre') ? 'flex' : 'none';
 }
 function remplirForm(e){
   document.getElementById('fID').value=e.id||'';
@@ -18155,7 +18202,7 @@ function remplirForm(e){
   document.getElementById('fFinContrat').value=e.finContrat||'';
   document.getElementById('fStatutEmploi').value=e.statutEmploi||'Actif';
   document.getElementById('fDateDepart').value=e.dateDepart||'';
-  document.getElementById('frDateDepart').style.display=(e.statutEmploi==='Parti')?'flex':'none';
+  document.getElementById('frDateDepart').style.display=(e.statutEmploi==='Sorti')?'flex':'none';
   document.getElementById('fSal').value=e.sal||'';
   document.getElementById('fDept').value=e.dept||'';
   document.getElementById('fSite').value=e.site||'';
@@ -18167,6 +18214,13 @@ function remplirForm(e){
   document.getElementById('fPere').value=e.pere||'';
   document.getElementById('fMere').value=e.mere||'';
   document.getElementById('fAutre').value=e.autre||'';
+  document.getElementById('fUrgLien1').value=(e.urgence1 && e.urgence1.lien) || 'Père';
+  document.getElementById('fUrgNom1').value=(e.urgence1 && e.urgence1.nom) || '';
+  document.getElementById('fUrgTel1').value=(e.urgence1 && e.urgence1.tel) || '';
+  document.getElementById('fUrgLien2').value=(e.urgence2 && e.urgence2.lien) || 'Père';
+  document.getElementById('fUrgNom2').value=(e.urgence2 && e.urgence2.nom) || '';
+  document.getElementById('fUrgTel2').value=(e.urgence2 && e.urgence2.tel) || '';
+  _toggleNomUrgence(1); _toggleNomUrgence(2);
   setEnfants(e.hasEnf||false);
   if(e.hasEnf)document.getElementById('fNbEnf').value=e.nbEnf||0;
   currentPhoto=e.photo||''; afficherPhoto(currentPhoto);
@@ -18176,7 +18230,10 @@ function remplirForm(e){
   document.getElementById('dosCount').textContent=`${nb} fichier(s)`;
 }
 function viderForm(){
-  ['fID','fNom','fPrenom','fDateNais','fLieuNais','fAdr','fEmb','fTel','fFonc','fSal','fDept','fSite','fEmail','fNat','fCNI','fCMU','fPere','fMere','fAutre','fFinContrat','fDateDepart'].forEach(i=>document.getElementById(i).value='');
+  ['fID','fNom','fPrenom','fDateNais','fLieuNais','fAdr','fEmb','fTel','fFonc','fSal','fDept','fSite','fEmail','fNat','fCNI','fCMU','fPere','fMere','fAutre','fFinContrat','fDateDepart','fUrgNom1','fUrgTel1','fUrgNom2','fUrgTel2'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('fUrgLien1').value='Père';
+  document.getElementById('fUrgLien2').value='Père';
+  _toggleNomUrgence(1); _toggleNomUrgence(2);
   ['fSexe','fEtatCivil','fContrat'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('fStatutEmploi').value='Actif';
   document.getElementById('fServiceHabituel').value='jour';
@@ -18249,9 +18306,11 @@ function afficherTableau(liste){
   const tb=document.getElementById('tBody');tb.innerHTML='';
   data.forEach((e,i)=>{
     const tr=document.createElement('tr');
-    if(e.statutEmploi==='Parti') tr.style.opacity='.5';
+    if(e.statutEmploi==='Sorti') tr.style.opacity='.5'; else if(e.statutEmploi==='Suspendu'||e.statutEmploi==='Inactif') tr.style.opacity='.75';
     const nb=(e.dossier||[]).length;
-    const badgeParti=e.statutEmploi==='Parti'?` <span class="tag" style="background:#6B7280;color:#fff;" title="Parti le ${fmt(e.dateDepart)||'—'}">🚪 Parti</span>`:'';
+    const badgeParti = e.statutEmploi==='Sorti' ? ` <span class="tag" style="background:#6B7280;color:#fff;" title="Sorti le ${fmt(e.dateDepart)||'—'}">🚪 Sorti</span>`
+    : e.statutEmploi==='Suspendu' ? ` <span class="tag" style="background:#C8860A;color:#fff;">⏸️ Suspendu</span>`
+    : e.statutEmploi==='Inactif' ? ` <span class="tag" style="background:#888;color:#fff;">💤 Inactif</span>` : '';
     tr.innerHTML=`
       <td style="font-family:'Roboto Mono',monospace;font-weight:700;">${fmtMatricule(e.id)}</td>
       <td><b>${e.nom}</b>${badgeParti}</td><td>${e.prenom}</td><td>${e.sexe||''}</td>
@@ -18926,7 +18985,7 @@ function apercuBadge(empId){
 function renderTousLesBadges(){
   const box=document.getElementById('bdgTousListe');
   if(!box)return;
-  const actifs = employes.filter(e=>e.statutEmploi!=='Parti');
+  const actifs = employes.filter(e=>e.statutEmploi!=='Sorti');
   if(!actifs.length){
     box.innerHTML='<p style="grid-column:1/-1;text-align:center;color:#888;font-style:italic;padding:20px 0;">Aucun employé pour l\'instant.</p>';
     return;
@@ -19584,15 +19643,7 @@ function _buildFichePrint(){
     ? `<span class="print-salary">${Number(emp.sal).toLocaleString('fr-FR')} FCFA</span>`
     : '—';
 
-  // ====== Documents avec icône check ======
-  const docLine=(label,ok)=>`
-    <div class="print-doc-line">
-      <span class="check ${ok?'ok':'no'}">${ok?'✓':'✕'}</span>
-      <span>${label}</span>
-    </div>`;
-  const nbDocs=(emp.dossier||[]).length;
-
-  // ====== Lignes du bloc "Informations personnelles" ======
+  // ====== Lignes du bloc "Informations personnelles" (section 1 — Identification) ======
   const persoRows=[
     ['Matricule', `<b style="font-family:monospace;color:#1E3A5F;">${fmtMatricule(emp.id)}</b>`],
     ['Nom',          (emp.nom||'').toUpperCase() || '—'],
@@ -19602,37 +19653,84 @@ function _buildFichePrint(){
     ['Lieu de naiss.', emp.lieuNais || '—'],
     ['Nationalité',  emp.nat || '—'],
     ['État civil',   emp.etatCivil || '—'],
-    ['N° CNI',       emp.cni || '—'],
-    ['N° CMU',       emp.cmu || '—'],
     ['Enfants',      emp.hasEnf ? `Oui — ${emp.nbEnf||0} enfant(s)` : 'Non'],
-    ['Père',         emp.pere || '—'],
-    ['Mère',         emp.mere || '—'],
   ];
   const persoHTML = persoRows.map(([l,v])=>`
     <div class="print-row"><span class="print-lbl">${l}</span><span class="print-val">${v}</span></div>
   `).join('');
 
-  // ====== Lignes du bloc "Informations professionnelles" ======
+  // ====== Lignes du bloc "Informations professionnelles" (section 2) ======
+  const statutCouleur = {Actif:'#0F6E56',Suspendu:'#B7950B',Inactif:'#666',Sorti:'#991B1B'}[emp.statutEmploi||'Actif']||'#0F6E56';
+  const statutHTML = `<span style="color:${statutCouleur};font-weight:800;">${(emp.statutEmploi||'Actif')}</span>`;
   const proRows=[
-    ['Adresse',      emp.adr || '—'],
-    ['Téléphone',    emp.tel || '—'],
     ['Fonction',     fonction],
+    ['Service/Dépt.', emp.dept || '—'],
+    ['Site',         emp.site || '—'],
     ['Contrat',      contratBadge],
     ["Embauche",     fmt(emp.emb) || '—'],
-    ['Service',      emp.dept || '—'],
+    ['Fin contrat',  fmt(emp.finContrat) || '—'],
+    ['Statut',       statutHTML],
     ['Salaire',      salaireHTML],
   ];
   const proHTML = proRows.map(([l,v])=>`
     <div class="print-row"><span class="print-lbl">${l}</span><span class="print-val">${v}</span></div>
   `).join('');
 
-  // ====== Bloc Documents ======
+  // ====== Section 3 — Coordonnées ======
+  const coordRows=[
+    ['Téléphone',    emp.tel || '—'],
+    ['Adresse',      emp.adr || '—'],
+    ['Email',        emp.email || '—'],
+    ['N° CNI',       emp.cni || '—'],
+    ['N° CMU',       emp.cmu || '—'],
+  ];
+  const coordHTML = coordRows.map(([l,v])=>`
+    <div class="print-row"><span class="print-lbl">${l}</span><span class="print-val">${v}</span></div>
+  `).join('');
+
+  // ====== Section 4 — Contact en cas d'urgence (les 2 contacts remplis) ======
+  const nomUrgence = (u) => (u.lien==='Autre' ? (u.nom||'—') : u.lien);
+  const urgenceRows=[];
+  [emp.urgence1, emp.urgence2].forEach((u,i)=>{
+    if(u && u.tel){
+      urgenceRows.push([`Contact ${i+1}`, `${nomUrgence(u)} — ${u.tel}`]);
+    }
+  });
+  if(!urgenceRows.length) urgenceRows.push(['Contact', '—']);
+  if(emp.pere) urgenceRows.push(['Père', emp.pere]);
+  if(emp.mere) urgenceRows.push(['Mère', emp.mere]);
+  const urgenceHTML = urgenceRows.map(([l,v])=>`
+    <div class="print-row"><span class="print-lbl">${l}</span><span class="print-val">${v}</span></div>
+  `).join('');
+
+  // ====== Section 5 — Informations de pointage (statut du jour) ======
+  const todayKey = _dateCIAujourdhui();
+  const recJour = (presences[todayKey]||{})[emp.id];
+  const statutPointage = recJour ? (recJour.statut||'—') : 'Pas encore pointé';
+  const pointageRows=[
+    ['Mode',         'QR Code'],
+    ['Dernier pointage', recJour && recJour.punch_in ? new Date(recJour.punch_in).toLocaleString('fr-FR',{timeZone:'Africa/Abidjan'}) : '—'],
+    ['Présence du jour', statutPointage],
+  ];
+  const pointageHTML = pointageRows.map(([l,v])=>`
+    <div class="print-row"><span class="print-lbl">${l}</span><span class="print-val">${v}</span></div>
+  `).join('');
+
+  // ====== Documents avec icône check (section 7) ======
+  const docLine=(label,ok)=>`
+    <div class="print-doc-line">
+      <span class="check ${ok?'ok':'no'}">${ok?'✓':'✕'}</span>
+      <span>${label}</span>
+    </div>`;
+  const nbDocs=(emp.dossier||[]).length;
   const docsHTML = `
-    ${docLine('Carte CNI', !!emp.docCni)}
+    ${docLine('Pièce d\'identité (CNI)', !!emp.docCni)}
+    ${docLine('Photo d\'identité', !!emp.photo)}
+    ${docLine('Contrat', nbDocs>0)}
     ${docLine('Extrait de naissance', !!emp.docExt)}
     ${docLine('Autres documents', !!emp.docAut)}
     <div class="print-doc-line" style="margin-top:5px;color:#1E3A5F;">
-      <span style="font-weight:800;font-size:8.5pt;text-transform:uppercase;letter-spacing:.4px;">📁 Dossier : ${nbDocs} fichier(s)</span>
+      <span style="font-weight:800;font-size:8.5pt;text-transform:uppercase;letter-spacing:.4px;">📁 Dossier complet : ${nbDocs} fichier(s)</span>
     </div>
   `;
 
@@ -19647,7 +19745,9 @@ function _buildFichePrint(){
     day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'
   });
 
-  // ====== Construction HTML finale ======
+  const secTitre=(n,ico,texte)=>`<span class="print-sec-num">${n}</span><span class="ico">${ico}</span> ${texte}`;
+
+  // ====== Construction HTML finale — 9 sections numérotées ======
   const content=`
     ${companyLogo ? `<img src="${companyLogo}" class="print-watermark" alt="">` : ''}
     <div class="print-header">
@@ -19662,16 +19762,38 @@ function _buildFichePrint(){
     <div style="text-align:center;background:#F2F5F8;border-radius:5px;padding:4px;font-size:8.5pt;color:#555;margin:6px 0 10px;position:relative;z-index:1;">Réf. ${fmtMatricule(emp.id)}-${new Date().getFullYear()} · Édité le ${new Date().toLocaleDateString('fr-FR')}</div>
     <div class="print-body">
       <div class="print-card">
-        <div class="print-card-title"><span class="ico">📋</span> Informations personnelles</div>
+        <div class="print-card-title">${secTitre(1,'📋','Identification')}</div>
         ${persoHTML}
       </div>
       <div class="print-card">
-        <div class="print-card-title"><span class="ico">💼</span> Informations professionnelles</div>
+        <div class="print-card-title">${secTitre(2,'💼','Informations professionnelles')}</div>
         ${proHTML}
-        <div style="margin-top:10px;padding-top:8px;border-top:2px solid #f0f4f8;">
-          <div style="font-size:8.5pt;font-weight:800;color:#1E3A5F;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">📂 Documents</div>
-          ${docsHTML}
+      </div>
+      <div class="print-card">
+        <div class="print-card-title">${secTitre(3,'📞','Coordonnées')}</div>
+        ${coordHTML}
+      </div>
+      <div class="print-card">
+        <div class="print-card-title">${secTitre(4,'🚨','Contact en cas d\'urgence')}</div>
+        ${urgenceHTML}
+      </div>
+      <div class="print-card print-full" style="display:grid;grid-template-columns:1fr auto;gap:14px;align-items:start;">
+        <div>
+          <div class="print-card-title">${secTitre(5,'📱','Informations de pointage')}</div>
+          ${pointageHTML}
         </div>
+        <div style="text-align:center;">
+          <div style="font-size:7.5pt;font-weight:800;color:#1E3A5F;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;">QR Code</div>
+          <div id="ficheQRGrand"></div>
+        </div>
+      </div>
+      <div class="print-card print-full">
+        <div class="print-card-title">${secTitre(6,'📂','Documents associés')}</div>
+        ${docsHTML}
+      </div>
+      <div class="print-card print-full">
+        <div class="print-card-title">${secTitre(7,'📝','Observations')}</div>
+        <div class="print-obs-box">${(emp.observations||'').trim() || ' '}</div>
       </div>
     </div>
     <div class="print-signatures">
@@ -19692,10 +19814,12 @@ function _buildFichePrint(){
 
   document.getElementById('printFicheContent').innerHTML = content;
 
-  // Générer le QR code juste après injection
+  // Générer le QR code juste après injection (petit dans le pied de page, grand dans la section Pointage)
   setTimeout(()=>{
     const qrEl=document.getElementById('ficheQR');
     _genererQREmploye(qrEl, emp, _qrOrg, 60);
+    const qrElGrand=document.getElementById('ficheQRGrand');
+    if(qrElGrand) _genererQREmploye(qrElGrand, emp, _qrOrg, 220, '28mm');
   },50);
 
   return true;
@@ -19793,7 +19917,7 @@ function _buildBadgePrint(){
 // être énorme et peu pratique à gérer (planches à découper) avec des centaines
 // d'employés. Pré-remplit avec la plage complète, modifiable.
 function ouvrirPlageBadges(){
-  const actifs = employes.filter(e=>e.statutEmploi!=='Parti');
+  const actifs = employes.filter(e=>e.statutEmploi!=='Sorti');
   if(!actifs.length){ toast('⚠️ Aucun employé actif à imprimer','warn'); return; }
   document.getElementById('plageDebut').value = 1;
   document.getElementById('plageFin').value = actifs.length;
@@ -19801,7 +19925,7 @@ function ouvrirPlageBadges(){
   document.getElementById('mPlageBadges').style.display = 'flex';
 }
 function lancerImpressionPlageBadges(){
-  const actifs = employes.filter(e=>e.statutEmploi!=='Parti');
+  const actifs = employes.filter(e=>e.statutEmploi!=='Sorti');
   let debut = parseInt(document.getElementById('plageDebut').value,10);
   let fin = parseInt(document.getElementById('plageFin').value,10);
   // Garde-fou : valeurs incohérentes ou impossibles ramenées à des bornes valides
@@ -19814,7 +19938,7 @@ function lancerImpressionPlageBadges(){
   imprimerTousLesBadges(debut, fin);
 }
 async function imprimerTousLesBadges(debutPlage, finPlage){
-  let actifs = employes.filter(e=>e.statutEmploi!=='Parti');
+  let actifs = employes.filter(e=>e.statutEmploi!=='Sorti');
   if(!actifs.length){ toast('⚠️ Aucun employé actif à imprimer','warn'); return; }
   // Plage optionnelle (1-indexée, comme affiché à l'utilisateur) — si absente,
   // comportement inchangé : tout le monde.
@@ -20637,7 +20761,7 @@ function exporterPaieExcel(){
 
   const dept=document.getElementById('menDept').value;
   let list=dept?employes.filter(e=>e.dept===dept):employes;
-  list=list.filter(e=>e.statutEmploi!=='Parti'); // un employé parti n'est plus à payer
+  list=list.filter(e=>e.statutEmploi!=='Sorti'); // un employé sorti n'est plus à payer
 
   if(!list.length){ toast('⚠️ Aucun employé actif à exporter','warn'); return; }
 
@@ -21599,7 +21723,7 @@ async function verifierAbsencesAutomatiques(){
     // complète par employé, ~1000× plus lent avec beaucoup d'employés).
     const carteServices = _construireCarteServicesEffectifs(today);
     employes.forEach(e=>{
-      if(e.statutEmploi==='Parti') return;
+      if(e.statutEmploi==='Sorti') return;
       const cur = presences[today][e.id];
       if(cur && cur.statut) return; // déjà un pointage ou un marquage — on ne touche pas
       // En congé approuvé aujourd'hui → jamais "Absent", peu importe l'heure
@@ -22350,7 +22474,7 @@ function localisationCharger(){
   });
 
   const metaEl = document.getElementById('localisationMeta');
-  if(metaEl) metaEl.textContent = `${points.length} employé(s) localisé(s) aujourd'hui sur ${employes.filter(e=>e.statutEmploi!=='Parti').length}`;
+  if(metaEl) metaEl.textContent = `${points.length} employé(s) localisé(s) aujourd'hui sur ${employes.filter(e=>e.statutEmploi!=='Sorti').length}`;
 
   // ---- Carte ----
   const mapEl = document.getElementById('localisationMap');
@@ -23235,7 +23359,7 @@ let _kioskAnnuaire = [];
 // à la fois, dans _kioskChargerPhotoAnnuaire.
 async function _kioskChargerAnnuaire(){
   try{
-    const { data } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,modifie_le');
+    const { data } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,sexe,statutEmploi,modifie_le');
     _kioskAnnuaire = data || [];
   }catch(e){ console.warn('Annuaire indisponible:', e); _kioskAnnuaire = []; }
 }
@@ -23544,7 +23668,7 @@ async function _kioskOnBadgeDetected(id){
     // dans l'annuaire public déjà récupéré depuis Supabase au démarrage du kiosque.
     const trouve = _kioskAnnuaire.find(a=>fmtMatricule(a.id)===id);
     if(trouve){
-      _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: '', fonc: trouve.fonc, site: trouve.site||'' };
+      _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: '', fonc: trouve.fonc, site: trouve.site||'', sexe: trouve.sexe||'', statutEmploi: trouve.statutEmploi||'Actif' };
       _kiosk.empSource = `annuaire (cache mémoire, modifié_le: ${trouve.modifie_le||'?'})`;
       _kioskChargerPhotoAnnuaire(trouve.id); // photo chargée à part, sans bloquer l'affichage
     }
@@ -23557,11 +23681,11 @@ async function _kioskOnBadgeDetected(id){
     // dans Présence : mieux vaut attendre une seconde de plus ici.
     _kioskSetMsg('🔎 Vérification du badge…');
     try{
-      const { data } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,modifie_le');
+      const { data } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,sexe,statutEmploi,modifie_le');
       _kioskAnnuaire = data || _kioskAnnuaire; // on rafraîchit le cache au passage
       const trouve = (data||[]).find(a=>fmtMatricule(a.id)===id);
       if(trouve){
-        _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: '', fonc: trouve.fonc, site: trouve.site||'' };
+        _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: '', fonc: trouve.fonc, site: trouve.site||'', sexe: trouve.sexe||'', statutEmploi: trouve.statutEmploi||'Actif' };
         _kiosk.empSource = `annuaire (requête directe, modifié_le: ${trouve.modifie_le||'?'})`;
         _kioskChargerPhotoAnnuaire(trouve.id);
       }
@@ -23581,11 +23705,11 @@ async function _kioskOnBadgeDetected(id){
   if(_kiosk.emp){
     (async ()=>{
       try{
-        const { data, error } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,modifie_le').eq('id', String(_kiosk.emp.id)).maybeSingle();
+        const { data, error } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,sexe,statutEmploi,modifie_le').eq('id', String(_kiosk.emp.id)).maybeSingle();
         if(error) console.warn('Revérification fraîche du badge échouée :', error);
         if(data && _kiosk.empId===id){
           const perime = data.fonc!==_kiosk.emp.fonc || data.nom!==_kiosk.emp.nom || data.prenom!==_kiosk.emp.prenom;
-          _kiosk.emp = { ..._kiosk.emp, nom:data.nom, prenom:data.prenom, fonc:data.fonc, site:data.site||_kiosk.emp.site };
+          _kiosk.emp = { ..._kiosk.emp, nom:data.nom, prenom:data.prenom, fonc:data.fonc, site:data.site||_kiosk.emp.site, sexe:data.sexe||_kiosk.emp.sexe, statutEmploi:data.statutEmploi||_kiosk.emp.statutEmploi };
           _kiosk.empSource = `annuaire revérifié (modifié_le: ${data.modifie_le||'?'})${perime?' — CORRIGÉ':' — déjà à jour'}`;
           if(perime) _kioskRenderEmpCard();
         }
@@ -23599,10 +23723,10 @@ async function _kioskOnBadgeDetected(id){
     setTimeout(async ()=>{
       if(_kiosk.emp || _kiosk.empId!==id) return;
       try{
-        const { data } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,modifie_le');
+        const { data } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,sexe,statutEmploi,modifie_le');
         const trouve = (data||[]).find(a=>fmtMatricule(a.id)===id);
         if(trouve && _kiosk.empId===id){
-          _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: '', fonc: trouve.fonc, site: trouve.site||'' };
+          _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: '', fonc: trouve.fonc, site: trouve.site||'', sexe: trouve.sexe||'', statutEmploi: trouve.statutEmploi||'Actif' };
           _kioskRenderEmpCard();
           _kioskChargerPhotoAnnuaire(trouve.id);
         }
@@ -23703,10 +23827,17 @@ function kioskConfirmBadge(){
     toast('⏳ Badge pas encore reconnu (synchronisation en cours) — réessayez dans quelques secondes.', 'warn');
     return;
   }
-  // Un employé parti : son badge reste reconnu et son identité s'affiche (utile
-  // pour un contrôle), mais le pointage lui-même est refusé avec un message clair.
-  if(_kiosk.emp.statutEmploi === 'Parti'){
-    toast('⛔ Cet employé a quitté l\'entreprise — pointage refusé.', 'err');
+  // Un employé qui n'est pas Actif (Suspendu, Inactif, Sorti) : son badge reste
+  // reconnu et son identité s'affiche (utile pour un contrôle), mais le
+  // pointage lui-même est refusé avec un message précis selon le statut réel.
+  const statutEmp = _kiosk.emp.statutEmploi || 'Actif';
+  if(statutEmp !== 'Actif'){
+    const messages = {
+      'Suspendu': '⛔ Cet employé est actuellement suspendu — pointage refusé.',
+      'Inactif': '⛔ Cet employé est actuellement inactif — pointage refusé.',
+      'Sorti': '⛔ Cet employé a quitté l\'entreprise — pointage refusé.',
+    };
+    toast(messages[statutEmp] || '⛔ Cet employé n\'est plus actif — pointage refusé.', 'err');
     return;
   }
   _kioskAfficherInfoServices();
@@ -24090,7 +24221,11 @@ async function kioskValider(){
     }catch(e){ console.warn('Vérification du programme échouée (pointage quand même accepté normalement) :', e); }
   }
 
-  const name = _kiosk.emp ? (_kiosk.emp.nom+' '+_kiosk.emp.prenom) : _kiosk.empId;
+  // "M." ou "Mme" ajouté devant le nom selon le sexe déjà renseigné dans la
+  // fiche employé — rien affiché si le sexe n'est pas renseigné (pas de faux
+  // pas), aucune donnée nouvelle créée, juste une lecture du champ existant.
+  const civilite = _kiosk.emp && _kiosk.emp.sexe==='Homme' ? 'M. ' : _kiosk.emp && _kiosk.emp.sexe==='Femme' ? 'Mme ' : '';
+  const name = _kiosk.emp ? (civilite+_kiosk.emp.nom+' '+_kiosk.emp.prenom) : _kiosk.empId;
   const box = document.getElementById('kioskDoneMsg');
   const hhmm = new Date(now).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Abidjan'});
   const noteZone = horsZone
