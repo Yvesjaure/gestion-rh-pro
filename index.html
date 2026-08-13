@@ -19805,23 +19805,9 @@ function _buildFichePrint(){
         <div class="print-card-title">${secTitre(4,'🚨','Contact en cas d\'urgence')}</div>
         ${urgenceHTML}
       </div>
-      <div class="print-card print-full" style="display:grid;grid-template-columns:1fr auto;gap:14px;align-items:start;">
-        <div>
-          <div class="print-card-title">${secTitre(5,'📱','Informations de pointage')}</div>
-          ${pointageHTML}
-        </div>
-        <div style="text-align:center;">
-          <div style="font-size:7.5pt;font-weight:800;color:#1E3A5F;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;">QR Code</div>
-          <div id="ficheQRGrand"></div>
-        </div>
-      </div>
-      <div class="print-card print-full">
-        <div class="print-card-title">${secTitre(6,'📂','Documents associés')}</div>
-        ${docsHTML}
-      </div>
-      <div class="print-card print-full">
-        <div class="print-card-title">${secTitre(7,'📝','Observations')}</div>
-        <div class="print-obs-box">${(emp.observations||'').trim() || ' '}</div>
+      <div class="print-card print-full" style="text-align:center;">
+        <div style="font-size:7.5pt;font-weight:800;color:#1E3A5F;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">QR Code</div>
+        <div id="ficheQRGrand" style="display:inline-block;"></div>
       </div>
     </div>
     <div class="print-signatures">
