@@ -13009,9 +13009,9 @@ tbody td{padding:3px 4px;border:1px solid #E8E8E8;white-space:nowrap;max-width:1
 .presence-table th{background:var(--bleu);color:#fff;padding:5px 7px;text-align:left;font-size:.65rem;position:sticky;top:0;}
 .presence-table td{padding:4px 7px;border-bottom:1px solid #eee;vertical-align:middle;}
 .presence-table tr:hover td{background:#EBF5FB;}
-.pres-btn-p{background:var(--vert);color:#fff;border:none;border-radius:4px;padding:3px 9px;font-size:.65rem;font-weight:700;cursor:pointer;margin-right:3px;}
-.pres-btn-a{background:var(--rouge);color:#fff;border:none;border-radius:4px;padding:3px 9px;font-size:.65rem;font-weight:700;cursor:pointer;margin-right:3px;}
-.pres-btn-j{background:var(--or);color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:.65rem;font-weight:700;cursor:pointer;}
+.pres-btn-p{background:var(--vert);color:#fff;border:none;border-radius:6px;padding:5px 9px;font-size:.7rem;font-weight:600;cursor:pointer;margin:2px;}
+.pres-btn-a{background:var(--rouge);color:#fff;border:none;border-radius:6px;padding:5px 9px;font-size:.7rem;font-weight:600;cursor:pointer;margin:2px;}
+.pres-btn-j{background:var(--or);color:#fff;border:none;border-radius:6px;padding:5px 9px;font-size:.7rem;font-weight:600;cursor:pointer;margin:2px;white-space:nowrap;}
 .status-p{color:var(--vert);font-weight:800;}
 .status-a{color:var(--rouge);font-weight:800;}
 .status-j{color:var(--or);font-weight:800;}
@@ -14204,7 +14204,11 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
   <div style="background:#fff;border-radius:14px;padding:22px;max-width:520px;width:100%;max-height:80vh;overflow-y:auto;color:#1a1a1a;font-family:'Nunito',sans-serif;position:relative;">
     <button onclick="document.getElementById('rhModalAlertes').style.display='none';" aria-label="Fermer" style="position:sticky;top:0;float:right;margin:-6px -6px 0 0;background:#f1f2f4;border:none;border-radius:50%;width:30px;height:30px;font-size:1rem;font-weight:800;color:#555;cursor:pointer;z-index:2;">✖</button>
     <h3 style="margin:0 0 4px;">🔔 Centre d'alertes</h3>
-    <p style="font-size:.78rem;color:#888;margin:0 0 16px;">Retards répétés, absences non justifiées, contrats et congés à traiter.</p>
+    <p style="font-size:.78rem;color:#888;margin:0 0 10px;">Retards répétés, absences non justifiées, contrats et congés à traiter.</p>
+    <div style="display:flex;gap:6px;margin-bottom:12px;">
+      <button class="btn" style="flex:1;justify-content:center;background:#16A34A;color:#fff;font-size:.72rem;" onclick="toutCocherAlertes()">✓ Tout cocher</button>
+      <button class="btn" style="flex:1;justify-content:center;background:#e74c3c;color:#fff;font-size:.72rem;" onclick="toutSupprimerAlertes()">🗑️ Tout supprimer</button>
+    </div>
     <div id="rhListeAlertes"></div>
     <button class="btn" style="margin-top:10px;width:100%;justify-content:center;background:var(--bleu1);color:#fff;" onclick="document.getElementById('rhModalAlertes').style.display='none';">Fermer</button>
   </div>
@@ -15188,19 +15192,10 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     <div class="dtab-bar" id="dtabBar"></div>
     <div id="mDosContent"></div>
     <div style="margin-top:10px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;border-top:1px solid #eee;padding-top:10px;">
-      <select id="dosTypeSelect" style="border:1.5px solid #ccc;border-radius:4px;padding:4px 8px;font-family:&#39;Nunito&#39;,sans-serif;font-size:.73rem;">
-        <option value="Demande d&#39;explication">📝 Demande d'explication</option>
-        <option value="Prêt d&#39;argent">💰 Prêt d'argent</option>
-        <option value="Contrat">📋 Contrat</option>
-        <option value="Avertissement">⚠️ Avertissement</option>
-        <option value="Attestation">🏅 Attestation</option>
-        <option value="Bulletin de paie">💵 Bulletin de paie</option>
-        <option value="Fiche de poste">🗂️ Fiche de poste</option>
-        <option value="Rapport d&#39;absence">📅 Rapport d'absence</option>
-        <option value="Autre">📄 Autre</option>
-      </select>
+      <select id="dosTypeSelect" style="border:1.5px solid #ccc;border-radius:4px;padding:4px 8px;font-family:&#39;Nunito&#39;,sans-serif;font-size:.73rem;"></select>
       <button class="btn b-dos" onclick="triggerFile(&#39;fDosAdd&#39;)">➕ Ajouter document</button>
       <input type="file" id="fDosAdd" accept=".pdf,image/*,.doc,.docx" onchange="addFileDossier(this)">
+      <button class="btn" style="background:#6D28D9;color:#fff;" onclick="creerNouveauTypeDossier()">📂➕ Nouveau dossier</button>
     </div>
     <div class="modal-actions">
       <button class="btn b-prt" onclick="imprimerToutLeDossier()">🖨️ Imprimer tout le dossier</button>
@@ -15955,6 +15950,38 @@ function _genererQRDataURLEmployeSync(container, e, org, size){
 }
 
 const DOSSIER_TYPES = ["Demande d'explication","Prêt d'argent","Contrat","Avertissement","Attestation","Bulletin de paie","Fiche de poste","Rapport d'absence","Autre"];
+const DOSSIER_TYPES_BASE = [...DOSSIER_TYPES]; // les 9 types de base, jamais modifiés — sert à repérer ceux ajoutés par l'utilisateur
+// Remplit le select "Ajouter document" à partir de DOSSIER_TYPES — appelée au
+// chargement ET après la création d'un nouveau type, pour que les deux
+// restent toujours synchronisés (select + onglets du dossier).
+function _remplirSelectDosType(valeurSelectionnee){
+  const select = document.getElementById('dosTypeSelect');
+  if(!select) return;
+  select.innerHTML = DOSSIER_TYPES.map(t=>`<option value="${t.replace(/"/g,'&quot;')}">${DOSSIER_ICONS[t]||'📂'} ${t}</option>`).join('');
+  if(valeurSelectionnee) select.value = valeurSelectionnee;
+}
+// Crée un nouveau type de dossier personnalisé (ex: "Formation", "Évaluation")
+// — s'ajoute juste avant "Autre" (qui reste toujours le dernier, générique),
+// disponible tout de suite dans le select ET dans les onglets, et persisté
+// pour rester disponible après actualisation/reconnexion.
+function creerNouveauTypeDossier(){
+  const nom = prompt('Nom du nouveau type de document (ex : Formation, Évaluation...) :');
+  if(!nom || !nom.trim()) return;
+  const nomPropre = nom.trim();
+  if(DOSSIER_TYPES.includes(nomPropre)){ toast('⚠️ Ce type existe déjà','warn'); return; }
+  const idxAutre = DOSSIER_TYPES.indexOf('Autre');
+  DOSSIER_TYPES.splice(idxAutre>=0?idxAutre:DOSSIER_TYPES.length, 0, nomPropre);
+  DOSSIER_ICONS[nomPropre] = '📂';
+  _sauvegarderTypesDossierPerso();
+  _remplirSelectDosType(nomPropre);
+  const emp = employes.find(e=>e.id==currentEmpId);
+  if(emp) renderDossierModal(emp);
+  toast(`✅ Type "${nomPropre}" créé`,'ok');
+}
+function _sauvegarderTypesDossierPerso(){
+  const perso = DOSSIER_TYPES.filter(t=>!DOSSIER_TYPES_BASE.includes(t));
+  kvSetPartage('rh_dossier_types_perso', JSON.stringify(perso));
+}
 const DOSSIER_ICONS = {"Demande d'explication":"📝","Prêt d'argent":"💰","Contrat":"📋","Avertissement":"⚠️","Attestation":"🏅","Bulletin de paie":"💵","Fiche de poste":"🗂️","Rapport d'absence":"📅","Autre":"📄"};
 const BADGE_COLORS = {
   bleu:{h1:'#1A3A5C',h2:'#2E6DA4',f:'#C8860A',label:'🔵 Bleu'},
@@ -16052,6 +16079,7 @@ async function init() {
     console.error('Erreur chargement IndexedDB:',err);
     toast('⚠️ Erreur chargement données — vérifiez le navigateur','err');
   }
+  _remplirSelectDosType(); // toujours rempli, même sans type personnalisé enregistré
   // Établit l'empreinte de référence pour sauvegarder() juste après le
   // chargement — évite qu'elle croie que "tout" a changé et ne resynchronise
   // inutilement l'intégralité des données vers Supabase dès la 1ère minute.
@@ -16973,7 +17001,10 @@ async function rhOuvrirPanneauEmployes() {
             <div style="font-size:.65rem;color:${enLigne?'#4ADE80':'rgba(255,255,255,.45)'};">${enLigne?'🟢 En ligne':'⚪ Hors ligne'}${bloque?' · ⛔ Bloqué':''}</div>
           </div>
         </div>
-        <button class="lock-btn" style="width:auto;padding:6px 12px;font-size:.72rem;background:${bloque?'#16A34A':'#e74c3c'};" onclick="${bloque?'rhDebloquerCompte':'rhBloquerCompte'}('${emp.email}')">${bloque?'✅ Débloquer':'⛔ Bloquer'}</button>
+        <div style="display:flex;gap:6px;">
+          <button class="lock-btn" style="width:auto;padding:6px 12px;font-size:.72rem;background:${bloque?'#16A34A':'#e74c3c'};" onclick="${bloque?'rhDebloquerCompte':'rhBloquerCompte'}('${emp.email}')">${bloque?'✅ Débloquer':'⛔ Bloquer'}</button>
+          <button class="lock-btn" style="width:auto;padding:6px 12px;font-size:.72rem;background:#6B7280;" onclick="rhSupprimerCompte('${emp.email}')">🗑️ Supprimer</button>
+        </div>
       </div>`;
     }).join('');
   }
@@ -16995,6 +17026,24 @@ async function rhDebloquerCompte(email){
   if(error){ toast('❌ Erreur : '+error.message,'err'); return; }
   toast(`✅ ${email} débloqué`,'ok');
   await rhOuvrirPanneauEmployes();
+}
+// Suppression DÉFINITIVE d'un compte approuvé — contrairement à "Bloquer"
+// (réversible, la demande reste), ça retire la ligne d'approbation ET le
+// rôle attribué. La personne devrait refaire une demande d'accès complète
+// pour revenir. Ne touche jamais à son compte de connexion Supabase Auth
+// lui-même (ça, seul un administrateur Supabase peut le faire) — juste à
+// son autorisation d'accès à CETTE application.
+async function rhSupprimerCompte(email){
+  if(!confirm(`Supprimer DÉFINITIVEMENT le compte de ${email} ?\n\nIl perdra tout accès et devra refaire une demande complète pour revenir — contrairement à "Bloquer", ce n'est pas réversible en un clic.`)) return;
+  try{
+    const { error: err1 } = await supabaseRH.from('rh_employes').delete().eq('email', email);
+    if(err1) throw err1;
+    // Retire aussi son rôle (superviseur/lecteur/équipage/DRH...) s'il en avait un.
+    await supabaseRH.from('rh_utilisateurs').delete().eq('email', email);
+    toast(`🗑️ Compte ${email} supprimé`,'warn');
+    _historiqueAjouter('employe','suppression', `Compte RH supprimé : ${email}`);
+    await rhOuvrirPanneauEmployes();
+  }catch(e){ toast('❌ Erreur : '+e.message,'err'); }
 }
 // Approuve la demande ET attribue le rôle choisi en une seule fois (au lieu
 // d'approuver puis devoir aller régler le rôle séparément dans Paramètres).
@@ -17339,6 +17388,41 @@ function supprimerAlerte(signature, texteLisible){
   ouvrirAlertes(); // ré-affiche la liste sans celle qu'on vient de retirer
   rafraichirBadgeAlertes();
 }
+// Marque TOUTES les alertes actuellement affichées comme lues d'un coup —
+// même logique que le ✓ individuel, juste appliquée à toute la liste.
+async function toutCocherAlertes(){
+  const alertes = await calculerAlertes();
+  const supprimees = _alertesSupprimeesGet();
+  const alertesAffichees = alertes.filter(a=>!supprimees.has(_alerteSignature(a)) && a.type!=='briefing');
+  if(!alertesAffichees.length){ toast('Aucune alerte à marquer','warn'); return; }
+  const lues = _alertesLuesGet();
+  alertesAffichees.forEach(a=>lues.add(_alerteSignature(a)));
+  _alertesLuesSet(lues);
+  ouvrirAlertes();
+  toast(`✅ ${alertesAffichees.length} alerte(s) marquée(s) comme lue(s)`,'ok');
+}
+// Retire TOUTES les alertes actuellement affichées d'un coup — chacune part
+// individuellement dans la Corbeille (comme un ✕ un par un), donc rien n'est
+// perdu, juste retiré du Centre d'alertes en une seule fois.
+async function toutSupprimerAlertes(){
+  const alertes = await calculerAlertes();
+  const supprimees = _alertesSupprimeesGet();
+  const alertesAffichees = alertes.filter(a=>!supprimees.has(_alerteSignature(a)) && a.type!=='briefing');
+  if(!alertesAffichees.length){ toast('Aucune alerte à supprimer','warn'); return; }
+  if(!confirm(`Retirer les ${alertesAffichees.length} alerte(s) affichée(s) ? Elles resteront récupérables depuis la Corbeille.`)) return;
+  alertesAffichees.forEach(a=>{
+    const sig = _alerteSignature(a);
+    supprimees.add(sig);
+    const nom = a.emp ? `${a.emp.prenom||''} ${a.emp.nom||''}`.trim() : (a.type==='equipage' ? '🚚 Équipage' : '—');
+    _corbeilleAjouter('alerte', `${nom} — ${a.texte}`, { signature: sig });
+  });
+  _alertesSupprimeesSet(supprimees);
+  _historiqueAjouter('alerte','suppression', `${alertesAffichees.length} alerte(s) retirée(s) en masse`);
+  triggerSave();
+  ouvrirAlertes();
+  rafraichirBadgeAlertes();
+  toast(`🗑️ ${alertesAffichees.length} alerte(s) retirée(s)`,'warn');
+}
 
 async function ouvrirAlertes(){
   const alertes = await calculerAlertes();
@@ -17637,6 +17721,20 @@ async function rhChargerDepuisLigne(){
         // Réenregistre la version corrigée pour de bon, une seule fois — sinon
         // la réparation devrait se refaire à chaque connexion indéfiniment.
         if(etaitCorrompu) kvSetPartage('rh_couleurs_perso', JSON.stringify(couleursPersonnalisees));
+      }
+      if (parCle.rh_dossier_types_perso !== undefined){
+        let dtp = parCle.rh_dossier_types_perso;
+        if(typeof dtp === 'string'){ try{ dtp = JSON.parse(dtp); }catch(e){ dtp = []; } }
+        if(Array.isArray(dtp)){
+          dtp.forEach(t=>{
+            if(t && !DOSSIER_TYPES.includes(t)){
+              const idxAutre = DOSSIER_TYPES.indexOf('Autre');
+              DOSSIER_TYPES.splice(idxAutre>=0?idxAutre:DOSSIER_TYPES.length, 0, t);
+              if(!DOSSIER_ICONS[t]) DOSSIER_ICONS[t] = '📂';
+            }
+          });
+        }
+        _remplirSelectDosType();
       }
       // États des alertes (lues/supprimées) — stockés en texte JSON dans rh_donnees,
       // reconvertis ici en Set pour l'usage courant. Survit même si l'adresse
@@ -21221,12 +21319,14 @@ function renderPresenceTable(date){
       <td style="text-align:center;white-space:nowrap;">${celluleArrivee}</td>
       <td style="text-align:center;white-space:nowrap;">${celluleDepart}</td>
       <td>${justifBadge} ${docLink} ${selfieLink} ${serviceBadge}</td>
-      <td>
+      <td style="min-width:170px;">
+        <div style="display:flex;flex-wrap:wrap;gap:2px;">
         <button class="pres-btn-p" onclick="setPresence('${date}','${e.id}','Présent')">✅ P</button>
         <button class="pres-btn-a" onclick="setPresence('${date}','${e.id}','Absent')">❌ A</button>
         ${(rec.statut==='Absent'||rec.statut==='À justifier')?`<button class="pres-btn-j" onclick="ouvrirJustif('${date}','${e.id}','${(`${e.nom} ${e.prenom}`).replace(/'/g,"\\'")}')">📝 Justifier</button>`:''}
         ${rec.statut==='Justifié'?`<button class="pres-btn-j" style="background:#888;" onclick="annulerJustif('${date}','${e.id}')">↩️ Annuler justif</button>`:''}
         ${(rec.statut||rec.punch_in||rec.punch_out)?`<button class="pres-btn-a" style="background:#666;" onclick="supprimerPresence('${date}','${e.id}','${(`${e.nom} ${e.prenom}`).replace(/'/g,"\\'")}')" title="Supprimer complètement le pointage de cet employé pour cette journée">🗑️</button>`:''}
+        </div>
       </td>`;
     tb.appendChild(tr);
   });
