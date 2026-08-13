@@ -15822,6 +15822,26 @@ function _hmToMin(hm){ const [h,m]=(hm||'0:0').split(':').map(Number); return (h
 // décodage, tout texte qui n'a pas exactement ces deux bornes ou le bon
 // nombre de champs est refusé comme QR invalide.
 // ============================================================
+// ============================================================
+// HEURE FIABLE — CÔTE D'IVOIRE (Africa/Abidjan, UTC+0 toute l'année, pas
+// d'heure d'été) — jamais celle du fuseau réglé sur l'appareil.
+// Un téléphone mal réglé sur un autre fuseau (assez courant) peut sinon
+// décaler l'heure affichée, et surtout faire écrire un pointage sous le
+// MAUVAIS JOUR — ce qui faisait apparaître certains employés "Absent" sur
+// la fiche Présence du jour réel, alors qu'ils avaient bien badgé.
+// L'horloge interne du téléphone (l'instant UTC réel, "epoch") reste fiable
+// même si son réglage d'affichage de fuseau est faux — donc on part de là et
+// on convertit explicitement vers Africa/Abidjan, plutôt que de faire
+// confiance à l'heure "locale" telle que l'appareil la calcule lui-même.
+// ============================================================
+function _dateCIAujourdhui(date){
+  const d = date || new Date();
+  return new Intl.DateTimeFormat('sv-SE', { timeZone:'Africa/Abidjan', year:'numeric', month:'2-digit', day:'2-digit' }).format(d);
+}
+function _heureCI(date){
+  const d = date || new Date();
+  return new Intl.DateTimeFormat('fr-FR', { timeZone:'Africa/Abidjan', hour:'2-digit', minute:'2-digit' }).format(d);
+}
 const QR_SIGNATURE_DEBUT = 'EIDA';
 const QR_SIGNATURE = 'EIDA1'; // signature de fin (conservé sous ce nom pour compat avec le reste du code)
 const QR_SEP = '|';
@@ -16153,7 +16173,7 @@ async function updateStorageInfo(){
 }
 
 function initPrzDate() {
-  const today = new Date().toISOString().slice(0,10);
+  const today = _dateCIAujourdhui();
   document.getElementById('przDate').value = today;
 }
 function initMensuelDate() {
@@ -17226,7 +17246,7 @@ async function calculerAlertes(){
   const heureActuelle = now.getHours()*60+now.getMinutes();
   if(heureActuelle >= 6*60+30){
     const hier = new Date(now); hier.setDate(hier.getDate()-1);
-    const hierStr = hier.toISOString().slice(0,10);
+    const hierStr = _dateCIAujourdhui(hier);
     const recHier = presences[hierStr] || {};
     let presentsHier=0, absentsHier=0, retardsHier=0, absNonJustifHier=0;
     actifs.forEach(e=>{
@@ -17327,14 +17347,14 @@ async function calculerAlertes(){
   // silence et penser à vérifier son retour effectif.
   // La "Date Fin" d'un congé est le DERNIER jour d'absence (inclus) — la
   // reprise a donc lieu le LENDEMAIN de cette date, pas ce jour-là.
-  const todayStr = now.toISOString().slice(0,10);
+  const todayStr = _dateCIAujourdhui(now);
   const demain = new Date(now); demain.setDate(demain.getDate()+1);
-  const demainStr = demain.toISOString().slice(0,10);
+  const demainStr = _dateCIAujourdhui(demain);
   conges.filter(c=>c.stat==='Approuvé').forEach(c=>{
     if(!c.fin) return;
     const e = employes.find(x=>String(x.id)===String(c.emp));
     const dateReprise = new Date(c.fin+'T00:00:00'); dateReprise.setDate(dateReprise.getDate()+1);
-    const dateRepriseStr = dateReprise.toISOString().slice(0,10);
+    const dateRepriseStr = _dateCIAujourdhui(dateReprise);
     if(dateRepriseStr===todayStr){
       alertes.push({type:'reprise', gravite:'err', emp:e||{nom:c.emp,prenom:''}, texte:`Reprend le travail AUJOURD'HUI (congé ${c.type} terminé le ${fmt(c.fin)})`});
     } else if(dateRepriseStr===demainStr){
@@ -17489,7 +17509,7 @@ async function rafraichirBadgeAlertes(){
 }
 
 function renderDashboard(){
-  const today = new Date().toISOString().slice(0,10);
+  const today = _dateCIAujourdhui();
   if(!presences[today]) presences[today]={};
 
   // Effectif
@@ -17739,11 +17759,20 @@ async function rhChargerDepuisLigne(){
       // États des alertes (lues/supprimées) — stockés en texte JSON dans rh_donnees,
       // reconvertis ici en Set pour l'usage courant. Survit même si l'adresse
       // de déploiement change (contrairement au localStorage seul).
+      // IMPORTANT : depuis que kvSetPartage() décode le JSON avant l'envoi
+      // (correctif du bug "undefined" des couleurs), Supabase stocke ces deux
+      // clés comme de VRAIES listes, pas comme du texte brut — localStorage,
+      // lui, n'accepte que du texte. Sans reconvertir en texte ici avant de
+      // l'y stocker, la liste devenait illisible au rechargement (jointe par
+      // des virgules au lieu du JSON attendu), et tout revenait comme "non
+      // supprimé" à chaque actualisation.
       if (parCle.rh_alertes_supprimees !== undefined){
-        try{ localStorage.setItem('rh_alertes_supprimees', parCle.rh_alertes_supprimees); }catch(_){}
+        const val = parCle.rh_alertes_supprimees;
+        try{ localStorage.setItem('rh_alertes_supprimees', typeof val==='string' ? val : JSON.stringify(val)); }catch(_){}
       }
       if (parCle.rh_alertes_lues !== undefined){
-        try{ localStorage.setItem('rh_alertes_lues', parCle.rh_alertes_lues); }catch(_){}
+        const val = parCle.rh_alertes_lues;
+        try{ localStorage.setItem('rh_alertes_lues', typeof val==='string' ? val : JSON.stringify(val)); }catch(_){}
       }
     }
 
@@ -17858,7 +17887,7 @@ function rhEcouterChangementsEnLigne(){
     window._pointagesPollTimer = setInterval(async ()=>{
       if(!rhSessionActuelle) return;
       try{
-        const today = new Date().toISOString().slice(0,10);
+        const today = _dateCIAujourdhui();
         const { data } = await supabaseRH.from('rh_pointages').select('*').eq('date_jour', today);
         if(!data) return;
         let modifie = false;
@@ -20344,8 +20373,8 @@ function renderMensuel(){
       const puce=info.source==='pointage'?'<span style="font-size:.5rem;vertical-align:top;">📱</span>':'';
       let titre=`J${j} : ${info.v||'—'}`;
       if(info.source==='pointage'){
-        if(info.hi) titre+=' — arrivée '+new Date(info.hi).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-        if(info.ho) titre+=' → départ '+new Date(info.ho).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+        if(info.hi) titre+=' — arrivée '+new Date(info.hi).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Abidjan'});
+        if(info.ho) titre+=' → départ '+new Date(info.ho).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Abidjan'});
         if(info.horsZone) titre+=' ⚠️ hors zone';
       } else {
         titre+=' (saisie manuelle — cliquez pour modifier)';
@@ -20499,8 +20528,8 @@ function exporterPresenceExcel(){
   ]];
   liste.forEach(e=>{
     const r=rec[e.id]||{};
-    const hi = r.punch_in ? new Date(r.punch_in).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '';
-    const ho = r.punch_out ? new Date(r.punch_out).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '';
+    const hi = r.punch_in ? new Date(r.punch_in).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Abidjan'}) : '';
+    const ho = r.punch_out ? new Date(r.punch_out).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Abidjan'}) : '';
     let heures = '';
     if(r.punch_in && r.punch_out){
       heures = (Math.round(((new Date(r.punch_out)-new Date(r.punch_in))/3600000)*10)/10) + ' h';
@@ -20650,7 +20679,7 @@ function _enginEquipeActiveChaine(eng, dateStr){
 // listes récupérées à la volée (téléphone jamais connecté, equipages[] local
 // vide) sans toucher aux variables globales ni au comportement par défaut.
 function _construireCarteServicesEffectifs(dateStr, listeEquipages, listeRemplacements){
-  const date = dateStr || new Date().toISOString().slice(0,10);
+  const date = dateStr || _dateCIAujourdhui();
   const srcEquipages = listeEquipages || equipages;
   const srcRemplacements = listeRemplacements || remplacements;
   const carte = new Map();
@@ -20670,7 +20699,7 @@ function _construireCarteServicesEffectifs(dateStr, listeEquipages, listeRemplac
   return carte;
 }
 function _serviceEffectifEmploye(empId, dateStr){
-  const date = dateStr || new Date().toISOString().slice(0,10);
+  const date = dateStr || _dateCIAujourdhui();
   const rem = remplacements[date] && remplacements[date][empId];
   if(rem) return (typeof rem==='object') ? rem.service : rem; // objet {service,zone} ou ancien format (texte seul)
   for(const eng of equipages){
@@ -20731,7 +20760,7 @@ function _renderJoursFeries(){
 // Remplace uniquement les équipages générés automatiquement pour cette date
 // (les équipages saisis à la main ne sont jamais touchés).
 function genererEquipagesDuJour(){
-  const today = new Date().toISOString().slice(0,10);
+  const today = _dateCIAujourdhui();
   const rec = presences[today] || {};
   const presents = employes.filter(e => rec[e.id] && rec[e.id].statut === 'Présent');
   if(!presents.length){ toast('⚠️ Aucun pointage "Présent" trouvé aujourd\'hui','warn'); return; }
@@ -20812,7 +20841,7 @@ function _equNomEmploye(id){
 // Équipage) ? Sert à faire clignoter le contour de sa photo en jaune, pour
 // signaler qu'il a été déplacé exceptionnellement, sans toucher à son équipe.
 function _equARemplacementJour(id){
-  const today = new Date().toISOString().slice(0,10);
+  const today = _dateCIAujourdhui();
   return !!(remplacements[today] && remplacements[today][id]);
 }
 // Est-ce que le service de CETTE équipe est en cours MAINTENANT (heure réelle) ?
@@ -20864,7 +20893,7 @@ function _equPhotoRonde(id, taille){
   } else {
     const contexte = _equTrouverEquipeDe(id);
     if(contexte){
-      const todayStr = new Date().toISOString().slice(0,10);
+      const todayStr = _dateCIAujourdhui();
       const chaineActiveId = _enginEquipeActiveChaine(contexte.eng, todayStr);
       const enService = _equServiceEnCoursMaintenant(contexte.eq, chaineActiveId);
       if(enService===true){ couleur='#16A34A'; animClasse='equ-clignote-vert'; }
@@ -20883,14 +20912,14 @@ function _equPhotoRonde(id, taille){
 // Est-ce que cet employé a déjà scanné sa présence AUJOURD'HUI ? Sert à afficher
 // un petit indicateur vert/gris à côté de son nom sur la page Équipage.
 function _equEstPresent(id){
-  const today = new Date().toISOString().slice(0,10);
+  const today = _dateCIAujourdhui();
   const rec = presences[today] && presences[today][id];
   return !!(rec && rec.statut==='Présent');
 }
 // Couleur de l'indicateur de présence sur la page Équipage :
 // 🟢 vert = présent (a scanné) · 🔴 rouge = marqué absent · 🟡 jaune = pas encore arrivé/pointé
 function _equCouleurStatut(id){
-  const today = new Date().toISOString().slice(0,10);
+  const today = _dateCIAujourdhui();
   const rec = presences[today] && presences[today][id];
   if(rec && rec.statut==='Présent') return {couleur:'#16A34A', titre:'Présent aujourd\'hui'};
   if(rec && rec.statut==='Absent') return {couleur:'#DC2626', titre:'Absent aujourd\'hui'};
@@ -20908,7 +20937,7 @@ function equToggleChaine24h(enginId, active, dateDebut){
   if(!eng.chaine24h) eng.chaine24h={active:false, dateDebut:''};
   eng.chaine24h.active = active;
   if(dateDebut!==undefined) eng.chaine24h.dateDebut = dateDebut;
-  else if(active && !eng.chaine24h.dateDebut) eng.chaine24h.dateDebut = new Date().toISOString().slice(0,10);
+  else if(active && !eng.chaine24h.dateDebut) eng.chaine24h.dateDebut = _dateCIAujourdhui();
   triggerSave();
   renderEquipages();
 }
@@ -20965,7 +20994,7 @@ function ajouterRemplacementJour(){
   const service = document.getElementById('remServiceSelect').value;
   const zone = document.getElementById('remZoneInput').value.trim();
   if(!empId){ toast('⚠️ Choisis un employé','warn'); return; }
-  const today = new Date().toISOString().slice(0,10);
+  const today = _dateCIAujourdhui();
   if(!remplacements[today]) remplacements[today]={};
   remplacements[today][empId]= zone ? {service, zone} : {service};
   triggerSave();
@@ -20974,7 +21003,7 @@ function ajouterRemplacementJour(){
   toast('✅ Remplacement ajouté pour aujourd\'hui','ok');
 }
 function retirerRemplacementJour(empId){
-  const today = new Date().toISOString().slice(0,10);
+  const today = _dateCIAujourdhui();
   if(remplacements[today]) delete remplacements[today][empId];
   triggerSave();
   renderEquipages();
@@ -20984,7 +21013,7 @@ function _renderRemplacementsJour(){
   const empSelect=document.getElementById('remEmpSelect');
   const liste=document.getElementById('remListe');
   if(!dateLabel||!empSelect||!liste)return;
-  const today = new Date().toISOString().slice(0,10);
+  const today = _dateCIAujourdhui();
   dateLabel.textContent = new Date().toLocaleDateString('fr-FR');
   empSelect.innerHTML = '<option value="">— Choisir un employé —</option>' +
     employes.map(e=>`<option value="${e.id}">${e.nom} ${e.prenom}${e.fonc?' — '+e.fonc:''}</option>`).join('');
@@ -21044,7 +21073,7 @@ function renderEquipages(){
     return;
   }
   box.innerHTML = equipagesAffiches.map(eng=>{
-    const todayStr = new Date().toISOString().slice(0,10);
+    const todayStr = _dateCIAujourdhui();
     const chaineActiveId = _enginEquipeActiveChaine(eng, todayStr);
     const nb24h = (eng.equipes||[]).filter(e=>e.service==='24h').length;
     const equipesHTML = (eng.equipes||[]).map(eq=>{
@@ -21193,7 +21222,7 @@ function renderEquipages(){
 function exporterEquipagesJSON(){
   const blob=new Blob([JSON.stringify(equipages,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`equipages_${new Date().toISOString().slice(0,10)}.json`;a.click();
+  a.download=`equipages_${_dateCIAujourdhui()}.json`;a.click();
   toast('✅ Équipages exportés','ok');
 }
 function importerEquipagesJSON(input){
@@ -21266,7 +21295,7 @@ function renderPresenceTable(date){
     // marquage + admin qui l'a fait, affichés sous le statut — restent visibles
     // après actualisation puisque sauvegardés avec le reste du pointage.
     if(rec.manuel_le && !rec.punch_in){
-      const heureManuel = new Date(rec.manuel_le).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      const heureManuel = new Date(rec.manuel_le).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Abidjan'});
       stTxt += `<br><span style="font-size:.6rem;color:#888;font-weight:600;">🕐 ${heureManuel} · par ${(rec.manuel_par||'admin').split('@')[0]}</span>`;
     }
     // "En congé" : précise le TYPE exact (Congé Maladie, Congé Annuel...) à
@@ -21283,7 +21312,7 @@ function renderPresenceTable(date){
     // l'employé a scanné (ou été pointé manuellement avec une heure).
     let celluleArrivee='—', celluleDepart='—';
     if(rec.punch_in){
-      const hi=new Date(rec.punch_in).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      const hi=new Date(rec.punch_in).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Abidjan'});
       celluleArrivee=`<span style="font-weight:700;color:#166534;">${hi}</span> ${rec.from_mobile?'<span title="Pointage mobile (QR)" style="font-size:.68rem;">📱</span>':''}`;
       if(rec.geo && rec.geo.site){
         const okZone = rec.geo.inZone!==false;
@@ -21291,7 +21320,7 @@ function renderPresenceTable(date){
       }
     }
     if(rec.punch_out){
-      const ho=new Date(rec.punch_out).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      const ho=new Date(rec.punch_out).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Abidjan'});
       celluleDepart=`<span style="font-weight:700;color:#B91C1C;">${ho}</span> ${rec.from_mobile?'<span title="Pointage mobile (QR)" style="font-size:.68rem;">📱</span>':''}`;
     } else if(rec.punch_in){
       celluleDepart='<span style="color:#B7950B;font-size:.68rem;font-weight:700;">⏳ en cours</span>';
@@ -21416,7 +21445,7 @@ function _dateLimitePurgeSelfies(maintenant){
   const coupe = jour>=10
     ? new Date(maintenant.getFullYear(), maintenant.getMonth(), 1)
     : new Date(maintenant.getFullYear(), maintenant.getMonth()-1, 1);
-  return coupe.toISOString().slice(0,10);
+  return _dateCIAujourdhui(coupe);
 }
 async function _purgerSelfiesAnciens(maintenant){
   const limiteStr = _dateLimitePurgeSelfies(maintenant);
@@ -21446,14 +21475,14 @@ async function _purgerSelfiesAnciens(maintenant){
 // Vérifie une fois par jour seulement (pas à chaque chargement de page) —
 // mémorise la dernière date de purge dans localStorage.
 async function _purgerSelfiesAnciensSiBesoin(){
-  const today = new Date().toISOString().slice(0,10);
+  const today = _dateCIAujourdhui();
   if(localStorage.getItem('rh_derniere_purge_selfies')===today) return;
   const n = await _purgerSelfiesAnciens();
   localStorage.setItem('rh_derniere_purge_selfies', today);
   if(n>0){ console.log(`🧹 ${n} ancien(s) selfie(s) de pointage purgé(s) (mois civil complet, avec 10 jours de grâce) pour alléger la synchronisation.`); sauvegarder(false); }
 }
 function verifierCongesTermines(){
-  const today = new Date().toISOString().slice(0,10);
+  const today = _dateCIAujourdhui();
   let modifie = false;
   conges.forEach(c=>{
     if(c.stat==='Approuvé' && c.fin && c.fin < today){
@@ -21491,7 +21520,7 @@ async function verifierAbsencesAutomatiques(){
     };
     const now = new Date();
     const nowMin = now.getHours()*60 + now.getMinutes();
-    const today = now.toISOString().slice(0,10);
+    const today = _dateCIAujourdhui(now);
     if(_estJourNonOuvrable(today)) return; // dimanche ou jour férié — jamais d'absence auto ce jour-là
     if(!presences[today]) presences[today] = {};
     let modifie = false;
@@ -21728,7 +21757,7 @@ function imprimerEquipages(enginId){
     </style></head><body>
     <div class="hdr">${logoHTML}<div><b>${companyName||'MON ENTREPRISE'}</b><div style="font-size:.8rem;color:#666;">${titre}</div></div></div>
     ${cartesHTML}
-    <div class="meta">Édité le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div>
+    <div class="meta">Édité le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Abidjan'})}</div>
     </body></html>`);
   w.document.close();
   setTimeout(()=>{ w.focus(); w.print(); }, 300);
@@ -21753,8 +21782,8 @@ function _buildPresenceListePrint(){
   const addrHTML = companyAddr ? `<div class="print-org-addr">${companyAddr}</div>` : '';
   const rows=liste.map((e,i)=>{
     const r=rec[e.id]||{};
-    const hi = r.punch_in ? new Date(r.punch_in).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '—';
-    const ho = r.punch_out ? new Date(r.punch_out).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '—';
+    const hi = r.punch_in ? new Date(r.punch_in).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Abidjan'}) : '—';
+    const ho = r.punch_out ? new Date(r.punch_out).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Abidjan'}) : '—';
     const couleur = r.statut==='Présent' ? '#1E8449' : r.statut==='Absent' ? '#C0392B' : r.statut==='Justifié' ? '#C8860A' : r.statut==='À justifier' ? '#B7590A' : '#888';
     return `<tr>
       <td>${i+1}</td>
@@ -21846,7 +21875,7 @@ function _appliquerCongeAuxPresences(c){
   if(isNaN(debut)||isNaN(fin)||fin<debut) return;
   let modifie = false;
   for(let d=new Date(debut); d<=fin; d.setDate(d.getDate()+1)){
-    const dateStr = d.toISOString().slice(0,10);
+    const dateStr = _dateCIAujourdhui(d);
     if(!presences[dateStr]) presences[dateStr] = {};
     const cur = presences[dateStr][c.emp];
     if(!cur || !cur.statut || cur.statut==='Absent'){
@@ -21898,7 +21927,7 @@ function afficherConges(liste){
 function renderCongeGaleriePhotos(){
   const box = document.getElementById('congeGaleriePhotos');
   if(!box) return;
-  const today = new Date().toISOString().slice(0,10);
+  const today = _dateCIAujourdhui();
   const enConge = conges.filter(c => c.stat==='Approuvé' && c.deb<=today && today<=c.fin);
   if(!enConge.length){
     box.innerHTML = '<p style="color:#888;font-style:italic;font-size:.78rem;padding:6px 0;">Personne en congé approuvé aujourd\'hui.</p>';
@@ -21945,7 +21974,7 @@ function exportJSON(){
   },null,2);
   const blob=new Blob([data],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`backup_rh_${new Date().toISOString().slice(0,10)}.json`;a.click();
+  a.download=`backup_rh_${_dateCIAujourdhui()}.json`;a.click();
   toast('✅ Export réussi !','ok');
 }
 function importJSON(input){
@@ -22232,7 +22261,7 @@ function localisationCharger(){
     if(meta) meta.textContent='⚠️ Carte indisponible (pas de connexion internet ?)';
     return;
   }
-  const today = new Date().toISOString().slice(0,10);
+  const today = _dateCIAujourdhui();
   const recJour = presences[today] || {};
 
   // Un point par employé ayant pointé aujourd'hui, à la position de son
@@ -22245,7 +22274,7 @@ function localisationCharger(){
     points.push({
       emp: e, lat: rec.geo.lat, lng: rec.geo.lng,
       site: rec.geo.site || 'Zone inconnue', inZone: rec.geo.inZone !== false,
-      heure: heure ? new Date(heure).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '—',
+      heure: heure ? new Date(heure).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Abidjan'}) : '—',
       statut: rec.statut || '—',
     });
   });
@@ -22950,7 +22979,7 @@ function _haversineM(lat1,lng1,lat2,lng2){
 
 // ---------- Historique des pointages (lu directement depuis "presences") ----------
 async function punchShowHistory(){
-  const date = document.getElementById('przDate').value || (new Date().toISOString().slice(0,10));
+  const date = document.getElementById('przDate').value || (_dateCIAujourdhui());
   let modal = document.getElementById('mPunchHist');
   if(!modal){
     modal = document.createElement('div');
@@ -22978,8 +23007,8 @@ async function punchShowHistory(){
     list.innerHTML = rows.map(([empId,r])=>{
       const e = employes.find(x=>x.id===empId);
       const name = e ? (e.nom+' '+e.prenom).toUpperCase() : '<i style="color:#888">employé inconnu localement</i>';
-      const hi = r.punch_in ? new Date(r.punch_in).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '—';
-      const ho = r.punch_out ? new Date(r.punch_out).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '—';
+      const hi = r.punch_in ? new Date(r.punch_in).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Abidjan'}) : '—';
+      const ho = r.punch_out ? new Date(r.punch_out).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Abidjan'}) : '—';
       const zone = r.geo ? (r.geo.inZone!==false
         ? '<span style="color:#16A34A;font-weight:700;">✅ Sur site</span>'
         : '<span style="color:#DC2626;font-weight:700;">⚠️ Hors zone</span>') : '<span style="color:#888;">—</span>';
@@ -22997,7 +23026,7 @@ async function punchShowHistory(){
 
 // ---------- Export / Import (pont entre appareils, sans backend) ----------
 function pointageExporterJour(){
-  const date = document.getElementById('przDate').value || (new Date().toISOString().slice(0,10));
+  const date = document.getElementById('przDate').value || (_dateCIAujourdhui());
   const rec = presences[date] || {};
   const payload = {type:'rh_pointage_export', date, presences: rec};
   const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
@@ -23098,8 +23127,8 @@ function _kioskMettreAJourHorloge(){
   const b = document.getElementById('kioskBienvenue');
   if(!h) return;
   const now = new Date();
-  h.textContent = now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  if(d) d.textContent = now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  h.textContent = new Intl.DateTimeFormat('fr-FR',{timeZone:'Africa/Abidjan',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(now);
+  if(d) d.textContent = new Intl.DateTimeFormat('fr-FR',{timeZone:'Africa/Abidjan',weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(now);
   if(b) b.textContent = `👋 BIENVENUE À ${(companyName||'MON ENTREPRISE').toUpperCase()}`;
   _kioskMajHorsHoraires(now);
 }
@@ -23113,7 +23142,10 @@ function kioskToggleSoleil(){
 function _kioskMajHorsHoraires(now){
   const box = document.getElementById('kioskHorsHoraires');
   if(!box) return;
-  const minActuel = now.getHours()*60+now.getMinutes();
+  // Heure de Côte d'Ivoire explicite (pas now.getHours(), qui dépend du
+  // fuseau réglé sur l'appareil — voir _dateCIAujourdhui plus haut).
+  const [hh, mm] = _heureCI(now).split(':').map(Number);
+  const minActuel = hh*60+mm;
   const debutJour = 6*60+30, finSoir = 22*60; // fenêtre "horaires habituels" large : 06h30-22h00
   if(minActuel < debutJour || minActuel >= finSoir){
     box.style.display='block';
@@ -23530,9 +23562,9 @@ async function _kioskAfficherActionPrevue(){
   const warnEl = document.getElementById('kioskActionWarn');
   if(warnEl) warnEl.style.display='none';
   const cle = _kiosk.emp ? String(_kiosk.emp.id) : null;
-  const today = new Date().toISOString().slice(0,10);
+  const today = _dateCIAujourdhui();
   const hierDate = new Date(); hierDate.setDate(hierDate.getDate()-1);
-  const hier = hierDate.toISOString().slice(0,10);
+  const hier = _dateCIAujourdhui(hierDate);
 
   let curToday = (cle && presences[today]) ? (presences[today][cle]||{}) : {};
   let curHier = (cle && presences[hier]) ? (presences[hier][cle]||{}) : {};
@@ -23547,14 +23579,20 @@ async function _kioskAfficherActionPrevue(){
     }catch(e){ /* on continue avec ce qu'on a localement */ }
   }
 
-  // Un pointage d'HIER encore "ouvert" (arrivée notée, jamais de départ) —
-  // typique d'un service Nuit ou 24h qui traverse minuit — a priorité : le
-  // prochain scan est presque certainement le départ de CE pointage-là, pas
-  // une nouvelle arrivée aujourd'hui. Sans ça, la personne se retrouvait
-  // bloquée ("aucune arrivée aujourd'hui") ou marquée absente à tort le jour
-  // de son départ.
+  // Un pointage d'HIER encore "ouvert" (arrivée notée, jamais de départ) n'a
+  // la priorité QUE pour un service Nuit ou 24h — ce sont les seuls services
+  // censés légitimement traverser minuit. Pour un service Jour, un pointage
+  // resté ouvert est presque toujours un oubli de pointer le départ (ou un
+  // ancien pointage jamais transmis à Supabase, voir le bug de synchronisation
+  // corrigé récemment) — le prendre en compte bloquait alors TOUTE nouvelle
+  // arrivée de cette personne en la faisant passer pour "déjà arrivée hier",
+  // et le nouveau scan s'écrivait sous la date d'HIER au lieu d'aujourd'hui.
+  // C'était la cause exacte du bug "déjà arrivé à 23h alors que ce n'est pas
+  // encore 23h, et marqué absent dans Présence".
+  const serviceHier = curHier.service;
+  const hierEstNuitOu24h = serviceHier==='nuit' || serviceHier==='24h';
   let cur, dateAEcrire;
-  if(curHier.punch_in && !curHier.punch_out){
+  if(curHier.punch_in && !curHier.punch_out && hierEstNuitOu24h){
     cur = curHier; dateAEcrire = hier;
   } else {
     cur = curToday; dateAEcrire = today;
@@ -23625,7 +23663,7 @@ function kioskChoisirAction(action){
   const cur = _kiosk.curRecord || {};
   const warnEl = document.getElementById('kioskActionWarn');
   if(action==='arrival' && cur.punch_in){
-    const heureArrivee = new Date(cur.punch_in).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    const heureArrivee = new Date(cur.punch_in).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Abidjan'});
     if(warnEl){ warnEl.style.display='block'; warnEl.textContent=`⚠️ Votre arrivée est déjà enregistrée aujourd'hui à ${heureArrivee}. Scannez à nouveau uniquement pour votre DÉPART, en fin de service.`; }
     return;
   }
@@ -23776,8 +23814,9 @@ function kioskRetakeSelfie(){ _kioskShowStep('selfie'); }
 // à l'employé et à enregistrer dans la fiche de présence (statut "Absent").
 function _kioskVerifierHoraire(service, action, nowDate){
   const hor = ((_kiosk.cfg && _kiosk.cfg.horaires) || DEFAULT_HORAIRES)[service] || DEFAULT_HORAIRES[service] || DEFAULT_HORAIRES.jour;
-  const nowMin = nowDate.getHours()*60 + nowDate.getMinutes();
-  const hhmm = nowDate.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  const hhmm = _heureCI(nowDate);
+  const [hh, mm] = hhmm.split(':').map(Number);
+  const nowMin = hh*60 + mm;
   if(action==='arrival'){
     const limite = _hmToMin(hor.arrivee) + (parseInt(hor.tolerance,10)||0);
     if(nowMin > limite){
@@ -23844,7 +23883,7 @@ async function _kioskFlusherPointagesEnAttente(){
   }
 }
 async function kioskValider(){
-  const today = new Date().toISOString().slice(0,10);
+  const today = _dateCIAujourdhui();
   const nowDate = new Date();
   const now = nowDate.toISOString();
   // Clé réelle utilisée partout ailleurs dans l'app (presences[date][e.id]) —
@@ -23982,7 +24021,7 @@ async function kioskValider(){
 
   const name = _kiosk.emp ? (_kiosk.emp.nom+' '+_kiosk.emp.prenom) : _kiosk.empId;
   const box = document.getElementById('kioskDoneMsg');
-  const hhmm = new Date(now).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  const hhmm = new Date(now).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Abidjan'});
   const noteZone = horsZone
     ? `<br><span style="color:#FCA5A5;font-weight:700;font-size:1.05rem;">⚠️ Hors zone (${Math.round(_kiosk.geo.dist)} m du site) — signalé pour vérification RH</span>`
     : '';
@@ -24096,7 +24135,7 @@ async function _fbWatchPresenceDate(){
   if(!fdb) return;
   if(_fbUnsub){ _fbUnsub(); _fbUnsub=null; }
   const dateEl = document.getElementById('przDate');
-  const date = dateEl ? dateEl.value : new Date().toISOString().slice(0,10);
+  const date = dateEl ? dateEl.value : _dateCIAujourdhui();
   if(!date) return;
   _fbUnsub = fdb.collection('pointages').doc(date).collection('entries')
     .onSnapshot(snap=>{
