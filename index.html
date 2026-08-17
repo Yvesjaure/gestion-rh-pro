@@ -24000,9 +24000,13 @@ async function kioskConfirmBadge(){
       _kioskShowStep('choixAction');
       return;
     }
-    // Non programmé (ou vérification impossible) : jamais de service deviné,
-    // jamais de choix libre, aucun pointage engagé à ce stade.
-    toast("⛔ Vous n'êtes pas programmé dans un équipage pour aujourd'hui. Veuillez vous diriger vers l'exploitation pour votre programmation.", 'err');
+    // Non programmé (ou vérification impossible) : le badge reste reconnu et
+    // le pointage doit quand même être accepté et enregistré normalement —
+    // jamais de service deviné (reste null), jamais de choix libre proposé.
+    // Le message d'exploitation est un AVERTISSEMENT affiché après coup, pas
+    // un refus (voir kioskValider, variable nonProgramme).
+    _kiosk.serviceChoisi = null;
+    _kioskShowStep('choixAction');
     return;
   }
   _kioskAfficherInfoServices();
@@ -24193,6 +24197,14 @@ function kioskRetakeSelfie(){ _kioskShowStep('selfie'); }
 // (travailleur hors équipage : départ accepté à partir de 12h00 le samedi
 // uniquement, sans limite supérieure).
 function _kioskVerifierHoraire(service, action, nowDate, heureFinEquipage, contexteSamedi){
+  if(service===null){
+    // Chauffeur/Éboueur non programmé : aucun service à juger, donc aucun
+    // horaire à vérifier — le pointage est accepté sans aucun jugement de
+    // retard/plage horaire (jamais "jour" par défaut). Le message
+    // d'exploitation est géré séparément par l'appelant (kioskValider),
+    // pas ici.
+    return { ok:true };
+  }
   if(contexteSamedi==='administration'){
     // Administration ne travaille pas le samedi — aucun horaire ne
     // s'applique, ni à l'arrivée ni au départ.
@@ -24417,7 +24429,15 @@ async function kioskValider(){
   }
 
   const action = _kiosk.actionChoisie || (!cur.punch_in ? 'arrival' : 'departure'); // repli si jamais non choisi
-  const service = _kiosk.serviceChoisi || 'jour';
+  const fonctionAgentDep = ((_kiosk.emp && _kiosk.emp.fonc) || '').toLowerCase();
+  const estChauffeurOuEboueurDep = fonctionAgentDep.includes('chauffeur') || fonctionAgentDep.includes('éboueur') || fonctionAgentDep.includes('eboueur');
+  // Chauffeur/Éboueur non programmé (kioskConfirmBadge a laissé serviceChoisi
+  // à null dans ce cas précis) : le service reste VOLONTAIREMENT null, jamais
+  // "jour" par défaut — c'est exactement la règle "ne jamais inventer un
+  // service à partir de la fiche employé". Pour tous les autres cas (poste
+  // hors équipage, ou chauffeur/éboueur bien programmé), le repli habituel
+  // sur 'jour' reste inchangé.
+  const service = (estChauffeurOuEboueurDep && !_kiosk.serviceChoisi) ? null : (_kiosk.serviceChoisi || 'jour');
   // Heure de fin d'équipe réellement programmée (Étape 4A) — uniquement pour
   // Chauffeur/Éboueur, jamais pour les autres postes (Mécanicien, Vantiste,
   // Soudeur...), qui gardent leur comportement actuel strictement inchangé.
@@ -24425,9 +24445,7 @@ async function kioskValider(){
   // n'est inventé, _kioskVerifierHoraire retombe alors sur son comportement
   // habituel (fenêtre fixe DEFAULT_HORAIRES), exactement comme avant.
   let heureFinEquipage = null;
-  const fonctionAgentDep = ((_kiosk.emp && _kiosk.emp.fonc) || '').toLowerCase();
-  const estChauffeurOuEboueurDep = fonctionAgentDep.includes('chauffeur') || fonctionAgentDep.includes('éboueur') || fonctionAgentDep.includes('eboueur');
-  if(estChauffeurOuEboueurDep){
+  if(estChauffeurOuEboueurDep && service){
     try{ heureFinEquipage = _trouverHeureFinEquipe(cle, dateEcriture); }
     catch(e){ console.warn('Recherche de l\'heure de fin équipage échouée (comportement habituel conservé) :', e); }
   }
@@ -24515,13 +24533,11 @@ async function kioskValider(){
   // gère déjà le cas du service Nuit à cheval sur deux jours (voir plus haut),
   // donc rien à ajouter pour ce cas particulier.
   let nonProgramme = false;
-  const fonctionAgent = ((_kiosk.emp && _kiosk.emp.fonc) || '').toLowerCase();
-  const estChauffeurOuEboueur = fonctionAgent.includes('chauffeur') || fonctionAgent.includes('éboueur') || fonctionAgent.includes('eboueur');
-  if(estChauffeurOuEboueur){
+  if(estChauffeurOuEboueurDep){
     try{
       const carteServices = await _kioskObtenirCarteServices(dateEcriture);
       const serviceProgramme = carteServices.get(cle);
-      nonProgramme = !serviceProgramme || serviceProgramme !== service;
+      nonProgramme = !serviceProgramme;
     }catch(e){ console.warn('Vérification du programme échouée (pointage quand même accepté normalement) :', e); }
   }
 
@@ -24541,7 +24557,7 @@ async function kioskValider(){
         : `<br><span style="color:#FCD34D;font-weight:800;font-size:1.05rem;">⚠️ ${horaireCheck.message}<br>Merci d'essayer de vous diriger vers la DRH si possible, pour justifier ce départ hors plage.</span>`)
     : '';
   const noteProgramme = nonProgramme
-    ? `<br><span style="color:#FCD34D;font-weight:800;font-size:1.05rem;">POINTAGE ACCEPTÉ — MERCI DE VOUS RENDRE À L'EXPLOITATION POUR VÉRIFIER VOTRE PROGRAMME.</span>`
+    ? `<br><span style="color:#FCD34D;font-weight:800;font-size:1.05rem;">Vous n'êtes pas programmé dans un équipage pour aujourd'hui. Veuillez vous diriger vers l'exploitation pour votre programmation.</span>`
     : '';
   // Règle stricte : ne jamais donner l'IMPRESSION visuelle d'une confirmation
   // serveur (coche verte pleine) tant que Supabase n'a pas réellement confirmé
