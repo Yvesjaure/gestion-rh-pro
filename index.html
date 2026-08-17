@@ -21803,6 +21803,25 @@ async function verifierAbsencesAutomatiques(){
         modifie = true;
         return;
       }
+      // Règle du samedi (Étape 4B) — jamais pour Chauffeur/Éboueur (ils
+      // continuent d'utiliser exclusivement carteServices ci-dessous, quel
+      // que soit le jour, comme prévu à l'étape 4A). Dimanche/fériés restent
+      // hors de cette fonction (déjà filtrés plus haut par
+      // _estJourNonOuvrable, jamais modifiée).
+      const fonctionAgentAbs = (e.fonc||'').toLowerCase();
+      const estChauffeurOuEboueurAbs = fonctionAgentAbs.includes('chauffeur') || fonctionAgentAbs.includes('éboueur') || fonctionAgentAbs.includes('eboueur');
+      if(!estChauffeurOuEboueurAbs && new Date(today+'T00:00:00').getDay()===6){
+        // Administration (roleApplication==='Administration', jamais déduit
+        // de fonc/dept) ne travaille pas le samedi → jamais d'absence.
+        if(e.roleApplication==='Administration') return;
+        // Tout le reste (Travailleur, Superviseur, ou roleApplication vide) :
+        // demi-journée, aucune absence tant que midi n'est pas atteint.
+        if(nowMin < 12*60) return;
+        presences[today][e.id] = { statut:'Absent', service:'jour', auto:true };
+        modifie = true;
+        nouvellesAbsences.push(e);
+        return;
+      }
       const service = carteServices.get(String(e.id))
         || (e.serviceHabituel==='nuit' ? 'nuit' : e.serviceHabituel==='24h' ? '24h' : 'jour');
       if(service==='repos') return; // équipe 24h pas de tour aujourd'hui (chaîne) — jamais d'absence auto
@@ -24165,9 +24184,18 @@ function kioskRetakeSelfie(){ _kioskShowStep('selfie'); }
 // Paramètre optionnel "heureFinEquipage" (Étape 4A) : si fourni (Chauffeur/
 // Éboueur avec une heure de fin réellement programmée sur son équipe du
 // jour), remplace la fenêtre fixe DEFAULT_HORAIRES pour ce départ précis.
-// Sans lui, comportement strictement identique à avant — jamais rien
-// d'inventé pour les autres postes ni quand aucune heure n'est programmée.
-function _kioskVerifierHoraire(service, action, nowDate, heureFinEquipage){
+// Paramètre optionnel "contexteSamedi" (Étape 4B) : null (comportement
+// actuel, inchangé — y compris pour Chauffeur/Éboueur, déjà couverts par
+// heureFinEquipage ci-dessus quel que soit le jour), 'administration'
+// (aucun horaire imposé, aucun retard/absence possible) ou 'autre'
+// (travailleur hors équipage : départ accepté à partir de 12h00 le samedi
+// uniquement, sans limite supérieure).
+function _kioskVerifierHoraire(service, action, nowDate, heureFinEquipage, contexteSamedi){
+  if(contexteSamedi==='administration'){
+    // Administration ne travaille pas le samedi — aucun horaire ne
+    // s'applique, ni à l'arrivée ni au départ.
+    return { ok:true };
+  }
   const hor = ((_kiosk.cfg && _kiosk.cfg.horaires) || DEFAULT_HORAIRES)[service] || DEFAULT_HORAIRES[service] || DEFAULT_HORAIRES.jour;
   const hhmm = _heureCI(nowDate);
   const [hh, mm] = hhmm.split(':').map(Number);
@@ -24184,13 +24212,25 @@ function _kioskVerifierHoraire(service, action, nowDate, heureFinEquipage){
     // n'importe quelle heure, dès que le lendemain de l'arrivée est arrivé
     // (pas besoin d'attendre l'heure pile de fin de service). Inchangé.
     if(service==='24h' || !hor.sortieDebut || !hor.sortieFin) return { ok:true };
-    // Heure de fin d'équipe réellement programmée (Chauffeur/Éboueur) :
-    // remplace la fenêtre fixe — départ accepté dès que cette heure est
-    // atteinte, sans limite supérieure (contrairement à la fenêtre fixe).
+    // Heure de fin d'équipe réellement programmée (Chauffeur/Éboueur, Étape
+    // 4A) : remplace la fenêtre fixe — départ accepté dès que cette heure
+    // est atteinte, sans limite supérieure. S'applique tous les jours,
+    // samedi compris, sans changement pour cette étape.
     if(heureFinEquipage){
       const finProgrammee = _hmToMin(heureFinEquipage);
       if(nowMin < finProgrammee){
         return { ok:false, message:`Départ avant la fin programmée (${hhmm}, fin prévue ${heureFinEquipage}).` };
+      }
+      return { ok:true };
+    }
+    // Samedi, travailleur hors équipage (Mécanicien, Vantiste, Soudeur...) :
+    // fin de demi-journée à 12h00 — départ accepté à partir de cette heure,
+    // sans limite supérieure. Ne s'applique QUE le samedi ; du lundi au
+    // vendredi, la fenêtre fixe habituelle ci-dessous reste inchangée.
+    if(contexteSamedi==='autre'){
+      const finDemiJournee = 12*60;
+      if(nowMin < finDemiJournee){
+        return { ok:false, message:`Départ avant la fin de la demi-journée du samedi (${hhmm}, fin à 12:00).` };
       }
       return { ok:true };
     }
@@ -24350,11 +24390,26 @@ async function kioskValider(){
   // habituel (fenêtre fixe DEFAULT_HORAIRES), exactement comme avant.
   let heureFinEquipage = null;
   const fonctionAgentDep = ((_kiosk.emp && _kiosk.emp.fonc) || '').toLowerCase();
-  if(fonctionAgentDep.includes('chauffeur') || fonctionAgentDep.includes('éboueur') || fonctionAgentDep.includes('eboueur')){
+  const estChauffeurOuEboueurDep = fonctionAgentDep.includes('chauffeur') || fonctionAgentDep.includes('éboueur') || fonctionAgentDep.includes('eboueur');
+  if(estChauffeurOuEboueurDep){
     try{ heureFinEquipage = _trouverHeureFinEquipe(cle, dateEcriture); }
     catch(e){ console.warn('Recherche de l\'heure de fin équipage échouée (comportement habituel conservé) :', e); }
   }
-  const horaireCheck = _kioskVerifierHoraire(service, action, nowDate, heureFinEquipage);
+  // Règle du samedi (Étape 4B) — jamais pour Chauffeur/Éboueur (déjà
+  // entièrement couverts par heureFinEquipage ci-dessus, quel que soit le
+  // jour) : Administration (roleApplication==='Administration', jamais
+  // déduit de fonc/dept) ne travaille pas le samedi ; tout le reste
+  // (Travailleur, Superviseur, ou roleApplication vide) suit la règle de
+  // demi-journée avec fin à 12h00. Dimanche/fériés restent hors de ce calcul
+  // (déjà filtrés en amont par _estJourNonOuvrable, jamais touchée ici).
+  let contexteSamedi = null;
+  if(!estChauffeurOuEboueurDep){
+    const estSamediDep = new Date(dateEcriture+'T00:00:00').getDay()===6;
+    if(estSamediDep){
+      contexteSamedi = (_kiosk.emp && _kiosk.emp.roleApplication==='Administration') ? 'administration' : 'autre';
+    }
+  }
+  const horaireCheck = _kioskVerifierHoraire(service, action, nowDate, heureFinEquipage, contexteSamedi);
   // Si l'employé pointe en dehors de la tolérance (arrivée) ou de la plage
   // acceptable (départ), le pointage reste enregistré (heure réelle gardée),
   // mais le statut passe à "Absent" — comme un vrai absent, il reste dans la
