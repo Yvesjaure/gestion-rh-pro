@@ -14335,6 +14335,14 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
         <div class="fr"><span class="lbl">Adresse</span><input type="text" id="fAdr" class="inp"></div>
         <div class="fr"><span class="lbl">Téléphone</span><input type="text" id="fTel" class="inp" placeholder="0700000000"></div>
         <div class="fr"><span class="lbl">Fonction / Poste</span><input type="text" id="fFonc" class="inp"></div>
+        <div class="fr" id="frRoleApplication"><span class="lbl">Rôle dans l'application</span>
+          <select id="fRoleApplication" class="inp">
+            <option value="">— Non défini —</option>
+            <option value="Travailleur">Travailleur</option>
+            <option value="Superviseur">Superviseur</option>
+            <option value="Administration">Administration</option>
+          </select>
+        </div>
         <div class="fr"><span class="lbl">Type de Contrat</span>
           <select id="fContrat" class="inp">
             <option value="">-- Choisir --</option>
@@ -16366,6 +16374,14 @@ async function retirerSuperviseur(email){
 // Masque les sections réservées à l'admin pour un compte superviseur —
 // Paramètres, IA Assistant, Corbeille, Historique. Rien ne change pour un admin.
 function _appliquerRestrictionsSuperviseur(){
+  // "Rôle dans l'application" (champ purement d'affichage, aucune permission
+  // dérivée) : lecture seule pour tout le monde sauf admin/DRH — la vraie
+  // protection est le trigger SQL côté base (impossible à contourner depuis
+  // la console), ceci n'est qu'un confort d'interface en plus.
+  if(monRole && monRole!=='admin' && monRole!=='drh'){
+    const champRole = document.getElementById('fRoleApplication');
+    if(champRole) champRole.disabled = true;
+  }
   if(monRole==='superviseur'){
     ['tabIA','tabParametres','menuCorbeille','menuHistorique'].forEach(id=>{
       const el=document.getElementById(id);
@@ -18148,6 +18164,7 @@ function lireForm(){
     etatCivil:document.getElementById('fEtatCivil').value,
     tel:document.getElementById('fTel').value.trim(),
     fonc:document.getElementById('fFonc').value.trim(),
+    roleApplication:document.getElementById('fRoleApplication').value||'',
     contrat:document.getElementById('fContrat').value,
     finContrat:document.getElementById('fFinContrat').value,
     statutEmploi:document.getElementById('fStatutEmploi').value||'Actif',
@@ -18198,6 +18215,10 @@ function remplirForm(e){
   document.getElementById('fEtatCivil').value=e.etatCivil||'';
   document.getElementById('fTel').value=e.tel||'';
   document.getElementById('fFonc').value=e.fonc||'';
+  // Rôle applicatif : purement d'affichage (voir plus bas, jamais de
+  // permission dérivée) — valeur neutre "" si absente sur une fiche
+  // existante, jamais un rôle inventé.
+  document.getElementById('fRoleApplication').value=e.roleApplication||'';
   document.getElementById('fContrat').value=e.contrat||'';
   document.getElementById('fFinContrat').value=e.finContrat||'';
   document.getElementById('fStatutEmploi').value=e.statutEmploi||'Actif';
@@ -18231,6 +18252,7 @@ function remplirForm(e){
 }
 function viderForm(){
   ['fID','fNom','fPrenom','fDateNais','fLieuNais','fAdr','fEmb','fTel','fFonc','fSal','fDept','fSite','fEmail','fNat','fCNI','fCMU','fPere','fMere','fAutre','fFinContrat','fDateDepart','fUrgNom1','fUrgTel1','fUrgNom2','fUrgTel2'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('fRoleApplication').value='';
   document.getElementById('fUrgLien1').value='Père';
   document.getElementById('fUrgLien2').value='Père';
   _toggleNomUrgence(1); _toggleNomUrgence(2);
@@ -20912,6 +20934,28 @@ function _construireCarteServicesEffectifs(dateStr, listeEquipages, listeRemplac
   });
   return carte;
 }
+// Retrouve, pour un Chauffeur/Éboueur, l'heure de fin (HH:MM) renseignée sur
+// l'équipe qui détermine réellement son service aujourd'hui — fonction
+// SÉPARÉE (Étape 4A), n'appelle ni ne modifie _construireCarteServicesEffectifs
+// pour ne prendre aucun risque sur les tests qui la couvrent déjà. Un
+// remplacement du jour n'a pas de notion d'heure de fin (c'est un texte
+// libre, pas une équipe) — dans ce cas, retourne null, rien n'est inventé.
+function _trouverHeureFinEquipe(empId, dateStr, listeEquipages, listeRemplacements){
+  const date = dateStr || _dateCIAujourdhui();
+  const cle = String(empId);
+  const srcRemplacements = listeRemplacements || remplacements;
+  const remJour = srcRemplacements[date] || {};
+  if(remJour[cle] !== undefined) return null; // remplacement du jour : pas d'heure de fin associée
+  const srcEquipages = listeEquipages || equipages;
+  for(const eng of srcEquipages){
+    for(const eq of (eng.equipes||[])){
+      if(String(eq.chauffeurId)===cle || (eq.eboueurIds||[]).map(String).includes(cle)){
+        return eq.heureFin || null;
+      }
+    }
+  }
+  return null;
+}
 function _serviceEffectifEmploye(empId, dateStr){
   const date = dateStr || _dateCIAujourdhui();
   const rem = remplacements[date] && remplacements[date][empId];
@@ -21161,7 +21205,7 @@ function ajouterEquipe(enginId){
   if(!eng.equipes) eng.equipes=[];
   eng.equipes.push({
     id: Date.now()+Math.floor(Math.random()*1000),
-    service:'jour', chauffeurId:'', eboueurIds:[], zone:'',
+    service:'jour', chauffeurId:'', eboueurIds:[], zone:'', heureFin:'',
   });
   triggerSave();
   renderEquipages();
@@ -21366,6 +21410,12 @@ function renderEquipages(){
                 <option value="nuit" ${eq.service==='nuit'?'selected':''}>🌙 Nuit</option>
                 <option value="24h" ${eq.service==='24h'?'selected':''}>🕛 24h</option>
               </select>`}
+          ${eq.service!=='24h' ? `
+          <span style="display:flex;align-items:center;gap:4px;font-size:.66rem;color:#555;">
+            🕐 Fin :
+            <input type="time" value="${eq.heureFin||''}" style="border:1px solid #ddd;border-radius:5px;padding:2px 4px;font-size:.7rem;width:78px;"
+              onchange="equModifierChampEquipe(${eng.id},${eq.id},'heureFin',this.value)" title="Heure de fin programmée (optionnel) — si renseignée, remplace la fenêtre horaire fixe pour le départ d'un Chauffeur/Éboueur">
+          </span>` : ''}
           ${chaineBadge}
           <span style="cursor:pointer;font-size:.75rem;color:#e74c3c;" onclick="supprimerEquipe(${eng.id},${eq.id})" title="Supprimer cette équipe">🗑️</span>
         </div>
@@ -23862,7 +23912,24 @@ function kioskManualBadge(){
   if(!v){ punchToast('Entrez un matricule'); return; }
   _kioskOnBadgeDetected(fmtMatricule(v));
 }
-function kioskConfirmBadge(){
+// Récupère la carte des services programmés (Jour/Nuit/24h par employé) pour
+// une date donnée — réutilise _construireCarteServicesEffectifs() (aucune
+// nouvelle logique de calcul créée), avec le même repli déjà existant vers
+// Supabase directement si equipages/remplacements ne sont pas chargés
+// localement (téléphone jamais connecté en admin, seul l'annuaire public
+// l'est). Centralisé ici pour que kioskConfirmBadge et kioskValider
+// utilisent exactement la même logique, sans la dupliquer.
+async function _kioskObtenirCarteServices(dateStr){
+  let equipagesPourCheck = equipages, remplacementsPourCheck = remplacements;
+  if(!equipages.length){
+    const { data } = await supabaseRH.from('rh_donnees').select('cle,valeur').in('cle',['rh_equ','rh_rem']);
+    const parCle = {}; (data||[]).forEach(l=>{ parCle[l.cle]=l.valeur; });
+    equipagesPourCheck = parCle.rh_equ || [];
+    remplacementsPourCheck = parCle.rh_rem || {};
+  }
+  return _construireCarteServicesEffectifs(dateStr, equipagesPourCheck, remplacementsPourCheck);
+}
+async function kioskConfirmBadge(){
   const btn = document.querySelector('#kioskStep-confirmBadge .kiosk-btn:not(.kiosk-btn-sec)');
   if(btn && btn.disabled){
     toast('⛔ Arrivée et départ déjà enregistrés aujourd\'hui — pointage refusé.', 'err');
@@ -23885,6 +23952,36 @@ function kioskConfirmBadge(){
       'Sorti': '⛔ Cet employé a quitté l\'entreprise — pointage refusé.',
     };
     toast(messages[statutEmp] || '⛔ Cet employé n\'est plus actif — pointage refusé.', 'err');
+    return;
+  }
+  // Chauffeur/Éboueur : le service opérationnel doit venir de leur
+  // programmation équipage réelle du jour — jamais de leur fiche
+  // (serviceHabituel) ni d'un choix libre. Déterminé ICI, avant même
+  // d'afficher l'étape de choix, pour que ce choix libre ne leur soit jamais
+  // proposé du tout. Pour tous les autres postes (Mécanicien, Vantiste,
+  // Soudeur...), rien ne change : le choix libre habituel reste proposé plus
+  // bas, inchangé.
+  const fonctionAgent = (_kiosk.emp.fonc || '').toLowerCase();
+  const estChauffeurOuEboueur = fonctionAgent.includes('chauffeur') || fonctionAgent.includes('éboueur') || fonctionAgent.includes('eboueur');
+  if(estChauffeurOuEboueur){
+    const today = _dateCIAujourdhui();
+    const cle = String(_kiosk.emp.id);
+    let serviceProgramme = null;
+    try{
+      const carteServices = await _kioskObtenirCarteServices(today);
+      serviceProgramme = carteServices.get(cle);
+    }catch(e){
+      console.warn('Vérification de la programmation équipage échouée :', e);
+    }
+    if(serviceProgramme && ['jour','nuit','24h'].includes(serviceProgramme)){
+      // Programmé : le service est imposé directement, aucun choix libre.
+      _kiosk.serviceChoisi = serviceProgramme;
+      _kioskShowStep('choixAction');
+      return;
+    }
+    // Non programmé (ou vérification impossible) : jamais de service deviné,
+    // jamais de choix libre, aucun pointage engagé à ce stade.
+    toast("⛔ Vous n'êtes pas programmé dans un équipage pour aujourd'hui. Veuillez vous diriger vers l'exploitation pour votre programmation.", 'err');
     return;
   }
   _kioskAfficherInfoServices();
@@ -24065,7 +24162,12 @@ function kioskRetakeSelfie(){ _kioskShowStep('selfie'); }
 // Vérifie l'heure du scan par rapport aux horaires du service choisi.
 // Retourne {ok:true} si dans les clous, sinon {ok:false, message} à afficher
 // à l'employé et à enregistrer dans la fiche de présence (statut "Absent").
-function _kioskVerifierHoraire(service, action, nowDate){
+// Paramètre optionnel "heureFinEquipage" (Étape 4A) : si fourni (Chauffeur/
+// Éboueur avec une heure de fin réellement programmée sur son équipe du
+// jour), remplace la fenêtre fixe DEFAULT_HORAIRES pour ce départ précis.
+// Sans lui, comportement strictement identique à avant — jamais rien
+// d'inventé pour les autres postes ni quand aucune heure n'est programmée.
+function _kioskVerifierHoraire(service, action, nowDate, heureFinEquipage){
   const hor = ((_kiosk.cfg && _kiosk.cfg.horaires) || DEFAULT_HORAIRES)[service] || DEFAULT_HORAIRES[service] || DEFAULT_HORAIRES.jour;
   const hhmm = _heureCI(nowDate);
   const [hh, mm] = hhmm.split(':').map(Number);
@@ -24080,8 +24182,18 @@ function _kioskVerifierHoraire(service, action, nowDate){
   } else {
     // Service 24h : pas de plage de sortie fixe — le départ est accepté à
     // n'importe quelle heure, dès que le lendemain de l'arrivée est arrivé
-    // (pas besoin d'attendre l'heure pile de fin de service).
+    // (pas besoin d'attendre l'heure pile de fin de service). Inchangé.
     if(service==='24h' || !hor.sortieDebut || !hor.sortieFin) return { ok:true };
+    // Heure de fin d'équipe réellement programmée (Chauffeur/Éboueur) :
+    // remplace la fenêtre fixe — départ accepté dès que cette heure est
+    // atteinte, sans limite supérieure (contrairement à la fenêtre fixe).
+    if(heureFinEquipage){
+      const finProgrammee = _hmToMin(heureFinEquipage);
+      if(nowMin < finProgrammee){
+        return { ok:false, message:`Départ avant la fin programmée (${hhmm}, fin prévue ${heureFinEquipage}).` };
+      }
+      return { ok:true };
+    }
     const debut=_hmToMin(hor.sortieDebut), fin=_hmToMin(hor.sortieFin);
     if(nowMin < debut || nowMin > fin){
       return { ok:false, message:`Départ hors plage horaire (${hhmm}, plage acceptable ${hor.sortieDebut}–${hor.sortieFin}).` };
@@ -24230,7 +24342,19 @@ async function kioskValider(){
 
   const action = _kiosk.actionChoisie || (!cur.punch_in ? 'arrival' : 'departure'); // repli si jamais non choisi
   const service = _kiosk.serviceChoisi || 'jour';
-  const horaireCheck = _kioskVerifierHoraire(service, action, nowDate);
+  // Heure de fin d'équipe réellement programmée (Étape 4A) — uniquement pour
+  // Chauffeur/Éboueur, jamais pour les autres postes (Mécanicien, Vantiste,
+  // Soudeur...), qui gardent leur comportement actuel strictement inchangé.
+  // Si aucune heure n'est renseignée sur l'équipe du jour, reste null — rien
+  // n'est inventé, _kioskVerifierHoraire retombe alors sur son comportement
+  // habituel (fenêtre fixe DEFAULT_HORAIRES), exactement comme avant.
+  let heureFinEquipage = null;
+  const fonctionAgentDep = ((_kiosk.emp && _kiosk.emp.fonc) || '').toLowerCase();
+  if(fonctionAgentDep.includes('chauffeur') || fonctionAgentDep.includes('éboueur') || fonctionAgentDep.includes('eboueur')){
+    try{ heureFinEquipage = _trouverHeureFinEquipe(cle, dateEcriture); }
+    catch(e){ console.warn('Recherche de l\'heure de fin équipage échouée (comportement habituel conservé) :', e); }
+  }
+  const horaireCheck = _kioskVerifierHoraire(service, action, nowDate, heureFinEquipage);
   // Si l'employé pointe en dehors de la tolérance (arrivée) ou de la plage
   // acceptable (départ), le pointage reste enregistré (heure réelle gardée),
   // mais le statut passe à "Absent" — comme un vrai absent, il reste dans la
@@ -24292,22 +24416,7 @@ async function kioskValider(){
   const estChauffeurOuEboueur = fonctionAgent.includes('chauffeur') || fonctionAgent.includes('éboueur') || fonctionAgent.includes('eboueur');
   if(estChauffeurOuEboueur){
     try{
-      // Sur le téléphone d'un employé jamais connecté en admin, equipages/
-      // remplacements ne sont pas chargés localement (seul l'annuaire public
-      // l'est) — on va alors chercher ce même planning directement dans
-      // Supabase, juste pour cette vérification. Toujours les données déjà
-      // existantes (rh_equ/rh_rem), rien de nouveau créé ; si cette lecture
-      // échoue (droits d'accès, pas de réseau...), on n'affiche simplement pas
-      // le message plutôt que de risquer quoi que ce soit sur le pointage,
-      // déjà accepté et enregistré de toute façon.
-      let equipagesPourCheck = equipages, remplacementsPourCheck = remplacements;
-      if(!equipages.length){
-        const { data } = await supabaseRH.from('rh_donnees').select('cle,valeur').in('cle',['rh_equ','rh_rem']);
-        const parCle = {}; (data||[]).forEach(l=>{ parCle[l.cle]=l.valeur; });
-        equipagesPourCheck = parCle.rh_equ || [];
-        remplacementsPourCheck = parCle.rh_rem || {};
-      }
-      const carteServices = _construireCarteServicesEffectifs(dateEcriture, equipagesPourCheck, remplacementsPourCheck);
+      const carteServices = await _kioskObtenirCarteServices(dateEcriture);
       const serviceProgramme = carteServices.get(cle);
       nonProgramme = !serviceProgramme || serviceProgramme !== service;
     }catch(e){ console.warn('Vérification du programme échouée (pointage quand même accepté normalement) :', e); }
