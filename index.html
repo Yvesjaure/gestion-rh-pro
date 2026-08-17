@@ -17801,6 +17801,7 @@ async function rhSyncAnnuaire(){
       id: String(e.id), // identifiant brut — doit correspondre exactement aux clés utilisées dans "presences"
       nom: e.nom || '', prenom: e.prenom || '', photo: e.photo || '', fonc: e.fonc || '', site: e.site || '',
       serviceHabituel: e.serviceHabituel || 'jour', sexe: e.sexe || '', statutEmploi: e.statutEmploi || 'Actif',
+      roleApplication: e.roleApplication || '',
       modifie_le: new Date().toISOString(),
     }));
     // IMPORTANT : Supabase ne lève pas d'exception sur un échec (RLS refusée,
@@ -23387,6 +23388,7 @@ async function startKiosk(){
   await _kioskLoadCfg();
   _kioskChargerAnnuaire(); // annuaire public Supabase — fonctionne même sur un téléphone jamais connecté
   _kioskFlusherPointagesEnAttente(); // rétablit tout pointage resté coincé depuis une session précédente
+  _kioskDemarrerFlushPeriodique(); // puis continue de retenter toutes les 30s, pas seulement au démarrage
   fbInit(); // tentative silencieuse (ancien système, optionnel) — n'empêche pas le pointage si absent/échec
   _kioskShowStep('scan');
   _kioskMettreAJourHorloge(); // affiche tout de suite, sans attendre la 1ère seconde
@@ -24255,14 +24257,25 @@ function _kioskVerifierHoraire(service, action, nowDate, heureFinEquipage, conte
 // autant, seule la revérification serveur est alors absente pour cette
 // tentative-là (elle sera refaite normalement à la prochaine synchronisation
 // depuis un appareil qui a accès à la fonction).
+// Renvoie {success, definitif} — "definitif" distingue un vrai refus métier
+// (400/403/404 : employé introuvable/inactif/non programmé, requête
+// malformée — retenter ne changera JAMAIS le résultat) d'un problème
+// temporaire (réseau, fonction indisponible, 500/502/503 — retenter a du
+// sens). Avant, ces deux cas étaient traités pareil, ce qui aurait fait
+// retenter indéfiniment un pointage qui ne passera jamais.
+//
+// ÉTAPE 6 — ÉCRITURE DIRECTE SUPPRIMÉE : cette fonction n'écrit plus JAMAIS
+// directement dans rh_pointages. Avant, après épuisement des tentatives vers
+// la fonction serveur, un dernier repli contournait l'Edge Function pour
+// écrire sans aucune vérification (heure/GPS/identité/service redevenaient
+// aveuglément fiables) — exactement la faille que la fonction serveur est
+// censée fermer. Maintenant, un échec temporaire renvoie simplement
+// {success:false, definitif:false} — c'est à l'appelant de mettre le
+// pointage en file locale (_kioskAjouterPointageEnAttente), qui sera
+// retentée UNIQUEMENT via cette même fonction, donc UNIQUEMENT via l'Edge
+// Function, jusqu'à ce qu'elle réussisse ou soit rejetée définitivement.
 async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, tentatives=2, action){
   const urlFonction = `${SUPABASE_URL}/functions/v1/pointage`;
-  // Épuise D'ABORD toutes les tentatives vers la fonction serveur (celle qui
-  // authentifie réellement l'heure, le GPS, l'identité) — le repli direct
-  // (sans ces vérifications) n'intervient qu'en tout dernier recours, jamais
-  // dès le premier accroc réseau. Avant, un seul échec suffisait à basculer
-  // directement sur l'écriture non vérifiée, ce qui rouvrait presque la même
-  // faille que la fonction serveur est censée fermer.
   for(let i=0;i<=tentatives;i++){
     try{
       const reponse = await fetch(urlFonction, {
@@ -24273,6 +24286,7 @@ async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, ten
           dateEcriture,
           action,
           rec,
+          heureScan: now, // heure du scan lui-même — le serveur décide s'il lui fait confiance ou non
           lat: _kiosk.geo ? _kiosk.geo.lat : null,
           lng: _kiosk.geo ? _kiosk.geo.lng : null,
           geoDisponible: !!_kiosk.geo,
@@ -24280,7 +24294,13 @@ async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, ten
       });
       if(reponse.ok){
         const resultat = await reponse.json().catch(()=>({}));
-        if(resultat && resultat.success) return true;
+        if(resultat && resultat.success) return { success:true, definitif:false };
+      } else if([400,403,404].includes(reponse.status)){
+        // Refus définitif — inutile de retenter. Plus de repli direct non
+        // plus : si le serveur refuse ce pointage (ex: employé non
+        // programmé), il ne doit jamais être écrit sans sa vérification.
+        console.warn(`Pointage refusé définitivement par le serveur (${reponse.status}) — pas de nouvelle tentative.`);
+        return { success:false, definitif:true };
       }
       console.warn(`Fonction serveur de pointage refusée (tentative ${i+1}/${tentatives+1}) :`, reponse.status);
     }catch(e){
@@ -24288,19 +24308,12 @@ async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, ten
     }
     if(i<tentatives) await new Promise(r=>setTimeout(r, 800));
   }
-  // Toutes les tentatives vers la fonction serveur ont échoué — dernier
-  // recours : écriture directe (heure du téléphone, non revérifiée) plutôt
-  // que de perdre le pointage. Moins bien protégé pour CE pointage précis,
-  // mais rare (la fonction doit avoir échoué 3 fois de suite), et la
-  // prochaine synchronisation depuis un appareil connecté rétablira la
-  // vérification pour tous les pointages suivants.
-  try{
-    const { error } = await supabaseRH.from('rh_pointages').upsert({
-      date_jour: dateEcriture, emp_id: cle, data: rec, modifie_le: now,
-    }, { onConflict: 'date_jour,emp_id' });
-    if(!error) return true;
-  }catch(e2){ /* échec complet, retenté plus tard via la file d'attente */ }
-  return false;
+  // Toutes les tentatives vers la fonction serveur ont échoué (temporairement)
+  // — plus de repli direct : le pointage reste en sécurité en LOCAL
+  // (presences déjà écrit avant cet appel, voir kioskValider) et sera
+  // retenté par la file d'attente, uniquement via cette fonction, jusqu'à
+  // ce que l'Edge Function redevienne joignable.
+  return { success:false, definitif:false };
 }
 // File d'attente locale (localStorage, survit à la fermeture de l'onglet) pour
 // les pointages qui n'ont pas pu être transmis malgré les tentatives — se
@@ -24315,18 +24328,41 @@ function _kioskAjouterPointageEnAttente(dateEcriture, cle, rec, now, action){
   }catch(e){ /* pas grave — la version locale (presences) reste correcte de toute façon */ }
 }
 async function _kioskFlusherPointagesEnAttente(){
-  let liste;
-  try{ liste = JSON.parse(localStorage.getItem('rh_pointages_en_attente')||'[]'); }catch(e){ return; }
-  if(!liste || !liste.length) return;
-  const restants = [];
-  for(const item of liste){
-    const ok = await _kioskEnvoyerPointageAvecReessai(item.dateEcriture, item.cle, item.rec, item.now, 1, item.action);
-    if(!ok) restants.push(item);
+  // Protection contre les flush simultanés — si un flush est déjà en cours
+  // (ex: celui du démarrage pas encore fini quand le minuteur périodique se
+  // déclenche), celui-ci s'arrête immédiatement plutôt que de retenter les
+  // mêmes éléments en double.
+  if(_kioskFlusherPointagesEnAttente._enCours) return;
+  _kioskFlusherPointagesEnAttente._enCours = true;
+  try{
+    let liste;
+    try{ liste = JSON.parse(localStorage.getItem('rh_pointages_en_attente')||'[]'); }catch(e){ return; }
+    if(!liste || !liste.length) return;
+    const restants = [];
+    for(const item of liste){
+      const resultat = await _kioskEnvoyerPointageAvecReessai(item.dateEcriture, item.cle, item.rec, item.now, 1, item.action);
+      // Un refus définitif (400/403/404) sort de la file pour de bon — le
+      // retenter ne changera jamais rien, et l'y garder bloquerait la file
+      // indéfiniment sur un pointage qui ne passera jamais.
+      if(!resultat.success && !resultat.definitif) restants.push(item);
+    }
+    try{ localStorage.setItem('rh_pointages_en_attente', JSON.stringify(restants)); }catch(e){}
+    if(restants.length < liste.length){
+      console.log(`✅ ${liste.length-restants.length} pointage(s) en attente retransmis vers Supabase avec succès.`);
+    }
+  } finally {
+    _kioskFlusherPointagesEnAttente._enCours = false;
   }
-  try{ localStorage.setItem('rh_pointages_en_attente', JSON.stringify(restants)); }catch(e){}
-  if(restants.length < liste.length){
-    console.log(`✅ ${liste.length-restants.length} pointage(s) en attente retransmis vers Supabase avec succès.`);
-  }
+}
+// Retry périodique — le flush ne dépend plus uniquement du démarrage du
+// kiosque (avant, un pointage resté en file pouvait rester bloqué des heures
+// sur un appareil qui tourne en continu, sans jamais être retenté tant qu'il
+// n'était pas rechargé). Toutes les 30 secondes, tant que la page kiosque
+// reste ouverte.
+let _kioskFlushPeriodiqueId = null;
+function _kioskDemarrerFlushPeriodique(){
+  if(_kioskFlushPeriodiqueId) return; // déjà démarré, ne pas doubler
+  _kioskFlushPeriodiqueId = setInterval(()=>{ _kioskFlusherPointagesEnAttente(); }, 30000);
 }
 async function kioskValider(){
   const today = _dateCIAujourdhui();
@@ -24431,8 +24467,17 @@ async function kioskValider(){
     service,
     hors_zone: horsZone, from_mobile:true, geo:_kiosk.geo, selfie:selfieAEnregistrer
   };
-  if(action==='arrival'){ rec.punch_in = now; }
-  else { rec.punch_out = now; }
+  // Identifiant unique du pointage (Priorité "3 problèmes") — généré UNE
+  // SEULE FOIS ici, à l'ouverture de ce scan précis, jamais régénéré ensuite
+  // (les tentatives suivantes et la file d'attente réutilisent ce même objet
+  // "rec", donc le même identifiant). Deux champs séparés (arrivée/départ)
+  // car les deux partagent la même ligne en base — un scan différent doit
+  // toujours avoir un identifiant différent, même pour l'autre sens du même
+  // jour. Permet au serveur de reconnaître un retry tardif du MÊME pointage
+  // et de ne jamais réécrire son heure dans ce cas.
+  const pointageId = (typeof crypto!=='undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  if(action==='arrival'){ rec.punch_in = now; rec.pointage_id_arrivee = pointageId; }
+  else { rec.punch_out = now; rec.pointage_id_depart = pointageId; }
   presences[dateEcriture][cle] = rec;
   try{ await db.set('rh_prz', JSON.stringify(presences)); }catch(e){ _kioskSetMsg('❌ Erreur de sauvegarde locale : '+e.message,'err'); return; }
 
@@ -24446,10 +24491,13 @@ async function kioskValider(){
   // Supabase — donc jamais visible dans Présence côté admin. C'était la cause
   // exacte du bug. Corrigé avec une vérification réelle + nouvelles tentatives
   // automatiques, et une file d'attente qui se rétablit toute seule.
-  const succes = await _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, 2, action);
-  if(!succes){
+  const resultatEnvoi = await _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, 2, action);
+  const succes = resultatEnvoi.success;
+  if(!succes && !resultatEnvoi.definitif){
     _kioskAjouterPointageEnAttente(dateEcriture, cle, rec, now, action);
     _kioskSetMsg('⚠️ Pointage enregistré sur ce téléphone, mais pas encore transmis — nouvelle tentative automatique au prochain scan ou chargement.','warn');
+  } else if(!succes && resultatEnvoi.definitif){
+    _kioskSetMsg('❌ Pointage refusé par le serveur (employé non programmé, inactif, ou autre règle non respectée).','err');
   }
 
   if(cloudRef){
