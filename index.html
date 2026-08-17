@@ -24001,7 +24001,11 @@ function _kioskStartGeo(){
     }
     document.getElementById('kioskGeoSpinner').style.display='none';
 
-    // Zone GPS configurée ET employé hors de sa zone (assignée ou la plus proche) → pointage refusé
+    // Zone GPS configurée ET employé hors de sa zone (assignée ou la plus
+    // proche) → pointage refusé. Redécision explicite de l'utilisateur : le
+    // pointage doit rester bloqué hors zone (malgré la section 3 du cahier
+    // des charges, qui demandait l'inverse — priorité donnée à la décision
+    // la plus récente et la plus explicite).
     if(zoneConfiguree && inZone===false){
       document.getElementById('kioskGeoTexte').textContent = modeStrict
         ? `❌ Vous n'êtes pas dans votre zone (${plusProche.nom}) — pointage refusé`
@@ -24099,8 +24103,14 @@ function _kioskVerifierHoraire(service, action, nowDate){
 // autant, seule la revérification serveur est alors absente pour cette
 // tentative-là (elle sera refaite normalement à la prochaine synchronisation
 // depuis un appareil qui a accès à la fonction).
-async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, tentatives=2){
+async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, tentatives=2, action){
   const urlFonction = `${SUPABASE_URL}/functions/v1/pointage`;
+  // Épuise D'ABORD toutes les tentatives vers la fonction serveur (celle qui
+  // authentifie réellement l'heure, le GPS, l'identité) — le repli direct
+  // (sans ces vérifications) n'intervient qu'en tout dernier recours, jamais
+  // dès le premier accroc réseau. Avant, un seul échec suffisait à basculer
+  // directement sur l'écriture non vérifiée, ce qui rouvrait presque la même
+  // faille que la fonction serveur est censée fermer.
   for(let i=0;i<=tentatives;i++){
     try{
       const reponse = await fetch(urlFonction, {
@@ -24109,6 +24119,7 @@ async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, ten
         body: JSON.stringify({
           empId: cle,
           dateEcriture,
+          action,
           rec,
           lat: _kiosk.geo ? _kiosk.geo.lat : null,
           lng: _kiosk.geo ? _kiosk.geo.lng : null,
@@ -24121,19 +24132,22 @@ async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, ten
       }
       console.warn(`Fonction serveur de pointage refusée (tentative ${i+1}/${tentatives+1}) :`, reponse.status);
     }catch(e){
-      console.warn(`Fonction serveur de pointage injoignable (tentative ${i+1}/${tentatives+1}) — repli sur l'écriture directe :`, e);
-      // Repli : la fonction serveur est peut-être temporairement indisponible
-      // (déploiement en cours, coupure ciblée) — on écrit quand même
-      // directement, pour ne jamais perdre ou bloquer un pointage réel.
-      try{
-        const { error } = await supabaseRH.from('rh_pointages').upsert({
-          date_jour: dateEcriture, emp_id: cle, data: rec, modifie_le: now,
-        }, { onConflict: 'date_jour,emp_id' });
-        if(!error) return true;
-      }catch(e2){ /* nouvelle tentative au tour suivant */ }
+      console.warn(`Fonction serveur de pointage injoignable (tentative ${i+1}/${tentatives+1}) :`, e);
     }
     if(i<tentatives) await new Promise(r=>setTimeout(r, 800));
   }
+  // Toutes les tentatives vers la fonction serveur ont échoué — dernier
+  // recours : écriture directe (heure du téléphone, non revérifiée) plutôt
+  // que de perdre le pointage. Moins bien protégé pour CE pointage précis,
+  // mais rare (la fonction doit avoir échoué 3 fois de suite), et la
+  // prochaine synchronisation depuis un appareil connecté rétablira la
+  // vérification pour tous les pointages suivants.
+  try{
+    const { error } = await supabaseRH.from('rh_pointages').upsert({
+      date_jour: dateEcriture, emp_id: cle, data: rec, modifie_le: now,
+    }, { onConflict: 'date_jour,emp_id' });
+    if(!error) return true;
+  }catch(e2){ /* échec complet, retenté plus tard via la file d'attente */ }
   return false;
 }
 // File d'attente locale (localStorage, survit à la fermeture de l'onglet) pour
@@ -24141,10 +24155,10 @@ async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, ten
 // rétablit toute seule au prochain scan ou chargement du kiosque, sans action
 // manuelle. C'est ce qui garantit qu'un pointage existant en local finit
 // toujours par apparaître dans Présence, même après une coupure passagère.
-function _kioskAjouterPointageEnAttente(dateEcriture, cle, rec, now){
+function _kioskAjouterPointageEnAttente(dateEcriture, cle, rec, now, action){
   try{
     const liste = JSON.parse(localStorage.getItem('rh_pointages_en_attente')||'[]');
-    liste.push({dateEcriture, cle, rec, now});
+    liste.push({dateEcriture, cle, rec, now, action});
     localStorage.setItem('rh_pointages_en_attente', JSON.stringify(liste));
   }catch(e){ /* pas grave — la version locale (presences) reste correcte de toute façon */ }
 }
@@ -24154,7 +24168,7 @@ async function _kioskFlusherPointagesEnAttente(){
   if(!liste || !liste.length) return;
   const restants = [];
   for(const item of liste){
-    const ok = await _kioskEnvoyerPointageAvecReessai(item.dateEcriture, item.cle, item.rec, item.now, 1);
+    const ok = await _kioskEnvoyerPointageAvecReessai(item.dateEcriture, item.cle, item.rec, item.now, 1, item.action);
     if(!ok) restants.push(item);
   }
   try{ localStorage.setItem('rh_pointages_en_attente', JSON.stringify(restants)); }catch(e){}
@@ -24253,9 +24267,9 @@ async function kioskValider(){
   // Supabase — donc jamais visible dans Présence côté admin. C'était la cause
   // exacte du bug. Corrigé avec une vérification réelle + nouvelles tentatives
   // automatiques, et une file d'attente qui se rétablit toute seule.
-  const succes = await _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now);
+  const succes = await _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, 2, action);
   if(!succes){
-    _kioskAjouterPointageEnAttente(dateEcriture, cle, rec, now);
+    _kioskAjouterPointageEnAttente(dateEcriture, cle, rec, now, action);
     _kioskSetMsg('⚠️ Pointage enregistré sur ce téléphone, mais pas encore transmis — nouvelle tentative automatique au prochain scan ou chargement.','warn');
   }
 
