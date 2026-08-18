@@ -16215,7 +16215,13 @@ async function init() {
   updateHeaderTitle();
   updateQrPreview();
   refreshOrientButtons();
-  setInterval(() => sauvegarder(false), 30000);
+  // Travail 5, Audit #8 : la sauvegarde automatique périodique ne se
+  // déclenche plus quand l'onglet n'est pas visible (arrière-plan, écran
+  // verrouillé) — évite une sérialisation complète inutile (employes,
+  // presences...) toutes les 30s quand personne ne regarde l'app. Onglet
+  // visible : comportement strictement inchangé. sauvegarder() elle-même
+  // n'est pas modifiée, ni la sauvegarde manuelle.
+  setInterval(() => { if(!document.hidden) sauvegarder(false); }, 30000);
   initPrzDate();
   initMensuelDate();
   // Affiche l'usage du stockage dans Paramètres si la page est ouverte
@@ -17346,6 +17352,11 @@ const SEUIL_ABSENCES = 2;  // nombre d'absences non justifiées dans le mois ava
 async function calculerAlertes(){
   const alertes = [];
   const actifs = employes.filter(e=>e.statutEmploi!=='Sorti');
+  // Table de correspondance construite UNE SEULE FOIS (Travail 5, optimisation
+  // #5) — remplace 2 recherches linéaires dans employes (jusqu'à 500 éléments),
+  // refaites pour chaque congé, alors que cette fonction tourne automatiquement
+  // toutes les 30s via le sondage périodique. Même clé (id), mêmes replis.
+  const employesParId = new Map(employes.map(e => [String(e.id), e]));
   const now = new Date();
   const y = now.getFullYear(), m = now.getMonth(), jourActuel = now.getDate();
 
@@ -17453,7 +17464,7 @@ async function calculerAlertes(){
 
   // Congés en attente de décision
   conges.filter(c=>c.stat==='En attente').forEach(c=>{
-    const e = employes.find(x=>String(x.id)===String(c.emp));
+    const e = employesParId.get(String(c.emp));
     alertes.push({type:'conge', gravite:'warn', emp:e||{nom:c.emp,prenom:''}, texte:`Demande de congé (${c.type}) en attente depuis le ${c.date}`});
   });
 
@@ -17467,7 +17478,7 @@ async function calculerAlertes(){
   const demainStr = _dateCIAujourdhui(demain);
   conges.filter(c=>c.stat==='Approuvé').forEach(c=>{
     if(!c.fin) return;
-    const e = employes.find(x=>String(x.id)===String(c.emp));
+    const e = employesParId.get(String(c.emp));
     const dateReprise = new Date(c.fin+'T00:00:00'); dateReprise.setDate(dateReprise.getDate()+1);
     const dateRepriseStr = _dateCIAujourdhui(dateReprise);
     if(dateRepriseStr===todayStr){
@@ -19067,8 +19078,13 @@ function renderTousLesBadges(){
     box.innerHTML='<p style="grid-column:1/-1;text-align:center;color:#888;font-style:italic;padding:20px 0;">Aucun employé pour l\'instant.</p>';
     return;
   }
+  // Calculée UNE SEULE FOIS avant la boucle (Travail 5, optimisation #7) —
+  // remplace un recalcul identique refait à chaque employé, alors que le
+  // résultat ne change jamais pendant ce rendu. La fonction source n'est
+  // pas modifiée.
+  const couleursBadge = _toutesLesCouleursBadge();
   box.innerHTML = actifs.map(e=>{
-    const cc = _toutesLesCouleursBadge()[e.bdgClr] || BADGE_COLORS.bleu;
+    const cc = couleursBadge[e.bdgClr] || BADGE_COLORS.bleu;
     const photoHTML = e.photo
       ? `<img src="${e.photo}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid ${cc.f};">`
       : `<div style="width:52px;height:52px;border-radius:50%;background:${cc.h2};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:1rem;border:2px solid ${cc.f};">${((e.prenom||' ')[0]||'')}${((e.nom||' ')[0]||'')}</div>`;
@@ -21098,8 +21114,8 @@ function supprimerEquipage(id){
   triggerSave();
   renderEquipages();
 }
-function _equNomEmploye(id){
-  const e=employes.find(x=>String(x.id)===String(id));
+function _equNomEmploye(id, employesParId){
+  const e = employesParId ? employesParId.get(String(id)) : employes.find(x=>String(x.id)===String(id));
   return e ? `${e.nom} ${e.prenom}` : '';
 }
 // Petite photo ronde d'un employé (repli sur ses initiales s'il n'a pas de
@@ -21145,8 +21161,8 @@ function _equTrouverEquipeDe(empId){
   }
   return null;
 }
-function _equPhotoRonde(id, taille){
-  const e=employes.find(x=>String(x.id)===String(id));
+function _equPhotoRonde(id, taille, employesParId){
+  const e = employesParId ? employesParId.get(String(id)) : employes.find(x=>String(x.id)===String(id));
   let couleur=_equCouleurStatut(id).couleur;
   const estAbsent = couleur === '#DC2626'; // priorité absolue : absent = rouge fixe, quoi qu'il arrive
   const remplace = _equARemplacementJour(id);
@@ -21327,6 +21343,12 @@ function renderEquipages(){
   _renderRemplacementsJour();
   const box=document.getElementById('equListe');
   if(!box)return;
+  // Table de correspondance construite UNE SEULE FOIS (Travail 5, optimisation
+  // #6) — transmise explicitement à _equNomEmploye/_equPhotoRonde (paramètre
+  // optionnel, comportement inchangé partout où elle n'est PAS fournie —
+  // ces deux fonctions sont aussi utilisées ailleurs dans le fichier, hors
+  // de cette fonction, où elles continuent leur recherche habituelle).
+  const employesParId = new Map(employes.map(e => [String(e.id), e]));
   // Tout employé déjà chauffeur ou éboueur QUELQUE PART (n'importe quel
   // engin/équipe) — sert à ne plus le proposer ailleurs, pour ne jamais
   // sélectionner deux fois la même personne dans deux équipes différentes.
@@ -21345,8 +21367,8 @@ function renderEquipages(){
   const equipagesAffiches = !recherche ? equipages : equipages.filter(eng=>{
     if(_norm(eng.nom||'').includes(recherche)) return true;
     return (eng.equipes||[]).some(eq=>{
-      if(_norm(_equNomEmploye(eq.chauffeurId)).includes(recherche)) return true;
-      return (eq.eboueurIds||[]).some(id=>_norm(_equNomEmploye(id)).includes(recherche));
+      if(_norm(_equNomEmploye(eq.chauffeurId, employesParId)).includes(recherche)) return true;
+      return (eq.eboueurIds||[]).some(id=>_norm(_equNomEmploye(id, employesParId)).includes(recherche));
     });
   });
   if(recherche && !equipagesAffiches.length){
@@ -21382,10 +21404,10 @@ function renderEquipages(){
         periodeTxt = `Commence le ${new Date().toLocaleDateString('fr-FR')} — finit le ${demain.toLocaleDateString('fr-FR')}`;
       }
       // ---- Segment de la barre horizontale (toujours visible, cliquable) ----
-      const nomCourtChauffeur = eq.chauffeurId ? (_equNomEmploye(eq.chauffeurId)||'').split(' ').slice(0,2).join(' ') : 'Sans chauffeur';
+      const nomCourtChauffeur = eq.chauffeurId ? (_equNomEmploye(eq.chauffeurId, employesParId)||'').split(' ').slice(0,2).join(' ') : 'Sans chauffeur';
       const segmentHTML = `
         <div onclick="equBasculerOuvert(${eng.id},${eq.id})" style="flex:1;min-width:110px;cursor:pointer;background:${estOuverte?style.couleur:style.fond};display:flex;align-items:center;gap:6px;padding:8px 10px;transition:background .15s;">
-          ${eq.chauffeurId ? _equPhotoRonde(eq.chauffeurId,26) : `<span style="font-size:1.1rem;">${style.lbl.split(' ')[0]}</span>`}
+          ${eq.chauffeurId ? _equPhotoRonde(eq.chauffeurId,26,employesParId) : `<span style="font-size:1.1rem;">${style.lbl.split(' ')[0]}</span>`}
           <div style="min-width:0;">
             <div style="font-size:.82rem;font-weight:800;color:${estOuverte?'#fff':style.couleur};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${style.lbl.split(' ')[0]} ${nomCourtChauffeur}</div>
           </div>
@@ -21394,8 +21416,8 @@ function renderEquipages(){
       if(!estOuverte) return {segment:segmentHTML, detail:''};
       const eboueursTags = (eq.eboueurIds||[]).map(id=>`
         <span style="background:#fff;color:#1A3A5C;padding:4px 10px 4px 4px;border-radius:999px;font-size:.85rem;display:inline-flex;align-items:center;gap:5px;border:1px solid #ddd;max-width:100%;">
-          ${_equPhotoRonde(id,22)}
-          <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;">${_equNomEmploye(id)||'(supprimé)'}</span>
+          ${_equPhotoRonde(id,22,employesParId)}
+          <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;">${_equNomEmploye(id, employesParId)||'(supprimé)'}</span>
           <span style="cursor:pointer;font-weight:800;flex-shrink:0;" onclick="event.stopPropagation();equRetirerEboueur(${eng.id},${eq.id},'${id}')">✕</span>
         </span>`).join('');
       // Options du chauffeur : exclut tout employé déjà pris ailleurs, mais
@@ -21454,7 +21476,7 @@ function renderEquipages(){
           onchange="equModifierChampEquipe(${eng.id},${eq.id},'zone',this.value)">
         <div style="font-size:.66rem;color:#555;margin-bottom:3px;">👨‍✈️ Chauffeur</div>
         <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;">
-          ${eq.chauffeurId ? _equPhotoRonde(eq.chauffeurId,26) : ''}
+          ${eq.chauffeurId ? _equPhotoRonde(eq.chauffeurId,26,employesParId) : ''}
           <select class="equ-select-nom" style="flex:1;min-width:0;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:1.05rem;background:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" onchange="equModifierChampEquipe(${eng.id},${eq.id},'chauffeurId',this.value)">
             <option value="">— Choisir —</option>${optsEmpChauffeur}
           </select>
@@ -21499,7 +21521,7 @@ function renderEquipages(){
           <input type="date" value="${eng.chaine24h.dateDebut||''}" style="width:100%;padding:4px;border:1px solid #ddd;border-radius:4px;font-size:.68rem;margin-top:2px;"
             onchange="equToggleChaine24h(${eng.id},true,this.value)">
         </label>
-        <div style="font-size:.6rem;color:#6D28D9;opacity:.8;margin-top:3px;">💡 Ordre : ${(eng.equipes||[]).filter(e=>e.service==='24h').map((e,i)=>`${i+1}. ${_equNomEmploye(e.chauffeurId)||'(sans chauffeur)'}`).join(' → ')}</div>
+        <div style="font-size:.6rem;color:#6D28D9;opacity:.8;margin-top:3px;">💡 Ordre : ${(eng.equipes||[]).filter(e=>e.service==='24h').map((e,i)=>`${i+1}. ${_equNomEmploye(e.chauffeurId, employesParId)||'(sans chauffeur)'}`).join(' → ')}</div>
         ` : ''}
       </div>` : ''}
       <button class="btn" style="background:#1D6F42;color:#fff;font-size:.68rem;width:100%;justify-content:center;" onclick="ajouterEquipe(${eng.id})">➕ Ajouter une équipe</button>
@@ -21566,6 +21588,10 @@ function renderPresenceTable(date){
   const list=_przListeFiltree();
   if(!presences[date])presences[date]={};
   const tb=document.getElementById('tPrz');tb.innerHTML='';
+  // Table de correspondance construite UNE SEULE FOIS (Travail 5, Audit #10)
+  // — remplace une recherche linéaire dans conges refaite pour chaque ligne
+  // "En congé". Même clé (id), même comportement si absent.
+  const congesParId = new Map(conges.map(c => [c.id, c]));
   list.forEach(e=>{
     const rec=presences[date][e.id]||{statut:'',justif:'',doc:null};
     const stClass=rec.statut==='Présent'?'status-p':rec.statut==='Absent'?'status-a':rec.statut==='Justifié'?'status-j':rec.statut==='À justifier'?'status-aj':rec.statut==='En congé'?'status-co':'';
@@ -21589,7 +21615,7 @@ function renderPresenceTable(date){
     // côté, récupéré directement depuis la demande de congé approuvée
     // correspondante — plus utile qu'un simple "En congé" générique.
     if(rec.statut==='En congé' && rec.congeId){
-      const congeAssocie = conges.find(c=>c.id===rec.congeId);
+      const congeAssocie = congesParId.get(rec.congeId);
       if(congeAssocie && congeAssocie.type){
         stTxt += ` <span style="background:#E6F1FB;color:#185FA5;font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:5px;">${congeAssocie.type}</span>`;
       }
@@ -21815,12 +21841,27 @@ async function verifierAbsencesAutomatiques(){
     // Une seule construction de la carte des services (au lieu d'une recherche
     // complète par employé, ~1000× plus lent avec beaucoup d'employés).
     const carteServices = _construireCarteServicesEffectifs(today);
+    // Même principe (Travail 5, Audit #9) appliqué au congé actif du jour —
+    // une seule Map construite avant la boucle, au lieu d'une recherche
+    // complète dans "conges" refaite pour chaque employé. Condition
+    // strictement identique à l'ancien conges.find(...) : stat==='Approuvé'
+    // ET deb<=today<=fin. Si un employé a par erreur plusieurs congés
+    // approuvés qui se chevauchent (cas limite anormal), on garde le PREMIER
+    // rencontré — exactement le comportement de conges.find() avant.
+    const congesActifsParEmploye = new Map();
+    conges.forEach(c=>{
+      if(c.stat==='Approuvé' && c.deb<=today && today<=c.fin){
+        if(!congesActifsParEmploye.has(String(c.emp))){
+          congesActifsParEmploye.set(String(c.emp), c);
+        }
+      }
+    });
     employes.forEach(e=>{
       if(e.statutEmploi==='Sorti') return;
       const cur = presences[today][e.id];
       if(cur && cur.statut) return; // déjà un pointage ou un marquage — on ne touche pas
       // En congé approuvé aujourd'hui → jamais "Absent", peu importe l'heure
-      const congeActif = conges.find(c => String(c.emp)===String(e.id) && c.stat==='Approuvé' && c.deb<=today && today<=c.fin);
+      const congeActif = congesActifsParEmploye.get(String(e.id));
       if(congeActif){
         presences[today][e.id] = { statut:'En congé', auto:true, congeId:congeActif.id };
         modifie = true;
