@@ -15861,7 +15861,7 @@ function scanPrintFiche(){
 // arrivée est en retard ; "sortieDebut"→"sortieFin" est la plage acceptable pour
 // le départ. Valeurs par défaut si rien n'a encore été enregistré.
 const DEFAULT_HORAIRES = {
-  jour: { arrivee:'07:30', tolerance:30, finService:'17:30', sortieDebut:'18:00', sortieFin:'23:59', absenceApres:'09:00' },
+  jour: { arrivee:'07:30', tolerance:30, finService:'17:30', sortieDebut:'17:30', sortieFin:'23:59', absenceApres:'09:00' },
   nuit: { arrivee:'17:30', tolerance:30, finService:'07:30', sortieDebut:'08:00', sortieFin:'14:00', absenceApres:'20:00' },
   // Service 24h : arrivée comme le Jour, fin de service 24h plus tard (le
   // lendemain à la même heure). Pas de plage de sortie fixe — une fois le jour
@@ -21218,7 +21218,7 @@ function supprimerEquipe(enginId, equipeId){
   triggerSave();
   renderEquipages();
 }
-function equModifierChampEquipe(enginId, equipeId, champ, valeur){
+async function equModifierChampEquipe(enginId, equipeId, champ, valeur){
   const eng=equipages.find(x=>x.id===enginId);
   const eq=eng && (eng.equipes||[]).find(e=>e.id===equipeId);
   if(!eq)return;
@@ -21226,17 +21226,31 @@ function equModifierChampEquipe(enginId, equipeId, champ, valeur){
   // La rotation hebdo Jour/Nuit ne s'applique pas au 24h — évite une carte
   // incohérente (case cochée + service 24h en même temps).
   if(champ==='service' && valeur==='24h') eq.rotation=false;
-  triggerSave();
+  await sauvegarder(false);
+  // Cause réelle confirmée (pas une supposition) : sauvegarder() lance
+  // rhSyncVersLigne() SANS l'attendre (en arrière-plan) — donc même après ce
+  // "await sauvegarder()", rh_equ peut ne pas encore être réellement arrivé
+  // sur Supabase. Le scanner (fonction serveur) relit rh_equ EN DIRECT
+  // depuis Supabase à chaque scan — sans cette attente supplémentaire
+  // explicite, un employé fraîchement affecté puis scanné dans la foulée
+  // pouvait être vu à tort comme "non programmé". Corrigé en attendant
+  // explicitement CETTE synchronisation précise avant de continuer — ne
+  // touche à aucune autre logique d'équipage.
+  try{ await rhSyncVersLigne([['rh_equ', JSON.stringify(equipages)]]); }
+  catch(e){ console.warn('Synchronisation immédiate de rh_equ échouée (la sauvegarde différée habituelle prendra quand même le relais) :', e); }
   if(['service','rotation','rotationDebut','rotationServiceDepart'].includes(champ)) renderEquipages(); // recolore/reconstruit la carte
 }
-function equAjouterEboueur(enginId, equipeId, empId){
+async function equAjouterEboueur(enginId, equipeId, empId){
   if(!empId)return;
   const eng=equipages.find(x=>x.id===enginId);
   const eq=eng && (eng.equipes||[]).find(e=>e.id===equipeId);
   if(!eq)return;
   if(!eq.eboueurIds) eq.eboueurIds=[];
   if(!eq.eboueurIds.some(x=>String(x)===String(empId))) eq.eboueurIds.push(empId);
-  triggerSave();
+  await sauvegarder(false); // immédiate — même raison que ci-dessus
+  // Même correction que equModifierChampEquipe — voir ce commentaire pour le détail.
+  try{ await rhSyncVersLigne([['rh_equ', JSON.stringify(equipages)]]); }
+  catch(e){ console.warn('Synchronisation immédiate de rh_equ échouée (la sauvegarde différée habituelle prendra quand même le relais) :', e); }
   renderEquipages();
 }
 function equRetirerEboueur(enginId, equipeId, empId){
@@ -21244,7 +21258,7 @@ function equRetirerEboueur(enginId, equipeId, empId){
   const eq=eng && (eng.equipes||[]).find(e=>e.id===equipeId);
   if(!eq)return;
   eq.eboueurIds=(eq.eboueurIds||[]).filter(x=>String(x)!==String(empId));
-  triggerSave();
+  sauvegarder(false); // immédiate — même raison que ci-dessus
   renderEquipages();
 }
 // ---------- Remplacements du jour (service ponctuel, un seul jour) ----------
@@ -21256,7 +21270,7 @@ function ajouterRemplacementJour(){
   const today = _dateCIAujourdhui();
   if(!remplacements[today]) remplacements[today]={};
   remplacements[today][empId]= zone ? {service, zone} : {service};
-  triggerSave();
+  sauvegarder(false); // immédiate — même raison que equModifierChampEquipe
   renderEquipages();
   document.getElementById('remZoneInput').value='';
   toast('✅ Remplacement ajouté pour aujourd\'hui','ok');
@@ -21264,7 +21278,7 @@ function ajouterRemplacementJour(){
 function retirerRemplacementJour(empId){
   const today = _dateCIAujourdhui();
   if(remplacements[today]) delete remplacements[today][empId];
-  triggerSave();
+  sauvegarder(false); // immédiate — même raison
   renderEquipages();
 }
 function _renderRemplacementsJour(){
@@ -24286,7 +24300,13 @@ function _kioskVerifierHoraire(service, action, nowDate, heureFinEquipage, conte
 // pointage en file locale (_kioskAjouterPointageEnAttente), qui sera
 // retentée UNIQUEMENT via cette même fonction, donc UNIQUEMENT via l'Edge
 // Function, jusqu'à ce qu'elle réussisse ou soit rejetée définitivement.
-async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, tentatives=2, action){
+// Paramètre "viaFile" (nouveau) — distingue un premier essai normal (false,
+// heure du scan tout juste faite, ne doit jamais servir à contourner l'heure
+// serveur en changeant l'heure du téléphone) d'un renvoi RÉEL depuis la file
+// d'attente après un échec déjà constaté (true, une vraie coupure a eu lieu,
+// heureScan peut légitimement dater de plusieurs heures). Transmis au
+// serveur, qui adapte sa tolérance en conséquence (voir pointage/index.ts).
+async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, tentatives=2, action, viaFile=false){
   const urlFonction = `${SUPABASE_URL}/functions/v1/pointage`;
   for(let i=0;i<=tentatives;i++){
     try{
@@ -24299,6 +24319,7 @@ async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, ten
           action,
           rec,
           heureScan: now, // heure du scan lui-même — le serveur décide s'il lui fait confiance ou non
+          viaFile, // true seulement si ce renvoi vient réellement de la file d'attente
           lat: _kiosk.geo ? _kiosk.geo.lat : null,
           lng: _kiosk.geo ? _kiosk.geo.lng : null,
           geoDisponible: !!_kiosk.geo,
@@ -24352,7 +24373,7 @@ async function _kioskFlusherPointagesEnAttente(){
     if(!liste || !liste.length) return;
     const restants = [];
     for(const item of liste){
-      const resultat = await _kioskEnvoyerPointageAvecReessai(item.dateEcriture, item.cle, item.rec, item.now, 1, item.action);
+      const resultat = await _kioskEnvoyerPointageAvecReessai(item.dateEcriture, item.cle, item.rec, item.now, 1, item.action, true);
       // Un refus définitif (400/403/404) sort de la file pour de bon — le
       // retenter ne changera jamais rien, et l'y garder bloquerait la file
       // indéfiniment sur un pointage qui ne passera jamais.
@@ -24509,7 +24530,7 @@ async function kioskValider(){
   // Supabase — donc jamais visible dans Présence côté admin. C'était la cause
   // exacte du bug. Corrigé avec une vérification réelle + nouvelles tentatives
   // automatiques, et une file d'attente qui se rétablit toute seule.
-  const resultatEnvoi = await _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, 2, action);
+  const resultatEnvoi = await _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, 2, action, false);
   const succes = resultatEnvoi.success;
   if(!succes && !resultatEnvoi.definitif){
     _kioskAjouterPointageEnAttente(dateEcriture, cle, rec, now, action);
