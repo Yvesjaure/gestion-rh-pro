@@ -20899,12 +20899,20 @@ function _equServiceEffectif(eq){
   const debut = new Date(eq.rotationDebut+'T00:00:00');
   const maintenant = new Date();
   const jours = Math.floor((maintenant - debut) / 86400000);
-  if(jours < 0) return eq.rotationServiceDepart||'jour'; // rotation pas encore commencée
+  // Service de départ de la rotation — priorité exacte :
+  // 1. rotationServiceDepart==='jour' → Jour
+  // 2. rotationServiceDepart==='nuit' → Nuit
+  // 3. rotationServiceDepart absent → utilise eq.service lui-même (correction
+  //    du cas équipe A2 : service:"nuit" ignoré à tort avant, la rotation
+  //    partait systématiquement sur "jour" par défaut peu importe eq.service)
+  const departRotation = eq.rotationServiceDepart==='jour' ? 'jour'
+    : eq.rotationServiceDepart==='nuit' ? 'nuit'
+    : (eq.service==='nuit' ? 'nuit' : 'jour');
+  if(jours < 0) return departRotation; // rotation pas encore commencée
   const semaines = Math.floor(jours/7);
   const impaire = semaines % 2 === 1;
-  const depart = eq.rotationServiceDepart==='nuit' ? 'nuit' : 'jour';
-  const autre = depart==='jour' ? 'nuit' : 'jour';
-  return impaire ? autre : depart;
+  const autre = departRotation==='jour' ? 'nuit' : 'jour';
+  return impaire ? autre : departRotation;
 }
 // Détermine le VRAI service à vérifier pour un employé aujourd'hui, dans cet
 // ordre de priorité :
@@ -24011,7 +24019,18 @@ function kioskManualBadge(){
 async function _kioskObtenirCarteServices(dateStr){
   let equipagesPourCheck = equipages, remplacementsPourCheck = remplacements;
   if(!equipages.length){
-    const { data } = await supabaseRH.from('rh_donnees').select('cle,valeur').in('cle',['rh_equ','rh_rem']);
+    const { data, error } = await supabaseRH.from('rh_donnees').select('cle,valeur').in('cle',['rh_equ','rh_rem']);
+    // CORRECTION (cas Laurent Amoin, ID 300) : Supabase ne lève PAS
+    // d'exception sur un refus RLS ou une erreur de lecture — il renvoie
+    // juste { data:null, error:{...} }. Avant, "error" n'était jamais
+    // vérifié : un refus silencieux se traduisait par une liste d'équipages
+    // VIDE, faisant passer un employé réellement programmé pour "non
+    // programmé" (et donc, plus grave, sans aucune règle horaire appliquée
+    // à son départ). Maintenant, une vraie erreur est explicitement levée,
+    // pour que l'appelant puisse la distinguer d'un "vraiment non programmé".
+    if(error){
+      throw new Error('Lecture de rh_equ/rh_rem impossible : ' + error.message);
+    }
     const parCle = {}; (data||[]).forEach(l=>{ parCle[l.cle]=l.valeur; });
     equipagesPourCheck = parCle.rh_equ || [];
     remplacementsPourCheck = parCle.rh_rem || {};
@@ -24056,11 +24075,19 @@ async function kioskConfirmBadge(){
     const today = _dateCIAujourdhui();
     const cle = String(_kiosk.emp.id);
     let serviceProgramme = null;
+    let echecVerification = false;
     try{
       const carteServices = await _kioskObtenirCarteServices(today);
       serviceProgramme = carteServices.get(cle);
     }catch(e){
+      // CORRECTION (cas Laurent Amoin) : une vraie erreur de vérification
+      // (réseau, RLS...) n'est PLUS traitée comme "non programmé" — ça
+      // acceptait le pointage sans AUCUNE règle horaire, à tort, pour
+      // quelqu'un réellement programmé mais dont la vérification a échoué.
+      // Maintenant, on distingue clairement les deux cas et on bloque le
+      // pointage plutôt que d'ignorer silencieusement les règles.
       console.warn('Vérification de la programmation équipage échouée :', e);
+      echecVerification = true;
     }
     if(serviceProgramme && ['jour','nuit','24h'].includes(serviceProgramme)){
       // Programmé : le service est imposé directement, aucun choix libre.
@@ -24068,11 +24095,19 @@ async function kioskConfirmBadge(){
       _kioskShowStep('choixAction');
       return;
     }
-    // Non programmé (ou vérification impossible) : le badge reste reconnu et
-    // le pointage doit quand même être accepté et enregistré normalement —
-    // jamais de service deviné (reste null), jamais de choix libre proposé.
-    // Le message d'exploitation est un AVERTISSEMENT affiché après coup, pas
-    // un refus (voir kioskValider, variable nonProgramme).
+    if(echecVerification){
+      // Impossible de vérifier (pas "non programmé" confirmé) — on ne prend
+      // aucun risque : ni service inventé, ni pointage accepté sans règle.
+      // On invite à réessayer plutôt que d'accepter aveuglément.
+      toast('⚠️ Impossible de vérifier votre programmation pour le moment (réseau) — réessayez dans quelques secondes.', 'warn');
+      return;
+    }
+    // Réellement non programmé (vérification réussie, aucune équipe trouvée)
+    // : le badge reste reconnu et le pointage doit quand même être accepté
+    // et enregistré normalement — jamais de service deviné (reste null),
+    // jamais de choix libre proposé. Le message d'exploitation est un
+    // AVERTISSEMENT affiché après coup, pas un refus (voir kioskValider,
+    // variable nonProgramme).
     _kiosk.serviceChoisi = null;
     _kioskShowStep('choixAction');
     return;
