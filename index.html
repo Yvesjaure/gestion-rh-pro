@@ -24471,7 +24471,7 @@ async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, ten
       });
       if(reponse.ok){
         const resultat = await reponse.json().catch(()=>({}));
-        if(resultat && resultat.success) return { success:true, definitif:false };
+        if(resultat && resultat.success) return { success:true, definitif:false, statut:resultat.statut, retardTexte:resultat.retardTexte };
       } else if([400,403,404].includes(reponse.status)){
         // Refus définitif — inutile de retenter. Plus de repli direct non
         // plus : si le serveur refuse ce pointage (ex: employé non
@@ -24740,11 +24740,27 @@ async function kioskValider(){
   const noteZone = horsZone
     ? `<br><span style="color:#FCA5A5;font-weight:700;font-size:1.05rem;">⚠️ Hors zone (${Math.round(_kiosk.geo.dist)} m du site) — signalé pour vérification RH</span>`
     : '';
-  const noteHoraire = !horaireCheck.ok
-    ? (action==='arrival'
-        ? `<br><span style="color:#FCD34D;font-weight:800;font-size:1.05rem;">⚠️ Vous êtes en retard.<br>${horaireCheck.message}<br>Merci d'essayer de vous diriger vers la DRH si possible, pour justifier ce retard.</span>`
-        : `<br><span style="color:#FCD34D;font-weight:800;font-size:1.05rem;">⚠️ ${horaireCheck.message}<br>Merci d'essayer de vous diriger vers la DRH si possible, pour justifier ce départ hors plage.</span>`)
-    : '';
+  const noteHoraire = (() => {
+    // Statut Présent/Absent affiché IMMÉDIATEMENT depuis la réponse du
+    // serveur (autorité exclusive) dès qu'elle est disponible — aucun
+    // recalcul local. "horaireCheck" (client) ne sert plus qu'en dernier
+    // recours, tant que le serveur n'a pas encore confirmé (pointage en
+    // attente), pour donner une indication provisoire honnête.
+    const statutServeur = resultatEnvoi.statut;
+    const retardServeur = resultatEnvoi.retardTexte;
+    if(succes && statutServeur){
+      if(statutServeur !== 'Absent') return '';
+      return action==='arrival'
+        ? `<br><span style="color:#FCD34D;font-weight:800;font-size:1.05rem;">⚠️ Vous êtes en retard.<br>${retardServeur||''}<br>Merci d'essayer de vous diriger vers la DRH si possible, pour justifier ce retard.</span>`
+        : `<br><span style="color:#FCD34D;font-weight:800;font-size:1.05rem;">⚠️ ${retardServeur||''}<br>Merci d'essayer de vous diriger vers la DRH si possible, pour justifier ce départ hors plage.</span>`;
+    }
+    if(!horaireCheck.ok){
+      return action==='arrival'
+        ? `<br><span style="color:#FCD34D;font-weight:800;font-size:1.05rem;">⏳ En attente de confirmation serveur (estimation provisoire) : possible retard.<br>${horaireCheck.message}</span>`
+        : `<br><span style="color:#FCD34D;font-weight:800;font-size:1.05rem;">⏳ En attente de confirmation serveur (estimation provisoire) : ${horaireCheck.message}</span>`;
+    }
+    return '';
+  })();
   const noteProgramme = nonProgramme
     ? `<br><span style="color:#FCD34D;font-weight:800;font-size:1.05rem;">Vous n'êtes pas programmé dans un équipage pour aujourd'hui. Veuillez vous diriger vers l'exploitation pour votre programmation.</span>`
     : '';
