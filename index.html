@@ -20962,12 +20962,22 @@ function _construireCarteServicesEffectifs(dateStr, listeEquipages, listeRemplac
   const srcEquipages = listeEquipages || equipages;
   const srcRemplacements = listeRemplacements || remplacements;
   const carte = new Map();
-  for(const eng of srcEquipages){
-    const chaineActiveId = _enginEquipeActiveChaine(eng, date);
-    for(const eq of (eng.equipes||[])){
-      const service = chaineActiveId ? (String(eq.id)===String(chaineActiveId) ? '24h' : 'repos') : _equServiceEffectif(eq);
-      if(eq.chauffeurId) carte.set(String(eq.chauffeurId), service);
-      (eq.eboueurIds||[]).forEach(id=>carte.set(String(id), service));
+  for(let i=0; i<srcEquipages.length; i++){
+    // Protection PAR ENGIN (pas globale) — une entrée malformée dans rh_equ
+    // (null, structure inattendue...) ne doit jamais interrompre le
+    // traitement des autres engins, valides. Ne concerne QUE des données déjà
+    // reçues avec succès de Supabase (l'appelant gère séparément une vraie
+    // erreur réseau/RLS, jamais masquée ici).
+    try{
+      const eng = srcEquipages[i];
+      const chaineActiveId = _enginEquipeActiveChaine(eng, date);
+      for(const eq of (eng.equipes||[])){
+        const service = chaineActiveId ? (String(eq.id)===String(chaineActiveId) ? '24h' : 'repos') : _equServiceEffectif(eq);
+        if(eq.chauffeurId) carte.set(String(eq.chauffeurId), service);
+        (eq.eboueurIds||[]).forEach(id=>carte.set(String(id), service));
+      }
+    }catch(e){
+      console.warn(`Entrée d'équipage malformée ignorée (index ${i} de rh_equ) :`, e);
     }
   }
   const remJour = srcRemplacements[date] || {};
@@ -24078,6 +24088,19 @@ async function _kioskObtenirCarteServices(dateStr){
   const remplacementsPourCheck = parCle.rh_rem || {};
   return _construireCarteServicesEffectifs(dateStr, equipagesPourCheck, remplacementsPourCheck);
 }
+// Traçabilité locale des échecs de vérification équipage — visibilité admin
+// uniquement, jamais utilisée pour renvoyer un pointage automatiquement (ce
+// serait exactement le risque de sécurité à éviter : envoyer un pointage
+// Chauffeur/Éboueur sans vérification équipage valide au moment de l'envoi).
+function _kioskTracerEchecVerificationEquipage(cle, nom, prenom){
+  try{
+    const liste = JSON.parse(localStorage.getItem('rh_verifications_equipage_echecs')||'[]');
+    liste.push({ cle, nom:nom||'', prenom:prenom||'', quand: new Date().toISOString() });
+    // Garde seulement les 200 dernières entrées, pour ne pas grossir sans limite.
+    while(liste.length>200) liste.shift();
+    localStorage.setItem('rh_verifications_equipage_echecs', JSON.stringify(liste));
+  }catch(e){ /* pas grave — c'est une traçabilité, pas une donnée critique */ }
+}
 async function kioskConfirmBadge(){
   // Problème 4 : l'heure du téléphone est manifestement fausse (comparée à
   // l'horloge serveur, vérifiée périodiquement) — on bloque tout pointage
@@ -24125,18 +24148,20 @@ async function kioskConfirmBadge(){
     const cle = String(_kiosk.emp.id);
     let serviceProgramme = null;
     let echecVerification = false;
-    try{
-      const carteServices = await _kioskObtenirCarteServices(today);
-      serviceProgramme = carteServices.get(cle);
-    }catch(e){
-      // CORRECTION (cas Laurent Amoin) : une vraie erreur de vérification
-      // (réseau, RLS...) n'est PLUS traitée comme "non programmé" — ça
-      // acceptait le pointage sans AUCUNE règle horaire, à tort, pour
-      // quelqu'un réellement programmé mais dont la vérification a échoué.
-      // Maintenant, on distingue clairement les deux cas et on bloque le
-      // pointage plutôt que d'ignorer silencieusement les règles.
-      console.warn('Vérification de la programmation équipage échouée :', e);
-      echecVerification = true;
+    // Retries immédiats (jusqu'à 3 essais au total) avant d'abandonner cette
+    // tentative de scan précise — couvre une vraie coupure passagère sans
+    // jamais inventer un statut ni envoyer le pointage sans vérification.
+    for(let essai=1; essai<=3; essai++){
+      try{
+        const carteServices = await _kioskObtenirCarteServices(today);
+        serviceProgramme = carteServices.get(cle);
+        echecVerification = false;
+        break;
+      }catch(e){
+        console.warn(`Vérification de la programmation équipage échouée (essai ${essai}/3) :`, e);
+        echecVerification = true;
+        if(essai<3) await new Promise(r=>setTimeout(r, 600));
+      }
     }
     if(serviceProgramme && ['jour','nuit','24h'].includes(serviceProgramme)){
       // Programmé : le service est imposé directement, aucun choix libre.
@@ -24145,10 +24170,15 @@ async function kioskConfirmBadge(){
       return;
     }
     if(echecVerification){
-      // Impossible de vérifier (pas "non programmé" confirmé) — on ne prend
-      // aucun risque : ni service inventé, ni pointage accepté sans règle.
-      // On invite à réessayer plutôt que d'accepter aveuglément.
-      toast('⚠️ Impossible de vérifier votre programmation pour le moment (réseau) — réessayez dans quelques secondes.', 'warn');
+      // Impossible de vérifier, même après 3 tentatives — ni programmé, ni
+      // non programmé, ni pointage envoyé. On ne met JAMAIS ce cas dans la
+      // file d'attente des pointages (qui suppose un "rec" déjà construit et
+      // un service déjà validé) — un nouveau scan refait la vérification
+      // depuis zéro, plus fiable qu'un retry différé sur une valeur figée.
+      // Traçabilité locale pour l'administration (jamais renvoyée seule au
+      // serveur, juste visible) :
+      _kioskTracerEchecVerificationEquipage(cle, _kiosk.emp.nom, _kiosk.emp.prenom);
+      toast('⚠️ Impossible de vérifier votre programmation — veuillez rescanner votre badge dans un instant.', 'err');
       return;
     }
     // Réellement non programmé (vérification réussie, aucune équipe trouvée)
@@ -24494,7 +24524,9 @@ async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, ten
 function _kioskAjouterPointageEnAttente(dateEcriture, cle, rec, now, action){
   try{
     const liste = JSON.parse(localStorage.getItem('rh_pointages_en_attente')||'[]');
-    liste.push({dateEcriture, cle, rec, now, action});
+    // premierEssai : horodatage de la toute première mise en file, jamais
+    // réécrit ensuite — sert à appliquer la limite de 24h ci-dessous.
+    liste.push({dateEcriture, cle, rec, now, action, premierEssai: new Date().toISOString()});
     localStorage.setItem('rh_pointages_en_attente', JSON.stringify(liste));
   }catch(e){ /* pas grave — la version locale (presences) reste correcte de toute façon */ }
 }
@@ -24510,7 +24542,18 @@ async function _kioskFlusherPointagesEnAttente(){
     try{ liste = JSON.parse(localStorage.getItem('rh_pointages_en_attente')||'[]'); }catch(e){ return; }
     if(!liste || !liste.length) return;
     const restants = [];
+    const LIMITE_MS = 24*60*60*1000;
+    const perdus = [];
     for(const item of liste){
+      // Anciennes entrées créées avant cette correction : pas de
+      // "premierEssai" — on ne les pénalise pas rétroactivement, on considère
+      // qu'elles viennent d'entrer dans la fenêtre des 24h à partir de
+      // maintenant, plutôt que de les perdre immédiatement par erreur.
+      const debut = item.premierEssai ? new Date(item.premierEssai).getTime() : Date.now();
+      if(Date.now() - debut > LIMITE_MS){
+        perdus.push({...item, retirePourExpiration: new Date().toISOString()});
+        continue;
+      }
       const resultat = await _kioskEnvoyerPointageAvecReessai(item.dateEcriture, item.cle, item.rec, item.now, 1, item.action, true);
       // Un refus définitif (400/403/404) sort de la file pour de bon — le
       // retenter ne changera jamais rien, et l'y garder bloquerait la file
@@ -24518,8 +24561,19 @@ async function _kioskFlusherPointagesEnAttente(){
       if(!resultat.success && !resultat.definitif) restants.push(item);
     }
     try{ localStorage.setItem('rh_pointages_en_attente', JSON.stringify(restants)); }catch(e){}
-    if(restants.length < liste.length){
-      console.log(`✅ ${liste.length-restants.length} pointage(s) en attente retransmis vers Supabase avec succès.`);
+    if(perdus.length){
+      // Jamais supprimé silencieusement — conservé pour consultation admin,
+      // même après dépassement de la limite de 24h.
+      try{
+        const dejaPerdus = JSON.parse(localStorage.getItem('rh_pointages_definitivement_perdus')||'[]');
+        const total = dejaPerdus.concat(perdus);
+        while(total.length>200) total.shift();
+        localStorage.setItem('rh_pointages_definitivement_perdus', JSON.stringify(total));
+        console.warn(`⚠️ ${perdus.length} pointage(s) retiré(s) de la file après 24h sans succès — conservé(s) dans rh_pointages_definitivement_perdus.`);
+      }catch(e){}
+    }
+    if(restants.length < liste.length - perdus.length){
+      console.log(`✅ ${liste.length-perdus.length-restants.length} pointage(s) en attente retransmis vers Supabase avec succès.`);
     }
   } finally {
     _kioskFlusherPointagesEnAttente._enCours = false;
