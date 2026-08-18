@@ -23180,7 +23180,11 @@ async function genererNouveauKiosque(){
   const secret = crypto.randomUUID()+crypto.randomUUID(); // secret plus long que l'id, jamais stocké en clair
   const secretHash = await _sha256Hex(secret);
   kiosquesAutorises.push({ id, nom, secretHash, actif:true });
-  triggerSave();
+  // Sauvegarde IMMÉDIATE et attendue (pas triggerSave(), différée de 2s) —
+  // l'admin ferme l'alerte juste après et recharge souvent tout de suite
+  // pour vérifier ; sans ça, la sauvegarde différée n'a pas le temps de
+  // partir (alert() bloque le fil JS, le minuteur ne peut pas s'exécuter).
+  await sauvegarder(true);
   _kioskListe();
   document.getElementById('kioskNomInput').value='';
   // Affiché UNE SEULE FOIS — jamais récupérable après, comme un mot de passe.
