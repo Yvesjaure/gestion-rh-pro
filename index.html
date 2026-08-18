@@ -23180,7 +23180,7 @@ async function genererNouveauKiosque(){
   _kioskListe();
   document.getElementById('kioskNomInput').value='';
   // Affiché UNE SEULE FOIS — jamais récupérable après, comme un mot de passe.
-  alert(`✅ Kiosque "${nom}" créé.\n\nÀ CONFIGURER SUR L'APPAREIL MAINTENANT (ne sera plus jamais affiché) :\n\nID : ${id}\nSecret : ${secret}\n\nOuvre l'app sur cet appareil avec ce lien :\n${location.origin}${location.pathname}?kioskId=${encodeURIComponent(id)}&kioskSecret=${encodeURIComponent(secret)}`);
+  alert(`✅ Kiosque "${nom}" créé.\n\nÀ CONFIGURER SUR L'APPAREIL MAINTENANT (ne sera plus jamais affiché) :\n\nID : ${id}\nSecret : ${secret}\n\nOuvre l'app sur cet appareil avec ce lien :\n${location.origin}${location.pathname}?mode=pointage&kioskId=${encodeURIComponent(id)}&kioskSecret=${encodeURIComponent(secret)}`);
 }
 function _kioskBasculerActif(id){
   const k = kiosquesAutorises.find(x=>x.id===id);
@@ -23607,6 +23607,12 @@ function _isKioskMode(){
 }
 
 async function startKiosk(){
+  // Verrou anti-réentrance — empêche toute exécution simultanée/répétée de
+  // startKiosk() si elle est appelée plusieurs fois avant d'avoir terminé
+  // (cause possible du crash "Maximum call stack size exceeded" observé).
+  if(startKiosk._enCours) return;
+  startKiosk._enCours = true;
+  try{
   document.getElementById('lockScreen').style.display='none';
   document.getElementById('appContent').style.display='none';
   document.getElementById('kioskApp').style.display='flex';
@@ -23653,6 +23659,9 @@ async function startKiosk(){
   // mais avec ça, elle ne devrait presque jamais être nécessaire.
   if(!window._kioskAnnuaireTimer){
     window._kioskAnnuaireTimer = setInterval(()=>{ _kioskChargerAnnuaire(); _kioskChargerNomEntreprise(); }, 10000);
+  }
+  } finally {
+    startKiosk._enCours = false;
   }
 }
 // Horloge + message de bienvenue sur l'écran d'attente — le nom d'entreprise
@@ -23809,6 +23818,11 @@ async function kioskToggleFlash(){
 }
 
 function _kioskShowStep(step){
+  // Verrou anti-réentrance — si déjà sur cette même étape ET qu'un flux
+  // caméra est actif, ne rien refaire (évite un redémarrage en cascade de
+  // getUserMedia si cette fonction est appelée plusieurs fois de suite pour
+  // la même étape, cause possible du crash observé).
+  if(_kiosk.step===step && _kiosk.stream) return;
   _kioskStopStream();
   clearInterval(_kioskAutoServiceInterval); // toujours couper le compte à rebours en quittant l'étape, quel que soit le chemin pris
   _kiosk.step = step;
@@ -23891,6 +23905,12 @@ function kioskRestart(){
 
 // ---- Étape 1 : scan du badge (caméra arrière + jsQR) ----
 async function _kioskStartScan(){
+  // Verrou anti-réentrance — empêche un second appel de démarrer un nouveau
+  // getUserMedia() pendant qu'un premier est encore en cours de traitement
+  // (cause possible du crash "Maximum call stack size exceeded" observé).
+  if(_kioskStartScan._enCours) return;
+  _kioskStartScan._enCours = true;
+  try{
   _kioskSetMsg('📷 Présentez le QR du badge devant la caméra…');
   const video = document.getElementById('kioskVideoScan');
   try{
@@ -23994,6 +24014,9 @@ async function _kioskStartScan(){
     _kiosk.rafId = requestAnimationFrame(tick);
   };
   _kiosk.rafId = requestAnimationFrame(tick);
+  } finally {
+    _kioskStartScan._enCours = false;
+  }
 }
 function _kioskParseEmpId(text){
   // Nouveau format compact des badges : EIDA1|MATRICULE|NOM|PRENOM|...
