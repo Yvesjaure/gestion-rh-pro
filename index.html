@@ -17853,6 +17853,16 @@ async function rhChargerDepuisLigne(){
       if (parCle.rh_fer !== undefined) joursFeries = parCle.rh_fer;
       if (parCle.rh_cor !== undefined) corbeille = parCle.rh_cor;
       if (parCle.rh_hist !== undefined) historique = parCle.rh_hist;
+      // CORRECTION (persistance cross-navigateur) : rh_logo/rh_logo2/rh_name/
+      // rh_addr étaient bien poussés vers Supabase à l'upload (kvSetPartage),
+      // mais jamais relus ici — un logo uploadé sur Chrome n'apparaissait
+      // donc jamais sur Edge (chaque navigateur ne voyait que sa propre
+      // IndexedDB locale). kvSet (pas kvSetPartage) : on vient de LIRE
+      // depuis Supabase, pas besoin de réécrire dessus.
+      if (parCle.rh_logo !== undefined){ companyLogo = parCle.rh_logo; kvSet('rh_logo', companyLogo); updateHeaderLogo(); updateSettingsLogoPreview(); }
+      if (parCle.rh_logo2 !== undefined){ companyLogo2 = parCle.rh_logo2; kvSet('rh_logo2', companyLogo2); }
+      if (parCle.rh_name !== undefined){ kvSet('rh_name', parCle.rh_name); updateHeaderTitle(); }
+      if (parCle.rh_addr !== undefined){ kvSet('rh_addr', parCle.rh_addr); }
       if (parCle.rh_couleurs_perso !== undefined){
         // Auto-réparation : si une ancienne donnée corrompue (chaîne de
         // caractères au lieu d'un objet, à cause du bug maintenant corrigé
@@ -23465,6 +23475,7 @@ async function startKiosk(){
   _kioskChargerAnnuaire(); // annuaire public Supabase — fonctionne même sur un téléphone jamais connecté
   _kioskFlusherPointagesEnAttente(); // rétablit tout pointage resté coincé depuis une session précédente
   _kioskDemarrerFlushPeriodique(); // puis continue de retenter toutes les 30s, pas seulement au démarrage
+  _kioskVerifierHeureTelephone(); // vérification initiale de l'heure (Problème 4), avant même le premier cycle 10s
   fbInit(); // tentative silencieuse (ancien système, optionnel) — n'empêche pas le pointage si absent/échec
   _kioskShowStep('scan');
   _kioskMettreAJourHorloge(); // affiche tout de suite, sans attendre la 1ère seconde
@@ -23529,6 +23540,31 @@ async function _kioskChargerAnnuaire(){
     const { data } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,sexe,statutEmploi,modifie_le');
     _kioskAnnuaire = data || [];
   }catch(e){ console.warn('Annuaire indisponible:', e); _kioskAnnuaire = []; }
+  await _kioskVerifierHeureTelephone();
+}
+// Problème 4 (version stable) : le téléphone ne doit jamais pouvoir imposer
+// une heure officielle de pointage falsifiée. On compare régulièrement
+// l'horloge du téléphone à l'en-tête HTTP "Date" renvoyé par Supabase
+// (horodatage serveur, fiable, sans créer de nouvel endpoint) — si l'écart
+// dépasse 5 minutes (même tolérance que côté serveur pour heureScan), le
+// scanner est bloqué jusqu'au rétablissement d'une heure correcte.
+async function _kioskVerifierHeureTelephone(){
+  try{
+    const reponse = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+      method:'HEAD',
+      headers:{ 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+    });
+    const dateServeurStr = reponse.headers.get('date');
+    if(!dateServeurStr){ _kiosk.heureTelephoneInvalide = false; return; } // pas d'en-tête → on ne bloque pas sur un doute
+    const dateServeur = new Date(dateServeurStr);
+    const ecartMs = Math.abs(Date.now() - dateServeur.getTime());
+    _kiosk.heureTelephoneInvalide = ecartMs > 5*60*1000; // > 5 min d'écart = invraisemblable
+  }catch(e){
+    // Réseau indisponible : on ne bloque pas sur ce seul échec (une vraie
+    // coupure réseau bloque déjà le scan autrement, via la fonction serveur
+    // elle-même) — seul un écart d'heure confirmé bloque ici.
+    _kiosk.heureTelephoneInvalide = false;
+  }
 }
 // Charge la photo d'UN SEUL employé (celui qui vient d'être scanné), après
 // coup — évite de télécharger la photo de tout le monde en continu. Met à
@@ -24017,27 +24053,40 @@ function kioskManualBadge(){
 // l'est). Centralisé ici pour que kioskConfirmBadge et kioskValider
 // utilisent exactement la même logique, sans la dupliquer.
 async function _kioskObtenirCarteServices(dateStr){
-  let equipagesPourCheck = equipages, remplacementsPourCheck = remplacements;
-  if(!equipages.length){
-    const { data, error } = await supabaseRH.from('rh_donnees').select('cle,valeur').in('cle',['rh_equ','rh_rem']);
-    // CORRECTION (cas Laurent Amoin, ID 300) : Supabase ne lève PAS
-    // d'exception sur un refus RLS ou une erreur de lecture — il renvoie
-    // juste { data:null, error:{...} }. Avant, "error" n'était jamais
-    // vérifié : un refus silencieux se traduisait par une liste d'équipages
-    // VIDE, faisant passer un employé réellement programmé pour "non
-    // programmé" (et donc, plus grave, sans aucune règle horaire appliquée
-    // à son départ). Maintenant, une vraie erreur est explicitement levée,
-    // pour que l'appelant puisse la distinguer d'un "vraiment non programmé".
-    if(error){
-      throw new Error('Lecture de rh_equ/rh_rem impossible : ' + error.message);
-    }
-    const parCle = {}; (data||[]).forEach(l=>{ parCle[l.cle]=l.valeur; });
-    equipagesPourCheck = parCle.rh_equ || [];
-    remplacementsPourCheck = parCle.rh_rem || {};
+  // CORRECTION (persistance de la programmation) : ne plus jamais se fier au
+  // tableau local "equipages" pour ce contrôle précis, même non vide — un
+  // appareil (admin resté connecté, ou kiosque ayant chargé une fois)
+  // pouvait garder une version PÉRIMÉE en mémoire après une affectation
+  // faite entre-temps ailleurs, faisant échouer silencieusement la
+  // détection malgré une vraie programmation en base. On relit
+  // systématiquement Supabase à chaque contrôle, pour avoir la donnée la
+  // plus fraîche possible au moment du scan.
+  const { data, error } = await supabaseRH.from('rh_donnees').select('cle,valeur').in('cle',['rh_equ','rh_rem']);
+  // CORRECTION (cas Laurent Amoin, ID 300) : Supabase ne lève PAS
+  // d'exception sur un refus RLS ou une erreur de lecture — il renvoie
+  // juste { data:null, error:{...} }. Avant, "error" n'était jamais
+  // vérifié : un refus silencieux se traduisait par une liste d'équipages
+  // VIDE, faisant passer un employé réellement programmé pour "non
+  // programmé" (et donc, plus grave, sans aucune règle horaire appliquée
+  // à son départ). Maintenant, une vraie erreur est explicitement levée,
+  // pour que l'appelant puisse la distinguer d'un "vraiment non programmé".
+  if(error){
+    throw new Error('Lecture de rh_equ/rh_rem impossible : ' + error.message);
   }
+  const parCle = {}; (data||[]).forEach(l=>{ parCle[l.cle]=l.valeur; });
+  const equipagesPourCheck = parCle.rh_equ || [];
+  const remplacementsPourCheck = parCle.rh_rem || {};
   return _construireCarteServicesEffectifs(dateStr, equipagesPourCheck, remplacementsPourCheck);
 }
 async function kioskConfirmBadge(){
+  // Problème 4 : l'heure du téléphone est manifestement fausse (comparée à
+  // l'horloge serveur, vérifiée périodiquement) — on bloque tout pointage
+  // tant qu'elle n'est pas rétablie, plutôt que de risquer un horodatage
+  // falsifié transmis ensuite comme heureScan.
+  if(_kiosk.heureTelephoneInvalide){
+    toast('⛔ L\'heure de cet appareil semble incorrecte — corrigez-la avant de pouvoir pointer.', 'err');
+    return;
+  }
   const btn = document.querySelector('#kioskStep-confirmBadge .kiosk-btn:not(.kiosk-btn-sec)');
   if(btn && btn.disabled){
     toast('⛔ Arrivée et départ déjà enregistrés aujourd\'hui — pointage refusé.', 'err');
