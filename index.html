@@ -14624,7 +14624,9 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
   </div>
   <div class="presence-layout" id="przLayout">
     <div class="card panneau-repliable" id="przPanneauCarte">
-      <div class="sec vert">📅 Session de présence</div>
+      <div class="sec vert">📅 Session de présence
+        <span id="przBadgeTempsReel" style="display:none;margin-left:8px;background:#B7950B;color:#fff;font-size:.7rem;font-weight:800;padding:2px 8px;border-radius:999px;vertical-align:middle;" title="La connexion en direct est temporairement coupée — les nouveaux pointages peuvent mettre jusqu'à 30 secondes à apparaître (repli automatique), au lieu d'être instantanés.">⏳ Mise à jour différée (jusqu'à 30s)</span>
+      </div>
       <div style="margin-top:8px;">
         <div class="cf"><span class="cl" style="background:var(--vert);">Date</span><input type="date" id="przDate" class="ci"></div>
         <div class="cf"><span class="cl" style="background:var(--vert);">Service</span>
@@ -14652,6 +14654,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
             </div>
             <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap;">
               <button class="btn" style="background:#B7950B;color:#fff;" onclick="clotureJournee()" title="Marque automatiquement 'Absent' tous les employés qui n'ont ni pointé ni été saisis manuellement pour cette date">🔒 Clôturer la journée</button>
+              <button class="btn" style="background:#7F1D1D;color:#fff;" onclick="reinitialiserPointagesDuJour()" title="Efface TOUS les pointages (Présent/Absent/autre) de la date sélectionnée, en base et localement — recommence comme un jour neuf">🗑️ Réinitialiser tous les pointages de ce jour</button>
               <button class="btn b-prt" onclick="imprimerAbsents()">🖨️ Imprimer absents</button>
               <button class="btn b-prt" onclick="imprimerListePresence()">🖨️ Imprimer la liste (zone/service)</button>
               <button class="btn" style="background:#1D6F42;color:#fff;" onclick="exporterPresenceExcel()">📊 Export Excel</button>
@@ -17337,7 +17340,7 @@ function showPage(id) {
   if (id==='pgDash'){renderDashboard();}
   if (id==='pgCon'){remplirSelEmp('cEmp');afficherConges();updateStats();}
   if (id==='pgBdg'){remplirSelEmp('bdgEmp'); _bdgOrgSync(); renderTousLesBadges(); _remplirSelectCouleursBadge();}
-  if (id==='pgPrz'){chargerPresence();updatePrzStats();}
+  if (id==='pgPrz'){chargerPresence();updatePrzStats();_rhMajBadgeTempsReel();}
   if (id==='pgEqu'){renderEquipages();}
   if (id==='pgMen'){renderMensuel();}
   if (id==='pgAbs'){renderAbsences();}
@@ -17955,6 +17958,20 @@ async function rhChargerDepuisLigne(){
 }
 
 let rhCanalEcoute = null;
+// true dès que le canal Realtime est réellement abonné (SUBSCRIBED) — false
+// pendant une coupure ou avant la première connexion. Sert uniquement à
+// informer l'admin, sur la page Présence, qu'il est temporairement replié
+// sur le sondage de secours (30s) plutôt que sur la mise à jour instantanée.
+let _rhTempsReelConnecte = false;
+function _rhMajBadgeTempsReel(){
+  const badge = document.getElementById('przBadgeTempsReel');
+  if(!badge) return;
+  if(_rhTempsReelConnecte){
+    badge.style.display = 'none';
+  } else {
+    badge.style.display = 'inline-flex';
+  }
+}
 let rhIgnorerProchainSignal = false; // évite de réagir à notre propre écriture
 
 function rhEcouterChangementsEnLigne(){
@@ -18016,6 +18033,8 @@ function rhEcouterChangementsEnLigne(){
       // reconnecter toute seule — on surveille son état et on la relance
       // proprement si besoin, au lieu d'attendre que l'utilisateur pense à
       // recharger la page.
+      _rhTempsReelConnecte = (statut === 'SUBSCRIBED');
+      _rhMajBadgeTempsReel();
       if (statut === 'CHANNEL_ERROR' || statut === 'TIMED_OUT' || statut === 'CLOSED') {
         console.warn('Connexion en direct perdue ('+statut+') — nouvelle tentative dans 5s...');
         try{ supabaseRH.removeChannel(rhCanalEcoute); }catch(_){}
@@ -22078,6 +22097,27 @@ function clotureJournee(){
   });
   triggerSave();renderPresenceTable(date);updatePrzStats();
   toast(n>0?`🔒 Journée clôturée — ${n} employé(s) sans pointage marqué(s) Absent`:'🔒 Journée déjà complète — rien à clôturer','ok');
+}
+
+// Réinitialise TOUS les pointages (Présent/Absent/autre, manuels ou scannés)
+// d'une date donnée — efface la ligne rh_pointages EN BASE (pas seulement
+// localement), pour repartir exactement comme si aucun pointage n'avait
+// encore eu lieu ce jour-là. Action destructive et irréversible : double
+// confirmation, avec le nombre réel de lignes concernées annoncé avant.
+async function reinitialiserPointagesDuJour(){
+  const date=document.getElementById('przDate').value;
+  if(!date){ toast('⚠️ Choisissez une date d\'abord','warn'); return; }
+  const nbLocal = presences[date] ? Object.keys(presences[date]).length : 0;
+  if(!confirm(`⚠️ Ceci va effacer DÉFINITIVEMENT tous les pointages du ${fmt(date)} (Présent/Absent/autre), en base ET sur cet appareil — ${nbLocal} entrée(s) actuellement visible(s) ici.\n\nCette action est IRRÉVERSIBLE. Continuer ?`)) return;
+  if(!confirm(`Dernière confirmation : réinitialiser complètement le ${fmt(date)} pour TOUS les employés ?`)) return;
+  try{
+    const { error } = await supabaseRH.from('rh_pointages').delete().eq('date_jour', date);
+    if(error){ toast('❌ Échec de la suppression en base : '+error.message, 'err'); return; }
+  }catch(e){ toast('❌ Échec de la suppression en base (réseau) : '+e.message, 'err'); return; }
+  presences[date] = {};
+  triggerSave();
+  renderPresenceTable(date); updatePrzStats(); renderDashboard();
+  toast(`🗑️ Pointages du ${fmt(date)} entièrement réinitialisés (base + local) — ${nbLocal} entrée(s) effacée(s).`, 'ok');
 }
 
 // IMPRESSION ABSENTS
