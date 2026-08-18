@@ -17893,8 +17893,16 @@ async function rhChargerDepuisLigne(){
     }
 
     // Fusionne les pointages faits directement depuis le téléphone des employés
-    // (scan QR — jamais passés par l'admin, donc pas dans rh_donnees)
-    const { data: pointages } = await supabaseRH.from('rh_pointages').select('*');
+    // (scan QR — jamais passés par l'admin, donc pas dans rh_donnees).
+    // Limité aux 30 derniers jours (Travail 5, optimisation #1) — cette
+    // requête grossissait sans limite avec le temps (toute la table, à
+    // chaque connexion et toutes les 60s), alors que son seul usage est de
+    // rattraper des pointages RÉCENTS. Aucune donnée plus ancienne n'est
+    // touchée ni supprimée — juste plus lue par CETTE requête précise.
+    const dateLimitePointages = new Date();
+    dateLimitePointages.setDate(dateLimitePointages.getDate() - 30);
+    const dateLimitePointagesStr = _dateCIAujourdhui(dateLimitePointages);
+    const { data: pointages } = await supabaseRH.from('rh_pointages').select('*').gte('date_jour', dateLimitePointagesStr);
     if (pointages && pointages.length) {
       pointages.forEach(p => {
         if (!presences[p.date_jour]) presences[p.date_jour] = {};
@@ -18024,7 +18032,7 @@ function rhEcouterChangementsEnLigne(){
           rafraichirBadgeAlertes();
         }
       }catch(e){ /* on retentera au prochain passage */ }
-    }, 2000);
+    }, 30000); // Travail 5, optimisation #2 : 2000ms → 30000ms (fréquence excessive pour un simple filet de sécurité du Realtime, requête/fusion/protections inchangées)
   }
 }
 
@@ -18325,7 +18333,7 @@ function getCurrentList(){
 function _avatarEmploye(e, taille){
   taille = taille || 40;
   if(e.photo){
-    return `<img src="${e.photo}" style="width:${taille}px;height:${taille}px;object-fit:cover;border-radius:50%;">`;
+    return `<img src="${e.photo}" loading="lazy" style="width:${taille}px;height:${taille}px;object-fit:cover;border-radius:50%;">`;
   }
   const palette = ['#0F6E56','#C8860A','#7C3AED','#1A3A5C','#991B1B','#166534','#9D174D','#0E7490'];
   const idStr = String(e.id||'');
@@ -22197,12 +22205,17 @@ function setStatCon(id,s){
 }
 function afficherConges(liste){
   const data=liste||conges;const tb=document.getElementById('tCon');tb.innerHTML='';
+  // Table de correspondance construite UNE SEULE FOIS avant la boucle (Travail
+  // 5, optimisation #4) — remplace une recherche linéaire dans employes (jusqu'à
+  // 500 éléments) refaite à chaque congé affiché. Même clé (id), même repli
+  // (l'ID brut) si l'employé n'existe plus — comportement d'affichage identique.
+  const employesParId = new Map(employes.map(e => [String(e.id), e]));
   data.forEach((c,i)=>{
     const bc=c.stat==='Approuvé'?'bs-app':c.stat==='Refusé'?'bs-ref':c.stat==='Terminé'?'bs-fin':'bs-att';
     const isC=c.type&&c.type.includes('Contrat');
     // c.emp est l'identifiant de l'employé (pas son nom) — on retrouve le nom
     // à afficher ici plutôt que de montrer le numéro brut, illisible.
-    const empObj = employes.find(x=>String(x.id)===String(c.emp));
+    const empObj = employesParId.get(String(c.emp));
     const nomAffiche = empObj ? `${empObj.nom} ${empObj.prenom}` : c.emp;
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${i+1}</td><td><b style="font-size:.95em;">${nomAffiche}</b></td>
