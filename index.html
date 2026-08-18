@@ -23180,11 +23180,14 @@ async function genererNouveauKiosque(){
   const secret = crypto.randomUUID()+crypto.randomUUID(); // secret plus long que l'id, jamais stocké en clair
   const secretHash = await _sha256Hex(secret);
   kiosquesAutorises.push({ id, nom, secretHash, actif:true });
-  // Sauvegarde IMMÉDIATE et attendue (pas triggerSave(), différée de 2s) —
-  // l'admin ferme l'alerte juste après et recharge souvent tout de suite
-  // pour vérifier ; sans ça, la sauvegarde différée n'a pas le temps de
-  // partir (alert() bloque le fil JS, le minuteur ne peut pas s'exécuter).
-  await sauvegarder(true);
+  // Écriture DIRECTE et immédiate vers rh_donnees, hors du circuit partagé
+  // sauvegarder()/triggerSave() — celui-ci a un délai interne (80ms) pendant
+  // lequel une autre sauvegarde concurrente (auto-save périodique 30s, ou
+  // une action précédente encore en attente) peut écraser rh_kiosques avec
+  // une version plus ancienne. Même principe déjà utilisé pour l'équipage.
+  try{ await rhSyncVersLigne([['rh_kiosques', JSON.stringify(kiosquesAutorises)]]); }
+  catch(e){ console.warn('Synchronisation immédiate de rh_kiosques échouée :', e); }
+  triggerSave(); // conserve aussi la sauvegarde locale (IndexedDB) habituelle
   _kioskListe();
   document.getElementById('kioskNomInput').value='';
   // Affiché UNE SEULE FOIS — jamais récupérable après, comme un mot de passe.
