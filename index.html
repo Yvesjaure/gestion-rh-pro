@@ -14647,14 +14647,13 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
              ça libère de la hauteur pour que le tableau de présence en profite. -->
         <div style="position:relative;margin-top:8px;">
           <button class="btn" style="width:100%;justify-content:center;background:#1A3A5C;color:#fff;" onclick="toggleMenuActionsPresence()">☰ Actions <span id="menuActionsPrzFleche">▾</span></button>
-          <div id="menuActionsPresence" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid #ddd;border-radius:8px;padding:8px;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.18);max-height:60vh;overflow-y:auto;">
+          <div id="menuActionsPresence" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid #ddd;border-radius:8px;padding:8px;z-index:500;box-shadow:0 8px 24px rgba(0,0,0,.18);max-height:60vh;overflow-y:auto;">
             <div class="action-bar">
               <button class="btn b-mod" onclick="marquerTousPresents()">✅ Tous présents</button>
               <button class="btn b-del" onclick="marquerTousAbsents()">❌ Tous absents</button>
             </div>
             <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap;">
               <button class="btn" style="background:#B7950B;color:#fff;" onclick="clotureJournee()" title="Marque automatiquement 'Absent' tous les employés qui n'ont ni pointé ni été saisis manuellement pour cette date">🔒 Clôturer la journée</button>
-              <button class="btn" style="background:#7F1D1D;color:#fff;" onclick="reinitialiserPointagesDuJour()" title="Efface TOUS les pointages (Présent/Absent/autre) de la date sélectionnée, en base et localement — recommence comme un jour neuf">🗑️ Réinitialiser tous les pointages de ce jour</button>
               <button class="btn b-prt" onclick="imprimerAbsents()">🖨️ Imprimer absents</button>
               <button class="btn b-prt" onclick="imprimerListePresence()">🖨️ Imprimer la liste (zone/service)</button>
               <button class="btn" style="background:#1D6F42;color:#fff;" onclick="exporterPresenceExcel()">📊 Export Excel</button>
@@ -15210,6 +15209,15 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <div>🌴 <b>Congés/Contrats :</b> <span id="setConCount">0</span></div>
       <div>📅 <b>Sessions présence :</b> <span id="setPrzCount">0</span></div>
       <div>📊 <b>Mois enregistrés :</b> <span id="setMenCount">0</span></div>
+    </div>
+  </div>
+
+  <div class="settings-card" style="border:2px solid #7F1D1D;">
+    <div class="sec" style="background:#7F1D1D;">🗑️ Réinitialiser les pointages d'une journée</div>
+    <div style="font-size:.7rem;color:#666;margin:8px 0;">Efface DÉFINITIVEMENT tous les pointages (Présent/Absent/autre) de la date choisie, en base ET sur cet appareil — la journée redevient comme si aucun pointage n'avait encore eu lieu. Action irréversible.</div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      <input type="date" id="parDateReinit" class="ci" style="max-width:160px;">
+      <button class="btn" style="background:#7F1D1D;color:#fff;" onclick="reinitialiserPointagesDuJour('parDateReinit')">🗑️ Réinitialiser cette journée</button>
     </div>
   </div>
 </div>
@@ -16999,6 +17007,22 @@ function toggleMenuActionsPresence(){
   const fleche = document.getElementById('menuActionsPrzFleche');
   if(!menu) return;
   const ouvert = menu.style.display==='block';
+  if(!ouvert){
+    // Correction : le conteneur parent (panneau repliable) a overflow:hidden
+    // pour son animation d'ouverture/fermeture — ça coupait ce menu déroulant
+    // au lieu de le laisser dépasser. Passage en position FIXE, calculée par
+    // rapport au bouton cliqué, pour échapper à ce découpage, quel que soit
+    // l'endroit où le bouton se trouve à l'écran.
+    const bouton = document.querySelector('[onclick="toggleMenuActionsPresence()"]');
+    if(bouton){
+      const r = bouton.getBoundingClientRect();
+      menu.style.position = 'fixed';
+      menu.style.top = (r.bottom + 4) + 'px';
+      menu.style.left = r.left + 'px';
+      menu.style.right = 'auto';
+      menu.style.width = r.width + 'px';
+    }
+  }
   menu.style.display = ouvert ? 'none' : 'block';
   if(fleche) fleche.textContent = ouvert ? '▾' : '▴';
 }
@@ -22104,8 +22128,8 @@ function clotureJournee(){
 // localement), pour repartir exactement comme si aucun pointage n'avait
 // encore eu lieu ce jour-là. Action destructive et irréversible : double
 // confirmation, avec le nombre réel de lignes concernées annoncé avant.
-async function reinitialiserPointagesDuJour(){
-  const date=document.getElementById('przDate').value;
+async function reinitialiserPointagesDuJour(idChampDate){
+  const date=document.getElementById(idChampDate || 'przDate').value;
   if(!date){ toast('⚠️ Choisissez une date d\'abord','warn'); return; }
   const nbLocal = presences[date] ? Object.keys(presences[date]).length : 0;
   if(!confirm(`⚠️ Ceci va effacer DÉFINITIVEMENT tous les pointages du ${fmt(date)} (Présent/Absent/autre), en base ET sur cet appareil — ${nbLocal} entrée(s) actuellement visible(s) ici.\n\nCette action est IRRÉVERSIBLE. Continuer ?`)) return;
@@ -22116,7 +22140,9 @@ async function reinitialiserPointagesDuJour(){
   }catch(e){ toast('❌ Échec de la suppression en base (réseau) : '+e.message, 'err'); return; }
   presences[date] = {};
   triggerSave();
-  renderPresenceTable(date); updatePrzStats(); renderDashboard();
+  const dateActive = (document.getElementById('przDate')||{}).value;
+  if(dateActive===date){ renderPresenceTable(date); updatePrzStats(); }
+  renderDashboard();
   toast(`🗑️ Pointages du ${fmt(date)} entièrement réinitialisés (base + local) — ${nbLocal} entrée(s) effacée(s).`, 'ok');
 }
 
