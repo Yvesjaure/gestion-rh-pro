@@ -24102,14 +24102,11 @@ function _kioskTracerEchecVerificationEquipage(cle, nom, prenom){
   }catch(e){ /* pas grave — c'est une traçabilité, pas une donnée critique */ }
 }
 async function kioskConfirmBadge(){
-  // Problème 4 : l'heure du téléphone est manifestement fausse (comparée à
-  // l'horloge serveur, vérifiée périodiquement) — on bloque tout pointage
-  // tant qu'elle n'est pas rétablie, plutôt que de risquer un horodatage
-  // falsifié transmis ensuite comme heureScan.
-  if(_kiosk.heureTelephoneInvalide){
-    toast('⛔ L\'heure de cet appareil semble incorrecte — corrigez-la avant de pouvoir pointer.', 'err');
-    return;
-  }
+  // Nouvelle politique : l'heure du téléphone n'est plus jamais utilisée pour
+  // autoriser NI refuser un pointage — le serveur détermine seul la date et
+  // l'heure officielles à l'écriture (voir pointage/index.ts). Le blocage
+  // client basé sur une comparaison d'horloge est donc retiré ici ; l'heure
+  // du téléphone, si transmise, ne sert plus qu'à titre indicatif.
   const btn = document.querySelector('#kioskStep-confirmBadge .kiosk-btn:not(.kiosk-btn-sec)');
   if(btn && btn.disabled){
     toast('⛔ Arrivée et départ déjà enregistrés aujourd\'hui — pointage refusé.', 'err');
@@ -24134,34 +24131,25 @@ async function kioskConfirmBadge(){
     toast(messages[statutEmp] || '⛔ Cet employé n\'est plus actif — pointage refusé.', 'err');
     return;
   }
-  // Chauffeur/Éboueur : le service opérationnel doit venir de leur
-  // programmation équipage réelle du jour — jamais de leur fiche
-  // (serviceHabituel) ni d'un choix libre. Déterminé ICI, avant même
-  // d'afficher l'étape de choix, pour que ce choix libre ne leur soit jamais
-  // proposé du tout. Pour tous les autres postes (Mécanicien, Vantiste,
-  // Soudeur...), rien ne change : le choix libre habituel reste proposé plus
-  // bas, inchangé.
+  // Chauffeur/Éboueur : on tente de déterminer le service depuis
+  // l'équipage (logique inchangée, non touchée par cette étape). MAIS,
+  // conformément à la décision d'abandonner la règle "Programmé/Non
+  // programmé" comme motif de blocage : un échec de vérification, ou
+  // l'absence de programmation trouvée, n'annule ni ne refuse JAMAIS le
+  // pointage — il continue normalement, comme pour n'importe quel autre
+  // poste. Le service reste simplement "non déterminé" dans ce cas (aucun
+  // service inventé), sans bloquer qui que ce soit.
   const fonctionAgent = (_kiosk.emp.fonc || '').toLowerCase();
   const estChauffeurOuEboueur = fonctionAgent.includes('chauffeur') || fonctionAgent.includes('éboueur') || fonctionAgent.includes('eboueur');
   if(estChauffeurOuEboueur){
     const today = _dateCIAujourdhui();
     const cle = String(_kiosk.emp.id);
     let serviceProgramme = null;
-    let echecVerification = false;
-    // Retries immédiats (jusqu'à 3 essais au total) avant d'abandonner cette
-    // tentative de scan précise — couvre une vraie coupure passagère sans
-    // jamais inventer un statut ni envoyer le pointage sans vérification.
-    for(let essai=1; essai<=3; essai++){
-      try{
-        const carteServices = await _kioskObtenirCarteServices(today);
-        serviceProgramme = carteServices.get(cle);
-        echecVerification = false;
-        break;
-      }catch(e){
-        console.warn(`Vérification de la programmation équipage échouée (essai ${essai}/3) :`, e);
-        echecVerification = true;
-        if(essai<3) await new Promise(r=>setTimeout(r, 600));
-      }
+    try{
+      const carteServices = await _kioskObtenirCarteServices(today);
+      serviceProgramme = carteServices.get(cle);
+    }catch(e){
+      console.warn('Vérification de la programmation équipage échouée (pointage tout de même accepté, comme pour tout autre poste) :', e);
     }
     if(serviceProgramme && ['jour','nuit','24h'].includes(serviceProgramme)){
       // Programmé : le service est imposé directement, aucun choix libre.
@@ -24169,24 +24157,12 @@ async function kioskConfirmBadge(){
       _kioskShowStep('choixAction');
       return;
     }
-    if(echecVerification){
-      // Impossible de vérifier, même après 3 tentatives — ni programmé, ni
-      // non programmé, ni pointage envoyé. On ne met JAMAIS ce cas dans la
-      // file d'attente des pointages (qui suppose un "rec" déjà construit et
-      // un service déjà validé) — un nouveau scan refait la vérification
-      // depuis zéro, plus fiable qu'un retry différé sur une valeur figée.
-      // Traçabilité locale pour l'administration (jamais renvoyée seule au
-      // serveur, juste visible) :
-      _kioskTracerEchecVerificationEquipage(cle, _kiosk.emp.nom, _kiosk.emp.prenom);
-      toast('⚠️ Impossible de vérifier votre programmation — veuillez rescanner votre badge dans un instant.', 'err');
-      return;
-    }
-    // Réellement non programmé (vérification réussie, aucune équipe trouvée)
-    // : le badge reste reconnu et le pointage doit quand même être accepté
-    // et enregistré normalement — jamais de service deviné (reste null),
-    // jamais de choix libre proposé. Le message d'exploitation est un
-    // AVERTISSEMENT affiché après coup, pas un refus (voir kioskValider,
-    // variable nonProgramme).
+    // Non trouvé, ou vérification impossible — dans les deux cas, le badge
+    // reste reconnu et le pointage est accepté et enregistré normalement,
+    // exactement comme avant l'introduction de cette vérification. Aucun
+    // service n'est deviné (reste null) ; un message d'exploitation reste
+    // affiché après coup comme avertissement (voir kioskValider,
+    // variable nonProgramme), jamais comme un refus.
     _kiosk.serviceChoisi = null;
     _kioskShowStep('choixAction');
     return;
