@@ -22588,6 +22588,7 @@ document.getElementById('przDate').addEventListener('change',chargerPresence);
 // l'utilisateur tente de déverrouiller. On affiche un message pendant.
 (async function bootstrap(){
   const errEl=document.getElementById('lockError');
+  const modeKiosque = _isKioskMode(); // vérifié UNE FOIS, en tout début, avant tout le reste
   try{
     // Indication discrète à l'utilisateur
     const subEl=document.querySelector('.lock-sub');
@@ -22595,9 +22596,25 @@ document.getElementById('przDate').addEventListener('change',chargerPresence);
     await loadAllFromDB();
     if(subEl) subEl.textContent='Application sécurisée';
     console.log(`✅ Base chargée : ${employes.length} employé(s), ${conges.length} congé(s)`);
-    if(_isKioskMode()){ await startKiosk(); return; }
+    if(modeKiosque){ await startKiosk(); return; }
   }catch(err){
     console.error('Erreur bootstrap:',err);
+    // En mode kiosque, ne JAMAIS toucher à l'écran de connexion — le kiosque
+    // doit rester affiché quoi qu'il arrive, même si une sous-étape a
+    // échoué. On se contente de journaliser l'erreur, sans jamais
+    // réafficher lockScreen ni masquer kioskApp.
+    if(modeKiosque){
+      // Filet de sécurité supplémentaire : si l'échec a eu lieu AVANT que
+      // startKiosk() ait pu afficher le kiosque (ex: loadAllFromDB() a
+      // échoué), on force quand même l'affichage du kiosque plutôt que de
+      // laisser l'écran de connexion par défaut prendre sa place.
+      try{
+        document.getElementById('lockScreen').style.display='none';
+        document.getElementById('appContent').style.display='none';
+        document.getElementById('kioskApp').style.display='flex';
+      }catch(_){}
+      return;
+    }
     if(errEl){
       errEl.textContent='⚠️ Erreur chargement base de données';
       errEl.style.display='block';
@@ -23642,12 +23659,16 @@ async function startKiosk(){
     return;
   }
   try{ if(localStorage.getItem('rh_kiosk_soleil')==='1') document.getElementById('kioskApp').classList.add('kiosk-soleil'); }catch(_){}
-  await _kioskLoadCfg();
-  _kioskChargerAnnuaire(); // annuaire public Supabase — fonctionne même sur un téléphone jamais connecté
-  _kioskFlusherPointagesEnAttente(); // rétablit tout pointage resté coincé depuis une session précédente
-  _kioskDemarrerFlushPeriodique(); // puis continue de retenter toutes les 30s, pas seulement au démarrage
-  _kioskVerifierHeureTelephone(); // vérification initiale de l'heure (Problème 4), avant même le premier cycle 10s
-  fbInit(); // tentative silencieuse (ancien système, optionnel) — n'empêche pas le pointage si absent/échec
+  // Chaque sous-étape isolée dans son propre try/catch — une panne sur l'une
+  // d'elles (réseau, config manquante...) ne doit jamais interrompre le
+  // reste de l'initialisation ni faire remonter d'exception vers bootstrap()
+  // (qui pourrait sinon perturber l'affichage déjà en place).
+  try{ await _kioskLoadCfg(); }catch(e){ console.warn('_kioskLoadCfg a échoué (kiosque quand même affiché) :', e); }
+  try{ _kioskChargerAnnuaire(); }catch(e){ console.warn('_kioskChargerAnnuaire a échoué :', e); } // annuaire public Supabase — fonctionne même sur un téléphone jamais connecté
+  try{ _kioskFlusherPointagesEnAttente(); }catch(e){ console.warn('_kioskFlusherPointagesEnAttente a échoué :', e); }
+  try{ _kioskDemarrerFlushPeriodique(); }catch(e){ console.warn('_kioskDemarrerFlushPeriodique a échoué :', e); }
+  try{ _kioskVerifierHeureTelephone(); }catch(e){ console.warn('_kioskVerifierHeureTelephone a échoué :', e); } // vérification initiale de l'heure (Problème 4), avant même le premier cycle 10s
+  try{ fbInit(); }catch(e){ console.warn('fbInit a échoué (optionnel) :', e); } // tentative silencieuse (ancien système, optionnel) — n'empêche pas le pointage si absent/échec
   _kioskShowStep('scan');
   _kioskMettreAJourHorloge(); // affiche tout de suite, sans attendre la 1ère seconde
   if(!window._kioskHorlogeTimer){
