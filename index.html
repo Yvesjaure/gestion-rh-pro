@@ -24355,20 +24355,18 @@ function kioskRetakeSelfie(){ _kioskShowStep('selfie'); }
 // (travailleur hors équipage : départ accepté à partir de 12h00 le samedi
 // uniquement, sans limite supérieure).
 function _kioskVerifierHoraire(service, action, nowDate, heureFinEquipage, contexteSamedi){
-  if(service===null){
-    // Chauffeur/Éboueur non programmé : aucun service à juger, donc aucun
-    // horaire à vérifier — le pointage est accepté sans aucun jugement de
-    // retard/plage horaire (jamais "jour" par défaut). Le message
-    // d'exploitation est géré séparément par l'appelant (kioskValider),
-    // pas ici.
-    return { ok:true };
-  }
+  // Un Chauffeur/Éboueur sans service trouvé (pas dans un équipage, ou
+  // vérification impossible) n'est plus dispensé de toute règle horaire —
+  // le retard doit être détecté pour tout le monde, sans exception. Repli
+  // sur "jour" uniquement pour ce jugement horaire (jamais pour autre chose,
+  // jamais affiché comme un vrai service programmé).
+  const serviceEffectifPourHoraire = service===null ? 'jour' : service;
   if(contexteSamedi==='administration'){
     // Administration ne travaille pas le samedi — aucun horaire ne
     // s'applique, ni à l'arrivée ni au départ.
     return { ok:true };
   }
-  const hor = ((_kiosk.cfg && _kiosk.cfg.horaires) || DEFAULT_HORAIRES)[service] || DEFAULT_HORAIRES[service] || DEFAULT_HORAIRES.jour;
+  const hor = ((_kiosk.cfg && _kiosk.cfg.horaires) || DEFAULT_HORAIRES)[serviceEffectifPourHoraire] || DEFAULT_HORAIRES[serviceEffectifPourHoraire] || DEFAULT_HORAIRES.jour;
   const hhmm = _heureCI(nowDate);
   const [hh, mm] = hhmm.split(':').map(Number);
   const nowMin = hh*60 + mm;
@@ -24383,7 +24381,7 @@ function _kioskVerifierHoraire(service, action, nowDate, heureFinEquipage, conte
     // Service 24h : pas de plage de sortie fixe — le départ est accepté à
     // n'importe quelle heure, dès que le lendemain de l'arrivée est arrivé
     // (pas besoin d'attendre l'heure pile de fin de service). Inchangé.
-    if(service==='24h' || !hor.sortieDebut || !hor.sortieFin) return { ok:true };
+    if(serviceEffectifPourHoraire==='24h' || !hor.sortieDebut || !hor.sortieFin) return { ok:true };
     // Heure de fin d'équipe réellement programmée (Chauffeur/Éboueur, Étape
     // 4A) : remplace la fenêtre fixe — départ accepté dès que cette heure
     // est atteinte, sans limite supérieure. S'applique tous les jours,
@@ -24714,21 +24712,9 @@ async function kioskValider(){
 
   // Vérifie si ce chauffeur/éboueur est bien programmé, dans le planning de son
   // équipage, pour le service sur lequel il vient de pointer — n'affecte JAMAIS
-  // l'acceptation du pointage (déjà enregistré ci-dessus, quoi qu'il arrive),
-  // seulement le message affiché à l'écran. Réutilise le calcul déjà existant
-  // (_construireCarteServicesEffectifs — la même logique que le contrôle
-  // automatique des absences et la rotation du service 24h) : aucun nouveau
-  // système de planning n'est créé, on lit juste celui déjà en place. dateEcriture
-  // gère déjà le cas du service Nuit à cheval sur deux jours (voir plus haut),
-  // donc rien à ajouter pour ce cas particulier.
-  let nonProgramme = false;
-  if(estChauffeurOuEboueurDep){
-    try{
-      const carteServices = await _kioskObtenirCarteServices(dateEcriture);
-      const serviceProgramme = carteServices.get(cle);
-      nonProgramme = !serviceProgramme;
-    }catch(e){ console.warn('Vérification du programme échouée (pointage quand même accepté normalement) :', e); }
-  }
+  // Le message "Vous n'êtes pas programmé..." a été retiré — la vérification
+  // équipage détermine toujours le service pour Chauffeur/Éboueur (inchangé),
+  // mais son absence n'affiche plus aucun message spécifique à l'écran.
 
   // "M." ou "Mme" ajouté devant le nom selon le sexe déjà renseigné dans la
   // fiche employé — rien affiché si le sexe n'est pas renseigné (pas de faux
@@ -24761,9 +24747,7 @@ async function kioskValider(){
     }
     return '';
   })();
-  const noteProgramme = nonProgramme
-    ? `<br><span style="color:#FCD34D;font-weight:800;font-size:1.05rem;">Vous n'êtes pas programmé dans un équipage pour aujourd'hui. Veuillez vous diriger vers l'exploitation pour votre programmation.</span>`
-    : '';
+  const noteProgramme = ''; // message "non programmé" retiré, comme demandé
   // Règle stricte : ne jamais donner l'IMPRESSION visuelle d'une confirmation
   // serveur (coche verte pleine) tant que Supabase n'a pas réellement confirmé
   // l'écriture — même si le pointage est déjà en sécurité en local et sera
