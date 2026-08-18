@@ -14996,6 +14996,15 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
     <div id="przEquListe"></div>
   </div>
+  <div class="settings-card" style="border:2px solid #0F6E56;">
+    <div class="sec" style="background:#0F6E56;">📱 Kiosques autorisés (sécurité du pointage)</div>
+    <div style="font-size:.7rem;color:#666;margin:8px 0;">Chaque appareil qui sert de scanner de pointage doit être ici, sinon il ne peut pas envoyer de pointage. Après génération, le secret n'est affiché QU'UNE SEULE FOIS — note-le tout de suite pour configurer l'appareil.</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+      <input type="text" id="kioskNomInput" class="ci" placeholder="Nom du kiosque (ex: Entrée Anyama)" style="max-width:240px;">
+      <button class="btn b-add" onclick="genererNouveauKiosque()">➕ Générer un nouveau kiosque</button>
+    </div>
+    <div id="kioskListe"></div>
+  </div>
   <div class="settings-card">
     <div class="sec">👔 Comptes DRH</div>
     <div style="font-size:.7rem;color:#666;margin:8px 0;">Ce compte voit le Tableau de bord, Présence, Employés, Congés, Équipage et la Corbeille, avec accès complet — rien d'autre (pas de Paramètres, IA, Historique, réservés à l'admin).</div>
@@ -16098,6 +16107,7 @@ const BADGE_COLORS = {
 // Couleurs personnalisées créées par la RH (nom + 3 couleurs au choix) —
 // stockées à part, fusionnées avec les couleurs prédéfinies ci-dessus.
 let couleursPersonnalisees = {}; // {cle: {h1,h2,f,label}}
+let kiosquesAutorises = []; // [{id, nom, secretHash, actif}] — sécurité du pointage (Étape 8)
 // Ne renvoie que des entrées de couleur VALIDES (objet avec au moins .h1 et
 // .label) — une entrée corrompue ou incomplète ne doit jamais atteindre le
 // menu Couleur (c'est ce qui provoquait les "undefined" affichés). Filtre
@@ -17769,6 +17779,7 @@ async function sauvegarder(manual=false) {
     ['rh_fer', JSON.stringify(joursFeries)],
     ['rh_cor', JSON.stringify(corbeille)],
     ['rh_hist', JSON.stringify(historique)],
+    ['rh_kiosques', JSON.stringify(kiosquesAutorises)],
   ];
   const itemsModifies = items.filter(([cle,val]) => _rhDernierEtatJSON[cle] !== val);
   // Sauvegarde automatique périodique (toutes les 30s) : si rien n'a changé
@@ -17920,6 +17931,16 @@ async function rhChargerDepuisLigne(){
         }
         _remplirSelectDosType();
       }
+      // Kiosques autorisés (sécurité du pointage, Étape 8) — même patron que
+      // rh_couleurs_perso : petit blob JSON dans rh_donnees, aucune nouvelle
+      // table. { id, nom, secretHash, actif }[]. secretHash uniquement (SHA-256),
+      // jamais le secret en clair.
+      if (parCle.rh_kiosques !== undefined){
+        let kq = parCle.rh_kiosques;
+        if(typeof kq === 'string'){ try{ kq = JSON.parse(kq); }catch(e){ kq = []; } }
+        kiosquesAutorises = Array.isArray(kq) ? kq : [];
+        if(typeof _kioskListe==='function') _kioskListe();
+      }
       // États des alertes (lues/supprimées) — stockés en texte JSON dans rh_donnees,
       // reconvertis ici en Set pour l'usage courant. Survit même si l'adresse
       // de déploiement change (contrairement au localStorage seul).
@@ -17981,6 +18002,14 @@ async function rhChargerDepuisLigne(){
   }
 }
 
+// Hachage SHA-256 — utilisé pour ne jamais comparer/stocker le secret de
+// kiosque en clair. Web Crypto API, native au navigateur (et à Deno côté
+// serveur), aucune bibliothèque supplémentaire.
+async function _sha256Hex(texte){
+  const data = new TextEncoder().encode(texte);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
 let rhCanalEcoute = null;
 // true dès que le canal Realtime est réellement abonné (SUBSCRIBED) — false
 // pendant une coupure ou avant la première connexion. Sert uniquement à
@@ -23125,6 +23154,41 @@ function _sitesRender(){
       <button class="btn" style="background:rgba(220,38,38,.1);color:#DC2626;border:1px solid #FCA5A5;font-size:.62rem;padding:4px 8px;" onclick="_siteSupprimer(${s.id})">🗑️</button>
     </div>`).join('');
 }
+// ===== Kiosques autorisés — sécurité du pointage (Étape 8) =====
+function _kioskListe(){
+  const box = document.getElementById('kioskListe');
+  if(!box) return;
+  if(!kiosquesAutorises.length){
+    box.innerHTML = '<div style="font-size:.68rem;color:#0F6E56;opacity:.75;font-style:italic;">Aucun kiosque enregistré pour l\'instant — génère le premier ci-dessus.</div>';
+    return;
+  }
+  box.innerHTML = kiosquesAutorises.map(k=>`
+    <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #6EE7B7;border-radius:6px;padding:6px 10px;margin-bottom:4px;">
+      <span style="flex:1;font-size:.72rem;font-weight:700;color:${k.actif?'#0F6E56':'#999'};">${k.actif?'📱':'⛔'} ${k.nom||'(sans nom)'}</span>
+      <span style="font-size:.6rem;color:#666;font-family:monospace;">${k.id.slice(0,8)}…</span>
+      <button class="btn" style="background:${k.actif?'rgba(220,38,38,.1)':'rgba(15,110,86,.1)'};color:${k.actif?'#DC2626':'#0F6E56'};border:1px solid ${k.actif?'#FCA5A5':'#6EE7B7'};font-size:.62rem;padding:4px 8px;" onclick="_kioskBasculerActif('${k.id}')">${k.actif?'⛔ Désactiver':'✅ Réactiver'}</button>
+    </div>`).join('');
+}
+async function genererNouveauKiosque(){
+  const nom = (document.getElementById('kioskNomInput')||{}).value?.trim();
+  if(!nom){ toast('⚠️ Donne un nom à ce kiosque d\'abord','warn'); return; }
+  const id = crypto.randomUUID();
+  const secret = crypto.randomUUID()+crypto.randomUUID(); // secret plus long que l'id, jamais stocké en clair
+  const secretHash = await _sha256Hex(secret);
+  kiosquesAutorises.push({ id, nom, secretHash, actif:true });
+  triggerSave();
+  _kioskListe();
+  document.getElementById('kioskNomInput').value='';
+  // Affiché UNE SEULE FOIS — jamais récupérable après, comme un mot de passe.
+  alert(`✅ Kiosque "${nom}" créé.\n\nÀ CONFIGURER SUR L'APPAREIL MAINTENANT (ne sera plus jamais affiché) :\n\nID : ${id}\nSecret : ${secret}\n\nOuvre l'app sur cet appareil avec ce lien :\n${location.origin}${location.pathname}?kioskId=${encodeURIComponent(id)}&kioskSecret=${encodeURIComponent(secret)}`);
+}
+function _kioskBasculerActif(id){
+  const k = kiosquesAutorises.find(x=>x.id===id);
+  if(!k) return;
+  k.actif = !k.actif;
+  triggerSave();
+  _kioskListe();
+}
 function _siteEditer(id){
   const s = sitesGPS.find(x=>x.id===id);
   if(!s) return;
@@ -23546,6 +23610,31 @@ async function startKiosk(){
   document.getElementById('lockScreen').style.display='none';
   document.getElementById('appContent').style.display='none';
   document.getElementById('kioskApp').style.display='flex';
+  // Sécurité du pointage (Étape 8) — identifiant + secret propres à CET
+  // appareil, distincts du QR/badge (inchangé). Configurés une seule fois
+  // via un lien fourni par l'admin (?kioskId=...&kioskSecret=...), puis
+  // conservés en localStorage. Sans ça, aucun pointage ne peut être envoyé —
+  // affiche un écran de configuration au lieu du scanner, sans planter.
+  try{
+    const params = new URLSearchParams(location.search);
+    const idUrl = params.get('kioskId'), secretUrl = params.get('kioskSecret');
+    if(idUrl && secretUrl){
+      localStorage.setItem('rh_kiosk_id', idUrl);
+      localStorage.setItem('rh_kiosk_secret', secretUrl);
+      // Retire ces valeurs sensibles de l'URL affichée/historique, une fois enregistrées.
+      params.delete('kioskId'); params.delete('kioskSecret');
+      const nouvelleUrl = location.pathname + (params.toString()?('?'+params.toString()):'') + location.hash;
+      history.replaceState(null, '', nouvelleUrl);
+    }
+  }catch(_){}
+  if(!localStorage.getItem('rh_kiosk_id') || !localStorage.getItem('rh_kiosk_secret')){
+    document.getElementById('kioskApp').innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;text-align:center;padding:30px;gap:12px;">
+      <div style="font-size:3rem;">🔒</div>
+      <div style="font-size:1.1rem;font-weight:800;">Ce kiosque n'est pas configuré</div>
+      <div style="font-size:.85rem;opacity:.85;max-width:320px;">Demande à l'administrateur de générer un kiosque (Paramètres → Kiosques autorisés) et d'ouvrir le lien fourni sur cet appareil.</div>
+    </div>`;
+    return;
+  }
   try{ if(localStorage.getItem('rh_kiosk_soleil')==='1') document.getElementById('kioskApp').classList.add('kiosk-soleil'); }catch(_){}
   await _kioskLoadCfg();
   _kioskChargerAnnuaire(); // annuaire public Supabase — fonctionne même sur un téléphone jamais connecté
@@ -24508,13 +24597,7 @@ function _kioskVerifierHoraire(service, action, nowDate, heureFinEquipage, conte
 // pointage en file locale (_kioskAjouterPointageEnAttente), qui sera
 // retentée UNIQUEMENT via cette même fonction, donc UNIQUEMENT via l'Edge
 // Function, jusqu'à ce qu'elle réussisse ou soit rejetée définitivement.
-// Paramètre "viaFile" (nouveau) — distingue un premier essai normal (false,
-// heure du scan tout juste faite, ne doit jamais servir à contourner l'heure
-// serveur en changeant l'heure du téléphone) d'un renvoi RÉEL depuis la file
-// d'attente après un échec déjà constaté (true, une vraie coupure a eu lieu,
-// heureScan peut légitimement dater de plusieurs heures). Transmis au
-// serveur, qui adapte sa tolérance en conséquence (voir pointage/index.ts).
-async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, tentatives=2, action, viaFile=false){
+async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, tentatives=2, action){
   const urlFonction = `${SUPABASE_URL}/functions/v1/pointage`;
   for(let i=0;i<=tentatives;i++){
     try{
@@ -24527,7 +24610,11 @@ async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, ten
           action,
           rec,
           heureScan: now, // heure du scan lui-même — le serveur décide s'il lui fait confiance ou non
-          viaFile, // true seulement si ce renvoi vient réellement de la file d'attente
+          // Identité du kiosque (Étape 8) — vérifiée AVANT tout le reste côté
+          // serveur, empêche un appel externe direct (curl/Postman) muni
+          // seulement de la clé anon publique.
+          kioskId: localStorage.getItem('rh_kiosk_id'),
+          kioskSecret: localStorage.getItem('rh_kiosk_secret'),
           lat: _kiosk.geo ? _kiosk.geo.lat : null,
           lng: _kiosk.geo ? _kiosk.geo.lng : null,
           geoDisponible: !!_kiosk.geo,
@@ -24594,7 +24681,7 @@ async function _kioskFlusherPointagesEnAttente(){
         perdus.push({...item, retirePourExpiration: new Date().toISOString()});
         continue;
       }
-      const resultat = await _kioskEnvoyerPointageAvecReessai(item.dateEcriture, item.cle, item.rec, item.now, 1, item.action, true);
+      const resultat = await _kioskEnvoyerPointageAvecReessai(item.dateEcriture, item.cle, item.rec, item.now, 1, item.action);
       // Un refus définitif (400/403/404) sort de la file pour de bon — le
       // retenter ne changera jamais rien, et l'y garder bloquerait la file
       // indéfiniment sur un pointage qui ne passera jamais.
@@ -24762,7 +24849,7 @@ async function kioskValider(){
   // Supabase — donc jamais visible dans Présence côté admin. C'était la cause
   // exacte du bug. Corrigé avec une vérification réelle + nouvelles tentatives
   // automatiques, et une file d'attente qui se rétablit toute seule.
-  const resultatEnvoi = await _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, 2, action, false);
+  const resultatEnvoi = await _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, 2, action);
   const succes = resultatEnvoi.success;
   if(!succes && !resultatEnvoi.definitif){
     _kioskAjouterPointageEnAttente(dateEcriture, cle, rec, now, action);
