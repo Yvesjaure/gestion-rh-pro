@@ -14013,6 +14013,11 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
 
     <!-- Étape scan badge -->
     <div class="kiosk-step" id="kioskStep-scan" style="display:flex;">
+      <!-- Bandeau "HORS ZONE" — rempli/affiché par _kioskAppliquerEtatZoneIdle().
+           Masqué par défaut : aucun changement visible si aucune zone n'est
+           configurée pour ce kiosque, ou tant que la position n'a pas encore
+           confirmé une sortie de zone. -->
+      <div id="kioskZoneGate" style="display:none;order:-1;width:100%;background:linear-gradient(135deg,#7F1D1D,#B91C1C);border:1.5px solid #F87171;border-radius:10px;padding:10px 14px;margin-bottom:10px;text-align:center;color:#fff;font-weight:800;font-size:.85rem;"></div>
       <button id="kioskSoleilBtn" onclick="kioskToggleSoleil()" title="Mode plein soleil (contraste élevé)" style="position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.3);color:#FBBF24;font-size:1rem;cursor:pointer;z-index:5;">☀️</button>
       <div id="kioskHorlogeAccueil" style="text-align:center;margin-bottom:4px;">
         <div id="kioskHorloge" style="font-size:1.5rem;font-weight:800;color:#fff;letter-spacing:1px;"></div>
@@ -23510,6 +23515,31 @@ function _haversineM(lat1,lng1,lat2,lng2){
   const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
+// Détermine, pour une position GPS donnée, quel site comparer (celui assigné
+// à l'employé si reconnu, sinon le plus proche parmi tous) et si elle est
+// dans son rayon — logique PURE (aucun effet de bord, ne lit/n'écrit aucun
+// état global), extraite de _kioskStartGeo() pour être partagée avec la
+// veille de zone de l'écran d'accueil (_kioskDemarrerSurveillanceZone) sans
+// dupliquer la règle de correspondance de site. Appelée uniquement quand
+// sites.length>0 (zone configurée) — comportement de _kioskStartGeo inchangé.
+function _kioskEvaluerZone(lat, lng, sites, nomSiteEmploye){
+  let plusProche=null, dist=null, inZone=null, modeStrict=false;
+  const nomAttendu = (nomSiteEmploye || '').trim().toLowerCase();
+  const siteAttendu = nomAttendu ? sites.find(s=>(s.nom||'').trim().toLowerCase()===nomAttendu) : null;
+  if(siteAttendu){
+    modeStrict = true;
+    plusProche = siteAttendu;
+    dist = _haversineM(lat, lng, siteAttendu.lat, siteAttendu.lng);
+    inZone = dist <= (siteAttendu.radius_m||200);
+  } else {
+    sites.forEach(s=>{
+      const d = _haversineM(lat, lng, s.lat, s.lng);
+      if(plusProche===null || d<dist){ plusProche=s; dist=d; }
+    });
+    inZone = plusProche ? (dist <= (plusProche.radius_m||200)) : null;
+  }
+  return { plusProche, dist, inZone, modeStrict };
+}
 
 // ---------- Historique des pointages (lu directement depuis "presences") ----------
 async function punchShowHistory(){
@@ -23671,6 +23701,7 @@ async function startKiosk(){
   // reste de l'initialisation ni faire remonter d'exception vers bootstrap()
   // (qui pourrait sinon perturber l'affichage déjà en place).
   try{ await _kioskLoadCfg(); }catch(e){ console.warn('_kioskLoadCfg a échoué (kiosque quand même affiché) :', e); }
+  try{ _kioskDemarrerSurveillanceZone(); }catch(e){ console.warn('_kioskDemarrerSurveillanceZone a échoué (kiosque quand même utilisable, scan possible comme avant) :', e); }
   try{ _kioskChargerAnnuaire(); }catch(e){ console.warn('_kioskChargerAnnuaire a échoué :', e); } // annuaire public Supabase — fonctionne même sur un téléphone jamais connecté
   try{ _kioskFlusherPointagesEnAttente(); }catch(e){ console.warn('_kioskFlusherPointagesEnAttente a échoué :', e); }
   try{ _kioskDemarrerFlushPeriodique(); }catch(e){ console.warn('_kioskDemarrerFlushPeriodique a échoué :', e); }
@@ -23859,7 +23890,7 @@ function _kioskShowStep(step){
   if(el) el.style.display='flex';
   _kioskSetMsg('');
   _kioskMajIndicateurEtapes(step);
-  if(step==='scan') _kioskStartScan();
+  if(step==='scan'){ _kioskStartScan(); _kioskAppliquerEtatZoneIdle(); }
   if(step==='geo') _kioskStartGeo();
   if(step==='selfie') _kioskStartSelfie();
   if(step==='choixService') _kioskDemarrerAutoService();
@@ -24465,20 +24496,8 @@ function _kioskStartGeo(){
     // le plus proche parmi tous, comme avant.
     let plusProche=null, dist=null, inZone=null, modeStrict=false;
     if(zoneConfiguree){
-      const nomAttendu = (_kiosk.emp && _kiosk.emp.site || '').trim().toLowerCase();
-      const siteAttendu = nomAttendu ? sites.find(s=>(s.nom||'').trim().toLowerCase()===nomAttendu) : null;
-      if(siteAttendu){
-        modeStrict = true;
-        plusProche = siteAttendu;
-        dist = _haversineM(pos.coords.latitude,pos.coords.longitude, siteAttendu.lat, siteAttendu.lng);
-        inZone = dist <= (siteAttendu.radius_m||200);
-      } else {
-        sites.forEach(s=>{
-          const d = _haversineM(pos.coords.latitude,pos.coords.longitude, s.lat, s.lng);
-          if(plusProche===null || d<dist){ plusProche=s; dist=d; }
-        });
-        inZone = dist <= (plusProche.radius_m||200);
-      }
+      const r = _kioskEvaluerZone(pos.coords.latitude, pos.coords.longitude, sites, _kiosk.emp && _kiosk.emp.site);
+      plusProche = r.plusProche; dist = r.dist; inZone = r.inZone; modeStrict = r.modeStrict;
     }
     _kiosk.geo = {lat:pos.coords.latitude, lng:pos.coords.longitude, dist, inZone, site: plusProche?plusProche.nom:null, siteId: plusProche?plusProche.id:null, strict: modeStrict};
 
@@ -24529,6 +24548,74 @@ function _kioskStartGeo(){
     _kiosk.geo=null;
     setTimeout(()=>_kioskShowStep('selfie'), 1200);
   }, {enableHighAccuracy:true, timeout:12000});
+}
+
+// ============================================================
+// Veille de zone sur l'écran d'accueil (AVANT même le scan du badge) — dès
+// qu'une zone est configurée pour ce kiosque, la position est surveillée en
+// continu pendant que l'écran d'accueil est affiché : hors du rayon
+// autorisé, le scan est bloqué et un bandeau "HORS ZONE" reste affiché ;
+// dès que l'appareil revient dans la zone, le scan se réactive
+// automatiquement, sans rien recharger. Complète _kioskStartGeo() (le
+// contrôle précis refait à CHAQUE scan, inchangé) — ne le remplace pas :
+// c'est toujours lui, et seulement lui, qui autorise réellement un
+// pointage, avec une lecture GPS fraîche à ce moment précis.
+// Utilise watchPosition() (mise à jour poussée par l'OS) plutôt qu'une
+// boucle de sondage répétée, pour ne pas consommer la batterie inutilement
+// — et enableHighAccuracy:false ici (suffisant pour ce simple bandeau
+// indicatif ; la précision fine reste réservée à _kioskStartGeo()).
+// Une position momentanément indisponible n'est JAMAIS traitée comme "hors
+// zone" — seul un vrai résultat de comparaison au rayon l'est.
+// ============================================================
+let _kioskZoneWatchId = null;
+if(typeof _kiosk!=='undefined') _kiosk.zoneIdle = { statut:'inconnu' }; // 'inconnu' | 'indisponible' | 'horszone' | 'ok'
+
+function _kioskDemarrerSurveillanceZone(){
+  const sites = (_kiosk.cfg && _kiosk.cfg.sites) || [];
+  if(!sites.length) return; // pas de zone configurée pour ce kiosque : rien à surveiller, écran d'accueil inchangé
+  if(!('geolocation' in navigator)) return;
+  if(_kioskZoneWatchId !== null) return; // déjà en cours (ex: bootstrap relancé) — pas de doublon
+  _kioskZoneWatchId = navigator.geolocation.watchPosition(
+    pos=>{
+      const sitesActuels = (_kiosk.cfg && _kiosk.cfg.sites) || [];
+      if(!sitesActuels.length){ _kiosk.zoneIdle = { statut:'inconnu' }; _kioskAppliquerEtatZoneIdle(); return; }
+      const r = _kioskEvaluerZone(pos.coords.latitude, pos.coords.longitude, sitesActuels, _kiosk.emp && _kiosk.emp.site);
+      _kiosk.zoneIdle = { statut: r.inZone===false ? 'horszone' : 'ok', site: r.plusProche?r.plusProche.nom:null, dist: r.dist };
+      _kioskAppliquerEtatZoneIdle();
+    },
+    err=>{
+      // Position indisponible/refusée : état neutre, jamais assimilé à "hors
+      // zone" — le scan reste possible comme avant l'ajout de cette veille ;
+      // c'est _kioskStartGeo(), inchangé, qui tranchera au moment du scan.
+      _kiosk.zoneIdle = { statut:'indisponible' };
+      _kioskAppliquerEtatZoneIdle();
+    },
+    { enableHighAccuracy:false, maximumAge:15000, timeout:20000 }
+  );
+}
+function _kioskArreterSurveillanceZone(){
+  if(_kioskZoneWatchId !== null){ navigator.geolocation.clearWatch(_kioskZoneWatchId); _kioskZoneWatchId = null; }
+}
+// Reflète _kiosk.zoneIdle sur l'écran d'accueil : bandeau "HORS ZONE" +
+// scan bloqué si hors zone confirmé ; dans tous les autres cas (dans la
+// zone, zone encore inconnue, position indisponible, ou pas de zone
+// configurée), écran inchangé — scan possible, exactement comme avant
+// l'ajout de cette veille.
+function _kioskAppliquerEtatZoneIdle(){
+  const bandeau = document.getElementById('kioskZoneGate');
+  const camBox = document.querySelector('#kioskStep-scan .kiosk-cam-box');
+  const manuel = document.querySelector('#kioskStep-scan .kiosk-manual');
+  const horsZone = !!(_kiosk.zoneIdle && _kiosk.zoneIdle.statut === 'horszone');
+  if(bandeau){
+    bandeau.style.display = horsZone ? 'flex' : 'none';
+    if(horsZone){
+      const dist = _kiosk.zoneIdle.dist!=null ? ` (${Math.round(_kiosk.zoneIdle.dist)} m)` : '';
+      const site = _kiosk.zoneIdle.site ? ` — ${_kiosk.zoneIdle.site}` : '';
+      bandeau.innerHTML = `🚫 HORS ZONE${site}${dist}<br><span style="font-weight:500;font-size:.7rem;opacity:.9;">Rapprochez-vous du site pour pouvoir pointer.</span>`;
+    }
+  }
+  if(camBox) camBox.style.display = horsZone ? 'none' : '';
+  if(manuel) manuel.style.display = horsZone ? 'none' : '';
 }
 
 // ---- Étape 3 : selfie (caméra avant) ----
@@ -24929,21 +25016,28 @@ async function kioskValider(){
   // automatiques, et une file d'attente qui se rétablit toute seule.
   const resultatEnvoi = await _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, 2, action);
   const succes = resultatEnvoi.success;
+  // Refus DÉFINITIF (ex: hors zone, employé suspendu) — le serveur a déjà
+  // tranché, rien à confirmer plus tard : ne doit JAMAIS être affiché comme
+  // "en attente de confirmation serveur" (distinct du cas transitoire —
+  // réseau, fonction indisponible — qui, lui, reste correctement en attente
+  // et sera retenté automatiquement).
+  const refusDefinitif = !succes && !!resultatEnvoi.definitif;
+  const raisonRefus = resultatEnvoi.raisonRefus || '';
+  const estRefusHorsZone = refusDefinitif && raisonRefus === 'Hors zone';
   if(!succes && !resultatEnvoi.definitif){
     _kioskAjouterPointageEnAttente(dateEcriture, cle, rec, now, action);
     _kioskSetMsg('⚠️ Pointage enregistré sur ce téléphone, mais pas encore transmis — nouvelle tentative automatique au prochain scan ou chargement.','warn');
-  } else if(!succes && resultatEnvoi.definitif){
+  } else if(refusDefinitif){
     // Raison exacte du refus, telle que renvoyée par la fonction serveur
     // (voir supabase/functions/pointage/index.ts) — affichée précisément au
     // lieu d'un message générique qui masquerait pourquoi le pointage a été
     // refusé (ex: hors zone, employé suspendu...).
     const raisons = {
-      'Hors zone': '❌ Pointage refusé : vous êtes hors de la zone autorisée.',
+      'Hors zone': '🚫 HORS ZONE — pointage refusé, vous n\'êtes pas dans le rayon autorisé.',
       'Employé introuvable': '❌ Pointage refusé : badge non reconnu par le serveur.',
     };
-    const raison = resultatEnvoi.raisonRefus || '';
-    const msg = raisons[raison]
-      || (raison.startsWith('Employé ') ? `❌ Pointage refusé : ${raison.toLowerCase()}.` : null)
+    const msg = raisons[raisonRefus]
+      || (raisonRefus.startsWith('Employé ') ? `❌ Pointage refusé : ${raisonRefus.toLowerCase()}.` : null)
       || '❌ Pointage refusé par le serveur (employé non programmé, inactif, ou autre règle non respectée).';
     _kioskSetMsg(msg,'err');
   }
@@ -24969,7 +25063,19 @@ async function kioskValider(){
   const noteZone = horsZone
     ? `<br><span style="color:#FCA5A5;font-weight:700;font-size:1.05rem;">⚠️ Hors zone (${Math.round(_kiosk.geo.dist)} m du site) — signalé pour vérification RH</span>`
     : '';
+  // Refus hors zone confirmé par le SERVEUR (peut arriver même quand le
+  // contrôle GPS local du kiosque avait laissé passer) — affiché de façon
+  // définitive et non ambiguë, jamais comme une simple attente.
+  const noteRefusServeur = refusDefinitif
+    ? (estRefusHorsZone
+        ? `<br><span style="color:#F87171;font-weight:800;font-size:1.1rem;">🚫 HORS ZONE — pointage refusé par le serveur. Rapprochez-vous du site puis rescannez votre badge.</span>`
+        : `<br><span style="color:#F87171;font-weight:800;font-size:1.05rem;">❌ Pointage refusé par le serveur.</span>`)
+    : '';
   const noteHoraire = (() => {
+    // Un refus définitif (ex: hors zone) tranche déjà tout — plus aucune
+    // estimation de retard "provisoire" n'a de sens à côté d'un refus déjà
+    // connu et définitif (voir noteRefusServeur ci-dessus).
+    if(refusDefinitif) return '';
     // Statut Présent/Absent affiché IMMÉDIATEMENT depuis la réponse du
     // serveur (autorité exclusive) dès qu'elle est disponible — aucun
     // recalcul local. "horaireCheck" (client) ne sert plus qu'en dernier
@@ -24996,11 +25102,17 @@ async function kioskValider(){
   // l'écriture — même si le pointage est déjà en sécurité en local et sera
   // retransmis automatiquement (voir _kioskEnvoyerPointageAvecReessai plus haut).
   // Cercle orange + texte "en attente" au lieu du ✓ vert quand ce n'est pas
-  // encore confirmé, pour rester honnête sur l'état réel.
+  // encore confirmé, pour rester honnête sur l'état réel — et cercle rouge
+  // "✕" distinct pour un refus définitif (hors zone...), qui n'est PAS une
+  // attente : rien ne sera retenté, ni jamais confirmé plus tard.
   const cercle = document.getElementById('kioskDoneCercle');
   if(cercle){
     if(succes){
       cercle.style.background = ''; cercle.querySelector('span').textContent = '✓';
+      cercle.classList.remove('kiosk-done-attente');
+    } else if(refusDefinitif){
+      cercle.style.background = 'linear-gradient(135deg,#7F1D1D,#DC2626)';
+      cercle.querySelector('span').textContent = '✕';
       cercle.classList.remove('kiosk-done-attente');
     } else {
       cercle.style.background = 'linear-gradient(135deg,#D97706,#F59E0B)';
@@ -25008,12 +25120,20 @@ async function kioskValider(){
       cercle.classList.add('kiosk-done-attente');
     }
   }
-  const noteEnAttente = !succes
+  // "En attente de confirmation serveur" UNIQUEMENT pour un échec transitoire
+  // (réseau, fonction indisponible) qui sera réellement retenté — jamais pour
+  // un refus définitif (hors zone, employé suspendu...), qui ne le sera pas.
+  const noteEnAttente = (!succes && !refusDefinitif)
     ? `<br><span style="color:#FCD34D;font-weight:800;font-size:1.05rem;">⏳ Pas encore confirmé par le serveur — enregistré sur cet appareil, transmission automatique en cours. Ne fermez pas l'application si possible.</span>`
     : '';
-  box.innerHTML = (action==='arrival'
-    ? `${succes?'✅':'⏳'} Bienvenue <b>${name}</b><br>Arrivée ${succes?'enregistrée':'notée'} à ${hhmm}`
-    : `${succes?'👋':'⏳'} Au revoir <b>${name}</b><br>Départ ${succes?'enregistré':'noté'} à ${hhmm}`) + noteEnAttente + noteZone + noteHoraire + noteProgramme;
+  box.innerHTML = (refusDefinitif
+    ? (action==='arrival'
+        ? `✕ <b>${name}</b><br>Arrivée NON enregistrée (${hhmm})`
+        : `✕ <b>${name}</b><br>Départ NON enregistré (${hhmm})`)
+    : (action==='arrival'
+        ? `${succes?'✅':'⏳'} Bienvenue <b>${name}</b><br>Arrivée ${succes?'enregistrée':'notée'} à ${hhmm}`
+        : `${succes?'👋':'⏳'} Au revoir <b>${name}</b><br>Départ ${succes?'enregistré':'noté'} à ${hhmm}`)
+  ) + noteEnAttente + noteRefusServeur + noteZone + noteHoraire + noteProgramme;
   // Note : les notifications RH (retard/hors-zone/absence) sont désormais gérées
   // entièrement côté backend (voir /api/notify/check), pas déclenchées d'ici.
   // Pas de fermeture automatique : le message doit rester affiché le temps que
