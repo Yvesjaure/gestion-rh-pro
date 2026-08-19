@@ -16210,9 +16210,12 @@ async function init() {
   // Cycle automatique Actualiser → Optimiser toutes les 60s (voir
   // _demarrerCycleAutoActualiserOptimiser plus bas) — remplace les anciens
   // minuteurs séparés de _migrerFichiersSiBesoin (toutes les 2 min) et l'appel
-  // isolé à _purgerSelfiesAnciensSiBesoin, pour éviter d'avoir deux systèmes
-  // qui tournent en même temps sur les mêmes tâches ("doublons de timers").
-  _demarrerCycleAutoActualiserOptimiser();
+  // DIAGNOSTIC TEMPORAIRE (Storage/selfies) : cycle automatique désactivé
+  // pour ne pas fausser le test manuel de storage.upload() avec des
+  // tentatives répétées en arrière-plan. La fonction elle-même n'est pas
+  // touchée — juste ce démarrage automatique, à réactiver ensuite en
+  // décommentant la ligne suivante.
+  // _demarrerCycleAutoActualiserOptimiser();
   // Vérifie toutes les 10 minutes si une nouvelle version a été déployée
   // pendant que la page est ouverte (voir _afficherBanniereNouvelleVersion).
   if(!window._majVersionTimer) window._majVersionTimer = setInterval(_verifierNouvelleVersionDisponible, 10*60*1000);
