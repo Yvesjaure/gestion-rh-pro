@@ -24036,7 +24036,16 @@ async function _kioskStartScan(){
 function _kioskParseEmpId(text){
   // Nouveau format compact des badges : EIDA1|MATRICULE|NOM|PRENOM|...
   const eida1 = _decoderQrEIDA1(text);
-  if(eida1) return fmtMatricule(eida1.matricule);
+  if(eida1){
+    // Mémorise nom/prénom du QR (déjà présents, aucune réimpression de badge
+    // nécessaire) — sert de vérification supplémentaire côté serveur contre
+    // un empId envoyé manuellement sans passer par un vrai scan. Optionnel :
+    // absent pour un ancien badge, comportement alors strictement inchangé.
+    _kiosk.qrNom = eida1.nom || null;
+    _kiosk.qrPrenom = eida1.prenom || null;
+    return fmtMatricule(eida1.matricule);
+  }
+  _kiosk.qrNom = null; _kiosk.qrPrenom = null;
   // Anciens badges déjà imprimés (avant le format EIDA1) : URL ...?id=EMP-00007,
   // ou texte brut contenant directement "EMP-00007" — toujours reconnus, pour
   // qu'un badge imprimé avant la mise à jour continue de fonctionner.
@@ -24246,6 +24255,9 @@ async function _kioskAfficherActionPrevue(){
 function kioskManualBadge(){
   const v = document.getElementById('kioskBadgeManual').value.trim();
   if(!v){ punchToast('Entrez un matricule'); return; }
+  // Saisie manuelle : aucune donnée QR disponible pour cette vérification
+  // supplémentaire — comportement inchangé, comme pour un ancien badge.
+  _kiosk.qrNom = null; _kiosk.qrPrenom = null;
   _kioskOnBadgeDetected(fmtMatricule(v));
 }
 // Récupère la carte des services programmés (Jour/Nuit/24h par employé) pour
@@ -24653,6 +24665,12 @@ async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, ten
           // seulement de la clé anon publique.
           kioskId: localStorage.getItem('rh_kiosk_id'),
           kioskSecret: localStorage.getItem('rh_kiosk_secret'),
+          // Nom/prénom extraits du QR (badges déjà imprimés, EIDA1) —
+          // vérification supplémentaire optionnelle contre empId envoyé
+          // manuellement : null si badge ancien format ou saisie manuelle,
+          // dans quel cas aucune vérification n'est faite (inchangé).
+          qrNom: _kiosk.qrNom || null,
+          qrPrenom: _kiosk.qrPrenom || null,
           lat: _kiosk.geo ? _kiosk.geo.lat : null,
           lng: _kiosk.geo ? _kiosk.geo.lng : null,
           geoDisponible: !!_kiosk.geo,
