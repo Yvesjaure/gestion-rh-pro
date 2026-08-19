@@ -13942,7 +13942,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
 .kiosk-done-msg b{font-size:1.9rem;}
 .kiosk-sub{font-size:.9rem;color:#B9E4F5;text-align:center;}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
 </head>
 <body>
 
@@ -23914,6 +23914,11 @@ function _kioskMajIndicateurEtapes(step){
 
 function kioskRestart(){
   _kiosk.empId=null; _kiosk.emp=null; _kiosk.geo=null; _kiosk.selfieData=null; _kiosk.actionChoisie=null; _kiosk.serviceChoisi=null; _kiosk.curRecord=null;
+  // Défense en profondeur : évite qu'un nom/prénom capturé lors d'un scan
+  // précédent (rejeté via "Ce n'est pas moi") ne puisse jamais être transmis
+  // avec un empId différent défini par un futur chemin d'appel qui
+  // oublierait de les réinitialiser lui-même.
+  _kiosk.qrNom=null; _kiosk.qrPrenom=null;
   const warnEl = document.getElementById('kioskActionWarn'); if(warnEl) warnEl.style.display='none';
   _kioskShowStep('scan');
 }
