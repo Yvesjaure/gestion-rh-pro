@@ -23654,6 +23654,11 @@ let _kiosk = {
   geo: null,
   selfieData: null,
   rafId: null,
+  // 'pre' = contrôle de zone effectué AVANT d'autoriser ARRIVÉE/DÉPART ;
+  // 'confirm' = second contrôle, refait au moment du clic ARRIVÉE/DÉPART,
+  // juste avant le selfie. Détermine vers quelle étape _kioskStartGeo()
+  // avance après un contrôle réussi (voir _kioskStartGeo).
+  geoPurpose: null,
 };
 
 function _isKioskMode(){
@@ -23957,7 +23962,7 @@ function _kioskMajIndicateurEtapes(step){
 }
 
 function kioskRestart(){
-  _kiosk.empId=null; _kiosk.emp=null; _kiosk.geo=null; _kiosk.selfieData=null; _kiosk.actionChoisie=null; _kiosk.serviceChoisi=null; _kiosk.curRecord=null;
+  _kiosk.empId=null; _kiosk.emp=null; _kiosk.geo=null; _kiosk.selfieData=null; _kiosk.actionChoisie=null; _kiosk.serviceChoisi=null; _kiosk.curRecord=null; _kiosk.geoPurpose=null;
   // Défense en profondeur : évite qu'un nom/prénom capturé lors d'un scan
   // précédent (rejeté via "Ce n'est pas moi") ne puisse jamais être transmis
   // avec un empId différent défini par un futur chemin d'appel qui
@@ -24408,7 +24413,10 @@ async function kioskConfirmBadge(){
     if(serviceProgramme && ['jour','nuit','24h'].includes(serviceProgramme)){
       // Programmé : le service est imposé directement, aucun choix libre.
       _kiosk.serviceChoisi = serviceProgramme;
-      _kioskShowStep('choixAction');
+      // Contrôle de zone AVANT d'autoriser ARRIVÉE/DÉPART (voir _kioskStartGeo) —
+      // les boutons ne s'affichent que si ce contrôle réussit.
+      _kiosk.geoPurpose = 'pre';
+      _kioskShowStep('geo');
       return;
     }
     // Non trouvé, ou vérification impossible — dans les deux cas, le badge
@@ -24418,7 +24426,8 @@ async function kioskConfirmBadge(){
     // affiché après coup comme avertissement (voir kioskValider,
     // variable nonProgramme), jamais comme un refus.
     _kiosk.serviceChoisi = null;
-    _kioskShowStep('choixAction');
+    _kiosk.geoPurpose = 'pre';
+    _kioskShowStep('geo');
     return;
   }
   _kioskAfficherInfoServices();
@@ -24437,7 +24446,9 @@ function _kioskAfficherInfoServices(){
 function kioskChoisirService(service){
   clearInterval(_kioskAutoServiceInterval); // évite un double-déclenchement si le compte à rebours tournait encore
   _kiosk.serviceChoisi = service; // 'jour', 'nuit' ou '24h', choisi librement par l'employé
-  _kioskShowStep('choixAction');
+  // Contrôle de zone AVANT d'autoriser ARRIVÉE/DÉPART (voir _kioskStartGeo).
+  _kiosk.geoPurpose = 'pre';
+  _kioskShowStep('geo');
 }
 function kioskChoisirAction(action){
   // Reconnaît automatiquement un pointage déjà fait pour cette action aujourd'hui
@@ -24460,12 +24471,41 @@ function kioskChoisirAction(action){
   }
   if(warnEl) warnEl.style.display='none';
   _kiosk.actionChoisie = action; // 'arrival' ou 'departure', choisi librement par l'employé
+  // Seconde vérification GPS, refaite précisément au moment de ce clic (une
+  // première a déjà eu lieu avant l'affichage de cet écran — voir les
+  // appelants de _kioskShowStep('geo') avec geoPurpose='pre') — la position
+  // peut avoir changé entre les deux (téléphone qui bouge, déplacement hors
+  // zone après le premier contrôle). Le serveur reste dans tous les cas
+  // l'autorité finale au moment de l'écriture (kioskValider, inchangé).
+  _kiosk.geoPurpose = 'confirm';
   _kioskShowStep('geo');
 }
 function kioskRejectBadge(){ kioskRestart(); }
 
 // ---- Étape 2 : géolocalisation ----
-function _kioskStartGeo(){
+// Appelée à DEUX moments distincts du même pointage (Correction demandée :
+// "vérifier la zone AVANT d'autoriser ARRIVÉE/DÉPART, puis à nouveau au
+// clic") : une première fois juste après le scan/service, geoPurpose='pre',
+// AVANT que les boutons ARRIVÉE/DÉPART ne soient affichés (voir
+// kioskConfirmBadge/kioskChoisirService) ; une seconde fois au moment précis
+// du clic sur ARRIVÉE/DÉPART, geoPurpose='confirm', juste avant le selfie
+// (voir kioskChoisirAction). Les deux réutilisent exactement la même
+// vérification de zone (_kioskEvaluerZone, inchangée), mais reprennent
+// chacune une position GPS fraîche (jamais de réutilisation d'une position
+// déjà ancienne) et rafraîchissent la liste des sites directement depuis
+// Supabase avant de trancher, plutôt que de se fier uniquement au cache
+// chargé au démarrage du kiosque (utile si un site/rayon a été modifié
+// pendant que ce téléphone était déjà ouvert). Dans tous les cas, l'autorité
+// finale reste la fonction serveur pointage/index.ts (non modifiée) au
+// moment de l'écriture : un contrôle client réussi ici n'empêche jamais un
+// refus serveur ultérieur (403 Hors zone), voir kioskValider.
+async function _kioskStartGeo(){
+  const etapeSuivante = (_kiosk.geoPurpose === 'confirm') ? 'selfie' : 'choixAction';
+  try{
+    const { data } = await supabaseRH.from('rh_sites').select('*');
+    if(data) _kiosk.cfg.sites = data.filter(s=>s.lat!=null && s.lng!=null);
+  }catch(e){ console.warn('Zones GPS non rafraîchies depuis le serveur, repli sur le cache local :', e); }
+
   _kioskSetMsg('📍 Localisation en cours…');
   const spinnerEl = document.getElementById('kioskGeoSpinner');
   const texteEl = document.getElementById('kioskGeoTexte');
@@ -24485,7 +24525,7 @@ function _kioskStartGeo(){
     }
     _kioskSetMsg('⚠️ GPS non supporté par cet appareil — pointage sans position.','warn');
     _kiosk.geo=null;
-    setTimeout(()=>_kioskShowStep('selfie'), 1200);
+    setTimeout(()=>_kioskShowStep(etapeSuivante), 1200);
     return;
   }
   navigator.geolocation.getCurrentPosition(pos=>{
@@ -24537,7 +24577,7 @@ function _kioskStartGeo(){
     }
 
     document.getElementById('kioskGeoTexte').textContent = zoneConfiguree ? `✅ Position confirmée — ${plusProche.nom}` : '✅ Position enregistrée';
-    setTimeout(()=>_kioskShowStep('selfie'), 1400);
+    setTimeout(()=>_kioskShowStep(etapeSuivante), 1400);
   }, err=>{
     if(zoneConfiguree){
       _kioskSetMsg('❌ Position GPS refusée/indisponible ('+err.message+'), et une zone est exigée pour ce site — pointage refusé.','err');
@@ -24546,7 +24586,7 @@ function _kioskStartGeo(){
     }
     _kioskSetMsg('⚠️ Position refusée/indisponible ('+err.message+') — pointage sans position.','warn');
     _kiosk.geo=null;
-    setTimeout(()=>_kioskShowStep('selfie'), 1200);
+    setTimeout(()=>_kioskShowStep(etapeSuivante), 1200);
   }, {enableHighAccuracy:true, timeout:12000});
 }
 
@@ -24933,6 +24973,16 @@ async function kioskValider(){
     return;
   }
 
+  // Snapshot de l'état exact AVANT toute écriture optimiste (voir plus bas,
+  // "presences[dateEcriture][cle] = rec") — permet, en cas de refus DÉFINITIF
+  // du serveur (ex: hors zone), de restaurer très précisément cet état
+  // antérieur au lieu de laisser une trace fantôme (punch_in/punch_out/
+  // pointage_id_*) qui ferait croire au prochain scan que ce pointage refusé
+  // a été accepté. On restaure CET état précis (pas une suppression pure et
+  // simple de la clé) pour ne jamais perdre une arrivée/départ légitime déjà
+  // confirmée par un scan précédent.
+  const curAvantEcriture = {...cur};
+
   const action = _kiosk.actionChoisie || (!cur.punch_in ? 'arrival' : 'departure'); // repli si jamais non choisi
   const fonctionAgentDep = ((_kiosk.emp && _kiosk.emp.fonc) || '').toLowerCase();
   const estChauffeurOuEboueurDep = fonctionAgentDep.includes('chauffeur') || fonctionAgentDep.includes('éboueur') || fonctionAgentDep.includes('eboueur');
@@ -25024,6 +25074,20 @@ async function kioskValider(){
   const refusDefinitif = !succes && !!resultatEnvoi.definitif;
   const raisonRefus = resultatEnvoi.raisonRefus || '';
   const estRefusHorsZone = refusDefinitif && raisonRefus === 'Hors zone';
+  // CORRECTION — annule l'écriture optimiste faite plus haut si le serveur
+  // refuse DÉFINITIVEMENT ce pointage (ex: hors zone, 403). Sans ça,
+  // presences[dateEcriture][cle] gardait un punch_in/punch_out et un
+  // pointage_id_* jamais confirmés par le serveur, et le scan suivant
+  // affichait à tort "arrivée déjà enregistrée" alors que rien n'avait été
+  // accepté (ni écrit dans rh_pointages). On restaure exactement l'état
+  // d'avant cette tentative (curAvantEcriture), pas une simple suppression
+  // de la clé, pour ne jamais effacer une arrivée/départ légitime déjà
+  // confirmée par un scan antérieur.
+  if(refusDefinitif){
+    presences[dateEcriture][cle] = curAvantEcriture;
+    try{ await db.set('rh_prz', JSON.stringify(presences)); }
+    catch(e){ console.warn('Restauration locale après refus définitif échouée :', e); }
+  }
   if(!succes && !resultatEnvoi.definitif){
     _kioskAjouterPointageEnAttente(dateEcriture, cle, rec, now, action);
     _kioskSetMsg('⚠️ Pointage enregistré sur ce téléphone, mais pas encore transmis — nouvelle tentative automatique au prochain scan ou chargement.','warn');
