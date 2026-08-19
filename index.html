@@ -18603,7 +18603,7 @@ async function _uploaderVersStorage(dataUrl, chemin){
   if(!dataUrl || _estUrlStockage(dataUrl)) return dataUrl; // déjà une URL, ou vide
   try{
     const blob = _dataUrlVersBlob(dataUrl);
-    const { error } = await supabaseRH.storage.from(STORAGE_BUCKET).upload(chemin, blob, { upsert:true, contentType: blob.type });
+    const { error } = await supabaseRH.storage.from(STORAGE_BUCKET).upload(chemin, blob, { contentType: blob.type });
     if(error) throw error;
     const { data } = supabaseRH.storage.from(STORAGE_BUCKET).getPublicUrl(chemin);
     const url = data && data.publicUrl;
