@@ -18629,12 +18629,22 @@ async function _uploaderVersStorage(dataUrl, chemin){
 // vérification, et elle seule, qui autorise l'appelant à remplacer le fichier
 // local (base64) par ce lien.
 async function _verifierFichierAccessible(url){
+  // Délai de sécurité : sur un réseau lent/instable (kiosque mobile...), un
+  // fetch() peut rester en attente très longtemps sans jamais échouer ni
+  // réussir. On borne donc chaque tentative pour ne JAMAIS bloquer l'appelant
+  // — au pire, on retombe sur le fichier local (base64) comme avant.
+  const avecDelai = (opts) => {
+    const ctrl = new AbortController();
+    const minuteur = setTimeout(()=>ctrl.abort(), 8000);
+    return fetch(url, { ...opts, signal: ctrl.signal, cache:'no-store' })
+      .finally(()=>clearTimeout(minuteur));
+  };
   try{
-    const rep = await fetch(url, { method:'HEAD', cache:'no-store' });
+    const rep = await avecDelai({ method:'HEAD' });
     if(rep.ok) return true;
-  }catch(e){ /* certains réglages CORS/hébergeurs bloquent HEAD — on retente en GET */ }
+  }catch(e){ /* certains réglages CORS/hébergeurs bloquent HEAD, ou délai dépassé — on retente en GET */ }
   try{
-    const rep2 = await fetch(url, { method:'GET', cache:'no-store' });
+    const rep2 = await avecDelai({ method:'GET' });
     return rep2.ok;
   }catch(e2){ return false; }
 }
