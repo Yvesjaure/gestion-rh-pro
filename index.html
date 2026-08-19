@@ -24862,6 +24862,42 @@ function _kioskAjouterPointageEnAttente(dateEcriture, cle, rec, now, action){
     localStorage.setItem('rh_pointages_en_attente', JSON.stringify(liste));
   }catch(e){ /* pas grave — la version locale (presences) reste correcte de toute façon */ }
 }
+// Annule, dans le cache local (presences/rh_prz — IndexedDB), UNIQUEMENT la
+// trace laissée par un item de la file qui vient d'être refusé DÉFINITIVEMENT
+// (ou qui a expiré après 24h) — jamais une donnée plus récente. Corrige le
+// même bug que le rollback de kioskValider() (faux "déjà enregistrée" après
+// un refus), mais pour le cas où ce refus arrive plus tard, en tâche de fond,
+// via cette file de retry plutôt qu'immédiatement au moment du scan.
+//
+// Sécurité principale : on ne restaure QUE si l'entrée locale actuelle porte
+// encore EXACTEMENT le même identifiant (pointage_id_arrivee/pointage_id_
+// depart) que celui que CET item avait écrit à l'origine. Si un scan plus
+// récent (ou un autre appareil) a depuis remplacé cette entrée par un
+// identifiant différent, on ne touche à rien — cette donnée-là n'a rien à
+// voir avec l'item refusé et ne doit jamais être écrasée.
+async function _kioskAnnulerPointageEnFileRefuse(item){
+  try{
+    const idChamp = item.action==='arrival' ? 'pointage_id_arrivee' : 'pointage_id_depart';
+    const idTente = item.rec && item.rec[idChamp];
+    if(!idTente) return; // rien d'identifiable de façon sûre — on ne touche à rien par prudence
+    const localActuel = (presences[item.dateEcriture] && presences[item.dateEcriture][item.cle]) || {};
+    if(localActuel[idChamp] !== idTente) return; // remplacé depuis par une donnée plus récente — ne jamais écraser
+
+    // État RÉELLEMENT accepté par le serveur pour cet employé/cette date
+    // précise — peut contenir une arrivée légitime si seul le départ a été
+    // refusé, ou être vide si rien n'a jamais été confirmé pour ce jour-là.
+    let etatReel = {};
+    try{
+      const { data } = await supabaseRH.from('rh_pointages').select('data')
+        .eq('date_jour', item.dateEcriture).eq('emp_id', item.cle).maybeSingle();
+      if(data && data.data) etatReel = data.data;
+    }catch(e){ console.warn('Lecture rh_pointages échouée pendant le rollback de file (repli sur un état vide) :', e); }
+
+    if(!presences[item.dateEcriture]) presences[item.dateEcriture] = {};
+    presences[item.dateEcriture][item.cle] = etatReel;
+    await db.set('rh_prz', JSON.stringify(presences));
+  }catch(e){ console.warn('Annulation locale après refus/expiration en file échouée :', e); }
+}
 async function _kioskFlusherPointagesEnAttente(){
   // Protection contre les flush simultanés — si un flush est déjà en cours
   // (ex: celui du démarrage pas encore fini quand le minuteur périodique se
@@ -24884,13 +24920,25 @@ async function _kioskFlusherPointagesEnAttente(){
       const debut = item.premierEssai ? new Date(item.premierEssai).getTime() : Date.now();
       if(Date.now() - debut > LIMITE_MS){
         perdus.push({...item, retirePourExpiration: new Date().toISOString()});
+        // CORRECTION — sans ça, un pointage jamais transmis en 24h restait
+        // quand même visible en local (punch_in/punch_out fantôme) sur le
+        // kiosque, qui affichait alors "déjà enregistré" pour un pointage
+        // qui n'a jamais existé côté serveur.
+        await _kioskAnnulerPointageEnFileRefuse(item);
         continue;
       }
       const resultat = await _kioskEnvoyerPointageAvecReessai(item.dateEcriture, item.cle, item.rec, item.now, 1, item.action);
       // Un refus définitif (400/403/404) sort de la file pour de bon — le
       // retenter ne changera jamais rien, et l'y garder bloquerait la file
       // indéfiniment sur un pointage qui ne passera jamais.
-      if(!resultat.success && !resultat.definitif) restants.push(item);
+      if(!resultat.success && !resultat.definitif){
+        restants.push(item);
+      } else if(!resultat.success && resultat.definitif){
+        // CORRECTION — même rollback que ci-dessus : un refus définitif reçu
+        // ICI (en tâche de fond, potentiellement longtemps après le scan
+        // original) ne doit pas non plus laisser de trace fantôme locale.
+        await _kioskAnnulerPointageEnFileRefuse(item);
+      }
     }
     try{ localStorage.setItem('rh_pointages_en_attente', JSON.stringify(restants)); }catch(e){}
     if(perdus.length){
