@@ -24701,8 +24701,12 @@ async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, ten
         // Refus définitif — inutile de retenter. Plus de repli direct non
         // plus : si le serveur refuse ce pointage (ex: employé non
         // programmé), il ne doit jamais être écrit sans sa vérification.
-        console.warn(`Pointage refusé définitivement par le serveur (${reponse.status}) — pas de nouvelle tentative.`);
-        return { success:false, definitif:true };
+        // La raison exacte (ex: "Hors zone", "Employé Suspendu") est lue ici
+        // pour être affichée telle quelle au lieu d'un message générique qui
+        // masquerait pourquoi le pointage a été refusé.
+        const corpsRefus = await reponse.json().catch(()=>({}));
+        console.warn(`Pointage refusé définitivement par le serveur (${reponse.status}) — pas de nouvelle tentative.`, corpsRefus);
+        return { success:false, definitif:true, raisonRefus: corpsRefus && corpsRefus.error };
       }
       console.warn(`Fonction serveur de pointage refusée (tentative ${i+1}/${tentatives+1}) :`, reponse.status);
     }catch(e){
@@ -24929,7 +24933,19 @@ async function kioskValider(){
     _kioskAjouterPointageEnAttente(dateEcriture, cle, rec, now, action);
     _kioskSetMsg('⚠️ Pointage enregistré sur ce téléphone, mais pas encore transmis — nouvelle tentative automatique au prochain scan ou chargement.','warn');
   } else if(!succes && resultatEnvoi.definitif){
-    _kioskSetMsg('❌ Pointage refusé par le serveur (employé non programmé, inactif, ou autre règle non respectée).','err');
+    // Raison exacte du refus, telle que renvoyée par la fonction serveur
+    // (voir supabase/functions/pointage/index.ts) — affichée précisément au
+    // lieu d'un message générique qui masquerait pourquoi le pointage a été
+    // refusé (ex: hors zone, employé suspendu...).
+    const raisons = {
+      'Hors zone': '❌ Pointage refusé : vous êtes hors de la zone autorisée.',
+      'Employé introuvable': '❌ Pointage refusé : badge non reconnu par le serveur.',
+    };
+    const raison = resultatEnvoi.raisonRefus || '';
+    const msg = raisons[raison]
+      || (raison.startsWith('Employé ') ? `❌ Pointage refusé : ${raison.toLowerCase()}.` : null)
+      || '❌ Pointage refusé par le serveur (employé non programmé, inactif, ou autre règle non respectée).';
+    _kioskSetMsg(msg,'err');
   }
 
   if(cloudRef){
