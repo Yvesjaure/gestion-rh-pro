@@ -12600,6 +12600,76 @@ body[data-theme="dark"] #kioskApp{
 .nav-info{text-align:center;font-size:.6rem;color:#555;font-weight:700;margin-top:3px;}
 .form-card{flex:1;background:var(--gris);border-radius:8px;padding:9px;box-shadow:var(--ombre);}
 
+/* Dashboard RH — page Employés (fiche plein écran, mêmes données) */
+#pgEmp.page.active{background:#F4F6F8;padding:10px 12px 16px;}
+.emp-dash{display:flex;gap:14px;align-items:stretch;min-height:calc(100vh - 92px);position:relative;}
+.emp-dash-main{flex:1 1 100%;max-width:100%;min-width:0;display:flex;flex-direction:column;gap:10px;}
+.emp-dash-card{background:#fff;border:1px solid #E6E9EE;border-radius:12px;box-shadow:0 4px 18px rgba(26,58,92,.06);padding:12px;}
+.emp-dash-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.emp-dash-toolbar h2{font-size:.92rem;font-weight:800;color:var(--bleu);margin:0;flex:1;min-width:140px;}
+.emp-ico{width:32px;height:32px;border:none;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:.85rem;transition:transform .15s ease, box-shadow .15s ease, filter .15s;}
+.emp-ico:hover{transform:translateY(-1px) scale(1.02);box-shadow:0 4px 10px rgba(0,0,0,.14);}
+.emp-ico.voir{background:#1A3A5C;color:#fff;}
+.emp-ico.edit{background:#1E8449;color:#fff;}
+.emp-ico.del{background:#C0392B;color:#fff;}
+.emp-ico.nouveau{background:#2E6DA4;color:#fff;width:auto;padding:0 12px;font-size:.72rem;font-weight:800;gap:4px;}
+#tableEmployes tbody tr.emp-row{transition:background .15s ease, box-shadow .15s ease;}
+#tableEmployes tbody tr.emp-row:hover{background:#E8F1FA;}
+.emp-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);z-index:420;opacity:0;pointer-events:none;transition:opacity .3s ease-out;}
+.emp-overlay.open{opacity:1;pointer-events:auto;}
+.emp-panel{position:fixed;z-index:430;top:1.5vh;left:1vw;right:1vw;bottom:1.5vh;width:auto;height:auto;max-width:none;min-width:0;background:#F4F6F8;border-radius:14px;box-shadow:0 18px 50px rgba(15,23,42,.28);display:flex;flex-direction:column;transform:translateY(10px);opacity:0;pointer-events:none;transition:transform .3s ease-out, opacity .3s ease-out;overflow:hidden;}
+.emp-panel.open{transform:none;opacity:1;pointer-events:auto;}
+.emp-panel-head{position:sticky;top:0;z-index:3;background:#fff;border-bottom:1px solid #E6E9EE;padding:12px 16px;display:flex;gap:14px;align-items:center;flex-shrink:0;}
+.emp-panel-head .photo-box{width:76px;height:92px;flex-shrink:0;}
+.emp-panel-meta{flex:1;min-width:0;}
+.emp-head-kicker{font-size:.68rem;font-weight:800;color:#64748B;letter-spacing:.04em;text-transform:uppercase;margin:0 0 2px;}
+.emp-panel-meta h3{font-size:1.15rem;font-weight:800;color:var(--bleu);margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.emp-panel-meta .emp-sub{font-size:.78rem;color:#64748B;font-weight:700;}
+.emp-badge-st{display:inline-block;margin-top:6px;padding:2px 8px;border-radius:999px;font-size:.62rem;font-weight:800;}
+.emp-panel-x{background:#1A3A5C;border:none;color:#fff;font-size:.78rem;font-weight:800;cursor:pointer;line-height:1;padding:8px 12px;border-radius:8px;font-family:Nunito,sans-serif;white-space:nowrap;}
+.emp-panel-x:hover{filter:brightness(1.08);}
+.emp-tabs{display:none;}
+.emp-panel-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:14px 16px 18px;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:12px;align-content:start;}
+.emp-tabpane{display:block !important;animation:none;background:#fff;border:1px solid #E6E9EE;border-radius:12px;padding:12px;box-shadow:0 2px 8px rgba(26,58,92,.05);min-width:0;}
+#empPaneDocs,#empPaneHisto,#empPaneActiv{grid-column:1 / -1;}
+.emp-panel .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:0;}
+.emp-panel .photo-col{width:100%;flex-direction:row;justify-content:flex-start;gap:10px;}
+.emp-panel .action-bar{padding:10px 16px 14px;background:#fff;border-top:1px solid #E6E9EE;margin:0;flex-shrink:0;position:sticky;bottom:0;z-index:3;display:flex;flex-wrap:wrap;gap:6px;}
+.emp-panel.mode-view .inp:not([readonly]),
+.emp-panel.mode-view select.inp,
+.emp-panel.mode-view .nb-input,
+.emp-panel.mode-view .tgl{pointer-events:none;background:#F8FAFC;}
+.emp-panel.mode-view .photo-box{cursor:default;}
+.emp-panel.mode-view .photo-btns,
+.emp-panel.mode-view .btn-clr,
+.emp-panel.mode-view input[type=file],
+.emp-panel.mode-view [id^=btnAIScan]{pointer-events:none;opacity:.4;}
+.emp-panel.mode-view .doc-info{cursor:default;pointer-events:none;}
+.emp-panel.mode-edit .doc-info{cursor:pointer;}
+.emp-empty{text-align:center;color:#94A3B8;font-size:.78rem;padding:18px 10px;font-style:italic;}
+.emp-feed{display:flex;flex-direction:column;gap:8px;}
+.emp-feed-item{background:#F8FAFC;border:1px solid #E6E9EE;border-radius:10px;padding:9px 11px;}
+.emp-feed-item b{color:var(--bleu);font-size:.75rem;}
+.emp-feed-item span{display:block;font-size:.66rem;color:#64748B;margin-top:2px;}
+@media (min-width:1400px){
+  .emp-panel-body{grid-template-columns:minmax(0,1.1fr) minmax(0,1.1fr) minmax(0,.9fr);}
+  #empPaneInfos{grid-column:1 / 3;}
+  #empPaneContacts{grid-column:3;grid-row:1;}
+}
+@media (max-width:1100px){
+  .emp-panel-body{grid-template-columns:1fr;}
+  .emp-panel .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  #empPaneInfos,#empPaneContacts,#empPaneDocs,#empPaneHisto,#empPaneActiv{grid-column:auto;grid-row:auto;}
+}
+@media (max-width:900px){
+  .emp-dash{flex-direction:column;min-height:auto;}
+  .emp-panel{top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;border-radius:0;}
+  .emp-panel-body{grid-template-columns:1fr;}
+  .emp-panel .form-grid{grid-template-columns:1fr;}
+  .emp-panel .lbl{min-width:108px;white-space:normal;}
+  .emp-panel .action-bar .btn{flex:1 1 calc(50% - 6px);}
+}
+
 /* ========== FORM ========== */
 .top-bar{display:flex;justify-content:space-between;margin-bottom:7px;align-items:center;gap:6px;}
 .btn-new{background:#fff;border:1.5px solid #aaa;border-radius:4px;padding:4px 11px;font-family:'Nunito',sans-serif;font-size:.73rem;font-weight:700;cursor:pointer;}
@@ -13043,7 +13113,13 @@ tbody td{padding:3px 4px;border:1px solid #E8E8E8;white-space:nowrap;max-width:1
 .justif-form{background:#FFF9E6;border:1.5px solid var(--or);border-radius:7px;padding:12px;margin-top:8px;}
 
 /* ========== PARAMÈTRES ========== */
-.settings-card{background:var(--gris);border-radius:8px;padding:16px;box-shadow:var(--ombre);max-width:580px;margin:0 auto;}
+#pgSet{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;width:100%;max-width:100%;box-sizing:border-box;align-items:stretch;padding:4px 8px 16px;}
+#pgSet.page.active{display:grid;}
+.settings-card{background:var(--gris);border-radius:8px;padding:16px;box-shadow:var(--ombre);max-width:none;margin:0;min-width:0;overflow:hidden;box-sizing:border-box;}
+.settings-card-wide{grid-column:1 / -1;}
+.settings-card .cf{flex-wrap:wrap;}
+@media(max-width:1100px){#pgSet{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:700px){#pgSet{grid-template-columns:1fr;}}
 .pwd-box{background:rgba(108,52,131,.07);border:1.5px solid var(--violet);border-radius:7px;padding:10px;margin-top:8px;}
 
 /* ========== TOAST ========== */
@@ -13802,7 +13878,7 @@ tbody td{padding:3px 4px;border:1px solid #E8E8E8;white-space:nowrap;max-width:1
 .ai-hero-sub{font-size:.78rem;opacity:.85;margin-top:2px;}
 .ai-hero-status{margin-left:auto;background:rgba(255,255,255,.18);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);padding:6px 12px;border-radius:999px;font-size:.72rem;font-weight:700;border:1px solid rgba(255,255,255,.25);z-index:1;}
 .ai-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
-@media(max-width:980px){.ai-grid{grid-template-columns:1fr;}}
+@media(max-width:980px){.ai-grid{grid-template-columns:1fr;} #localisationMap{height:420px !important;min-height:420px !important;}}
 .ai-card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 4px 16px rgba(15,23,42,.06);border:1.5px solid #E2E8F0;display:flex;flex-direction:column;gap:10px;}
 .ai-card-hdr{display:flex;align-items:center;gap:8px;font-weight:800;color:#1E1B4B;font-size:.95rem;border-bottom:2px solid #EDE9FE;padding-bottom:8px;}
 .ai-card-emo{font-size:1.4rem;}
@@ -14013,11 +14089,6 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
 
     <!-- Étape scan badge -->
     <div class="kiosk-step" id="kioskStep-scan" style="display:flex;">
-      <!-- Bandeau "HORS ZONE" — rempli/affiché par _kioskAppliquerEtatZoneIdle().
-           Masqué par défaut : aucun changement visible si aucune zone n'est
-           configurée pour ce kiosque, ou tant que la position n'a pas encore
-           confirmé une sortie de zone. -->
-      <div id="kioskZoneGate" style="display:none;order:-1;width:100%;background:linear-gradient(135deg,#7F1D1D,#B91C1C);border:1.5px solid #F87171;border-radius:10px;padding:10px 14px;margin-bottom:10px;text-align:center;color:#fff;font-weight:800;font-size:.85rem;"></div>
       <button id="kioskSoleilBtn" onclick="kioskToggleSoleil()" title="Mode plein soleil (contraste élevé)" style="position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.3);color:#FBBF24;font-size:1rem;cursor:pointer;z-index:5;">☀️</button>
       <div id="kioskHorlogeAccueil" style="text-align:center;margin-bottom:4px;">
         <div id="kioskHorloge" style="font-size:1.5rem;font-weight:800;color:#fff;letter-spacing:1px;"></div>
@@ -14119,6 +14190,30 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       </div>
     </div>
   </div>
+</div><!-- fin kioskApp -->
+
+<div id="espaceEmployeApp" style="display:none;min-height:100vh;background:#0F172A;color:#fff;padding:24px;font-family:Nunito,sans-serif;">
+  <div style="max-width:420px;margin:0 auto;text-align:center;">
+    <div style="font-size:.8rem;opacity:.7;margin-bottom:8px;">MON ESPACE</div>
+    <div id="espaceNom" style="font-size:1.25rem;font-weight:800;margin-bottom:6px;">—</div>
+    <div id="espaceMatricule" style="font-size:.85rem;opacity:.8;margin-bottom:18px;">—</div>
+    <div class="sec" style="background:#1E3A5F;">🪪 Mon badge numérique</div>
+    <div id="espaceQrBox" style="width:240px;height:240px;margin:16px auto;background:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;"></div>
+    <div id="espaceQrMeta" style="font-size:.75rem;opacity:.85;margin-bottom:12px;">QR temporaire — se renouvelle automatiquement</div>
+    <button class="btn b-add" onclick="espaceRafraichirBadge()">🔄 Rafraîchir le QR</button>
+    <button class="btn" style="margin-top:10px;background:#334155;color:#fff;" onclick="lockApp()">🔒 Déconnexion</button>
+  </div>
+</div>
+
+<div id="activationApp" style="display:none;min-height:100vh;background:#F8FAFC;padding:32px;font-family:Nunito,sans-serif;">
+  <div style="max-width:400px;margin:0 auto;background:#fff;border-radius:12px;padding:24px;border:1.5px solid #E2E8F0;">
+    <div style="font-weight:800;font-size:1.1rem;margin-bottom:8px;">Activation du compte</div>
+    <div style="font-size:.8rem;color:#64748B;margin-bottom:14px;">Choisissez un mot de passe pour activer votre espace employé. Ce lien est à usage unique.</div>
+    <input type="password" id="activationMdp" class="ci" placeholder="Mot de passe (6 caractères min.)" style="width:100%;margin-bottom:8px;">
+    <input type="password" id="activationMdp2" class="ci" placeholder="Confirmer" style="width:100%;margin-bottom:8px;">
+    <div id="activationMsg" style="font-size:.75rem;margin-bottom:10px;"></div>
+    <button class="btn b-add" style="width:100%;justify-content:center;" onclick="validerActivationEmploye()">✅ Activer mon compte</button>
+  </div>
 </div>
 
 <!-- APP -->
@@ -14127,8 +14222,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
 <!-- HEADER -->
 <div class="header">
   <div class="header-brand">
-    <div class="company-logo-zone" onclick="triggerFile(&#39;logoFile&#39;)" title="Cliquer pour charger le logo de l&#39;entreprise" id="logoZone"><span style="color:rgba(255,255,255,.5);font-size:.5rem;text-align:center;padding:2px;line-height:1.3;">📷<br>Logo</span></div>
-    <input type="file" id="logoFile" accept="image/*" onchange="loadLogo(this)">
+    <div class="company-logo-zone" id="logoZone" title="Logo de l'entreprise" style="cursor:default;border-style:solid;"><span style="color:rgba(255,255,255,.5);font-size:.5rem;text-align:center;padding:2px;line-height:1.3;">📷<br>Logo</span></div>
     <div>
       <div class="header-title" id="headerCompanyName">🏢 MON ENTREPRISE</div>
       <div class="header-sub" id="headerCompanyFullName" style="display:none;"></div>
@@ -14155,10 +14249,6 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     <button class="hdr-icon-btn" id="btnAlertesRH" onclick="ouvrirAlertes()" title="Alertes">
       🔔
       <span id="rhBadgeAlertes" class="hdr-icon-badge" style="display:none;"></span>
-    </button>
-    <button class="hdr-icon-btn" id="btnEmployesRH" style="display:none;" onclick="rhOuvrirPanneauEmployes()" title="Demandes d'accès employés">
-      👥
-      <span id="rhBadgeAttente" class="hdr-icon-badge" style="display:none;"></span>
     </button>
     <div style="position:relative;">
       <button class="hdr-icon-btn" onclick="toggleHdrMenu()" title="Plus d'options">
@@ -14232,17 +14322,6 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
   </div>
 </div>
 
-<!-- Panneau d'administration : approbation des employés RH -->
-<div id="rhModalEmployes" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;padding:16px;">
-  <div style="background:#1a2036;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:22px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;color:#fff;font-family:'Nunito',sans-serif;position:relative;">
-    <button onclick="document.getElementById('rhModalEmployes').style.display='none';" aria-label="Fermer" style="position:sticky;top:0;float:right;margin:-6px -6px 0 0;background:rgba(255,255,255,.12);border:none;border-radius:50%;width:30px;height:30px;font-size:1rem;font-weight:800;color:#fff;cursor:pointer;z-index:2;">✖</button>
-    <h3 style="margin:0 0 4px;">👥 Gestion des employés RH</h3>
-    <p style="font-size:.78rem;color:rgba(255,255,255,.5);margin:0 0 16px;">Approuvez les demandes pour donner accès à l'application.</p>
-    <div id="rhListeEmployesHTML"></div>
-    <button class="lock-btn" style="margin-top:14px;" onclick="document.getElementById('rhModalEmployes').style.display='none';">Fermer</button>
-  </div>
-</div>
-
 <!-- BANNIÈRE QR SCAN (apparaît si l'app est ouverte avec ?id=EMP-XXXXX) -->
 <div id="scanBanner" class="scan-banner" style="display:none;">
   <div class="sb-icon">📷</div>
@@ -14277,23 +14356,64 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
   </div>
 </div>
 <div class="page" id="pgEmp">
-<div class="main-wrap">
-  <div class="sidebar">
-    <button class="nav-btn up" onclick="naviguer(-1)" title="Précédent">▲</button>
-    <button class="nav-btn dn" onclick="naviguer(1)" title="Suivant">▼</button>
-    <div class="nav-info" id="navInfo">0/0</div>
-  </div>
-  <div class="form-card">
-    <div class="top-bar">
-      <span style="font-size:.7rem;color:#666;font-weight:700;">📋 Fiche Employé</span>
-      <button class="btn-new" onclick="nouveauID()">🆕 Nouveau ID</button>
+<div class="emp-dash">
+  <div class="emp-dash-main">
+    <div class="emp-dash-card emp-dash-toolbar">
+      <div class="sidebar" style="flex-direction:row;padding:0;gap:4px;">
+        <button class="nav-btn up" onclick="naviguer(-1)" title="Précédent">▲</button>
+        <button class="nav-btn dn" onclick="naviguer(1)" title="Suivant">▼</button>
+        <div class="nav-info" id="navInfo">0/0</div>
+      </div>
+      <h2>👥 Employés</h2>
+      <button type="button" class="emp-ico nouveau" onclick="nouveauID()">➕ Nouvel employé</button>
+      <div class="search-bar" style="flex:1;min-width:180px;margin:0;">
+        <span>🔍</span>
+        <input type="text" id="srch" placeholder="Rechercher Nom, Prénom, ID, CNI, CMU, Fonction, Contrat..." oninput="filtrerDebounce()">
+        <button class="btn-sm" onclick="document.getElementById('srch').value='';filtrer()">✕</button>
+      </div>
+      <span style="font-size:.63rem;color:#888;" id="countLbl">0 enregistrement(s)</span>
     </div>
-    <div class="form-grid">
+    <div class="emp-dash-card" style="flex:1;min-height:0;padding:0;overflow:hidden;display:flex;flex-direction:column;">
+      <div class="table-wrap" style="flex:1;max-height:none;min-height:240px;box-shadow:none;border-radius:12px;">
+        <table id="tableEmployes"><thead><tr>
+          <th>ID</th><th>Nom</th><th>Prénom</th><th>Sexe</th><th>Naissance</th><th>Fonction</th><th>Contrat</th>
+          <th>N°CNI</th><th>N°CMU</th><th>Contact principal</th><th>Contact urgence</th><th>Dossier</th><th>Photo</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="tBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
 
-      <!-- COL GAUCHE -->
+<div class="emp-overlay" id="empOverlay" onclick="empFermerPanneau()"></div>
+<aside class="emp-panel" id="empPanel" role="dialog" aria-label="Fiche de l'employé">
+  <div class="emp-panel-head">
+    <button type="button" class="emp-panel-x" onclick="empFermerPanneau()" title="Retour à la liste">← Retour</button>
+    <div class="photo-box" id="photoBox" onclick="if(document.getElementById('empPanel').classList.contains('mode-edit')) triggerFile('fPhotoFile')">
+      <div class="photo-ph">👤<br>Cliquer<br>pour<br>charger</div>
+    </div>
+    <div class="emp-panel-meta">
+      <div class="emp-head-kicker">Fiche de l'employé</div>
+      <div class="emp-head-kicker" id="empHeadTitre" style="text-transform:none;letter-spacing:0;font-size:.82rem;color:var(--bleu);">Détails de l'employé</div>
+      <h3 id="empHeadNom">—</h3>
+      <div class="emp-sub" id="empHeadFonc">—</div>
+      <div class="emp-sub" id="empHeadIds">—</div>
+      <span class="emp-badge-st" id="empHeadStatut"></span>
+    </div>
+  </div>
+  <div class="emp-tabs">
+    <button type="button" class="emp-tab on" data-emp-tab="infos" onclick="empOnglet('infos')">Informations</button>
+    <button type="button" class="emp-tab" data-emp-tab="contacts" onclick="empOnglet('contacts')">Contacts</button>
+    <button type="button" class="emp-tab" data-emp-tab="docs" onclick="empOnglet('docs')">Documents</button>
+    <button type="button" class="emp-tab" data-emp-tab="histo" onclick="empOnglet('histo')">Historique</button>
+    <button type="button" class="emp-tab" data-emp-tab="activ" onclick="empOnglet('activ')">Activités</button>
+  </div>
+  <div class="emp-panel-body">
+    <div class="emp-tabpane on" id="empPaneInfos">
+      <div class="form-grid">
       <div class="form-col">
         <div class="sec">📋 Informations personnelles</div>
-        <div class="fr"><span class="lbl">ID</span><input type="text" id="fID" class="inp" readonly="" style="background:#f0f0f0;max-width:68px;font-family:&#39;Roboto Mono&#39;,monospace;font-weight:700;"></div>
+        <div class="fr"><span class="lbl">ID</span><input type="text" id="fID" class="inp" readonly style="background:#f0f0f0;max-width:68px;font-family:'Roboto Mono',monospace;font-weight:700;"></div>
         <div class="fr"><span class="lbl">Nom</span><input type="text" id="fNom" class="inp" placeholder="Nom de famille"></div>
         <div class="fr"><span class="lbl">Prénom</span><input type="text" id="fPrenom" class="inp" placeholder="Prénom(s)"></div>
         <div class="fr"><span class="lbl">Sexe</span><select id="fSexe" class="inp"><option value="">--</option><option>Homme</option><option>Femme</option></select></div>
@@ -14301,9 +14421,9 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
         <div class="fr"><span class="lbl">Lieu de Naissance</span><input type="text" id="fLieuNais" class="inp"></div>
         <div class="fr"><span class="lbl">État Civil</span><select id="fEtatCivil" class="inp"><option value="">--</option><option>Célibataire</option><option>Marié(e)</option><option>Divorcé(e)</option><option>Veuf/Veuve</option></select></div>
         <div class="fr"><span class="lbl">Nationalité</span><input type="text" id="fNat" class="inp" placeholder="Ex: Ivoirienne"></div>
+        <div class="sec">🪪 Pièces d'identité</div>
         <div class="fr"><span class="lbl">N° CNI</span><input type="text" id="fCNI" class="inp" placeholder="Numéro CNI"></div>
         <div class="fr"><span class="lbl">N° CMU</span><input type="text" id="fCMU" class="inp" placeholder="Numéro CMU"></div>
-        <!-- Enfants -->
         <div class="fr">
           <span class="lbl">Enfants</span>
           <div class="toggle-group">
@@ -14316,30 +14436,12 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
         <div class="fr"><span class="lbl">Nom du Père</span><input type="text" id="fPere" class="inp"></div>
         <div class="fr"><span class="lbl">Nom de la Mère</span><input type="text" id="fMere" class="inp"></div>
         <div class="fr"><span class="lbl">Tuteur / Autre</span><input type="text" id="fAutre" class="inp"></div>
-        <div style="font-size:.7rem;font-weight:800;color:#666;margin:10px 0 4px;">📞 Contact d'urgence 1</div>
-        <div class="fr"><span class="lbl" style="background:var(--vert);">Lien</span>
-          <select id="fUrgLien1" class="inp" onchange="_toggleNomUrgence(1)">
-            <option>Père</option><option>Mère</option><option>Frère</option><option>Sœur</option><option>Autre</option>
-          </select>
-        </div>
-        <div class="fr" id="fUrgNomLigne1" style="display:none;"><span class="lbl" style="background:var(--vert);">Nom et prénom</span><input type="text" id="fUrgNom1" class="inp" placeholder="Ex: Koffi Jean"></div>
-        <div class="fr"><span class="lbl" style="background:var(--vert);">Numéro</span><input type="tel" id="fUrgTel1" class="inp" placeholder="Ex: 07 58 97 86 87"></div>
-        <div style="font-size:.7rem;font-weight:800;color:#666;margin:10px 0 4px;">📞 Contact d'urgence 2</div>
-        <div class="fr"><span class="lbl" style="background:var(--vert);">Lien</span>
-          <select id="fUrgLien2" class="inp" onchange="_toggleNomUrgence(2)">
-            <option>Père</option><option>Mère</option><option>Frère</option><option>Sœur</option><option>Autre</option>
-          </select>
-        </div>
-        <div class="fr" id="fUrgNomLigne2" style="display:none;"><span class="lbl" style="background:var(--vert);">Nom et prénom</span><input type="text" id="fUrgNom2" class="inp" placeholder="Ex: Koffi Jean"></div>
-        <div class="fr"><span class="lbl" style="background:var(--vert);">Numéro</span><input type="tel" id="fUrgTel2" class="inp" placeholder="Optionnel"></div>
       </div>
-
-      <!-- COL DROITE -->
       <div class="form-col">
         <div class="sec">💼 Informations professionnelles</div>
-        <div class="fr"><span class="lbl">Adresse</span><input type="text" id="fAdr" class="inp"></div>
-        <div class="fr"><span class="lbl">Téléphone</span><input type="text" id="fTel" class="inp" placeholder="0700000000"></div>
-        <div class="fr"><span class="lbl">Fonction / Poste</span><input type="text" id="fFonc" class="inp"></div>
+        <div class="fr"><span class="lbl">Adresse</span><input type="text" id="fAdr" class="inp" placeholder="—"></div>
+        <div class="fr"><span class="lbl">Téléphone</span><input type="text" id="fTel" class="inp" placeholder="—"></div>
+        <div class="fr"><span class="lbl">Fonction / Poste</span><input type="text" id="fFonc" class="inp" placeholder="—"></div>
         <div class="fr" id="frRoleApplication"><span class="lbl">Rôle dans l'application</span>
           <select id="fRoleApplication" class="inp">
             <option value="">— Non défini —</option>
@@ -14357,7 +14459,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
           </select>
         </div>
         <div class="fr"><span class="lbl">Statut</span>
-          <select id="fStatutEmploi" class="inp" onchange="document.getElementById('frDateDepart').style.display=this.value==='Sorti'?'flex':'none';">
+          <select id="fStatutEmploi" class="inp" onchange="document.getElementById('frDateDepart').style.display=this.value==='Sorti'?'flex':'none';_empMajEnteteDepuisForm();">
             <option value="Actif">✅ Actif</option>
             <option value="Suspendu">⏸️ Suspendu</option>
             <option value="Inactif">💤 Inactif</option>
@@ -14369,95 +14471,97 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
         <div class="fr"><span class="lbl">Fin de contrat (si CDD/Stage...)</span><input type="date" id="fFinContrat" class="inp"></div>
         <div class="fr"><span class="lbl">Salaire (FCFA)</span><input type="number" id="fSal" class="inp" placeholder="0"></div>
         <div class="fr"><span class="lbl">Service / Dept.</span><input type="text" id="fDept" class="inp" placeholder="Ex: Finance, RH..."></div>
-        <div class="fr"><span class="lbl">Site d'affectation</span><input type="text" id="fSite" class="inp" placeholder="Ex: Anyama, Bingerville, Plateau, Siège..."></div>
-        <div class="fr" style="display:none;"><span class="lbl">Service habituel</span>
+        <div class="fr"><span class="lbl">Site d'affectation</span><input type="text" id="fSite" class="inp" placeholder="—"></div>
+        <div class="fr"><span class="lbl">Service habituel</span>
           <select id="fServiceHabituel" class="inp">
             <option value="jour">☀️ Jour</option>
             <option value="nuit">🌙 Nuit</option>
             <option value="24h">🕛 24h</option>
           </select>
         </div>
-        <div class="fr"><span class="lbl">Email professionnel</span><input type="email" id="fEmail" class="inp" placeholder="prenom.nom@entreprise.com"></div>
-
-        <div class="sec teal" style="margin-top:5px;">📄 Documents officiels</div>
+        <div class="fr"><span class="lbl">Email professionnel</span><input type="email" id="fEmail" class="inp" placeholder="—"></div>
+        <div class="photo-col">
+          <div class="sec" style="width:auto;">PHOTO</div>
+          <div class="photo-btns">
+            <button class="btn-sm" onclick="triggerFile('fPhotoFile')">📷 Photo</button>
+            <button class="btn-sm" onclick="clearPhoto()">🗑️</button>
+          </div>
+          <input type="file" id="fPhotoFile" accept="image/jpeg,image/png,image/gif,image/*" onchange="loadPhoto(this)">
+          <div style="font-size:.58rem;color:#999;">JPG PNG GIF</div>
+        </div>
+      </div>
+      </div>
+    </div>
+    <div class="emp-tabpane" id="empPaneContacts">
+      <div class="sec">📞 Contacts d'urgence</div>
+      <div style="font-size:.7rem;color:#64748B;margin:0 0 8px;">Téléphone et e-mail professionnel : section Informations professionnelles.</div>
+      <div style="font-size:.7rem;font-weight:800;color:#666;margin:10px 0 4px;">📞 Contact d'urgence 1</div>
+      <div class="fr"><span class="lbl" style="background:var(--vert);">Lien</span>
+        <select id="fUrgLien1" class="inp" onchange="_toggleNomUrgence(1)">
+          <option>Père</option><option>Mère</option><option>Frère</option><option>Sœur</option><option>Autre</option>
+        </select>
+      </div>
+      <div class="fr" id="fUrgNomLigne1" style="display:none;"><span class="lbl" style="background:var(--vert);">Nom et prénom</span><input type="text" id="fUrgNom1" class="inp" placeholder="Ex: Koffi Jean"></div>
+      <div class="fr"><span class="lbl" style="background:var(--vert);">Numéro</span><input type="tel" id="fUrgTel1" class="inp" placeholder="Ex: 07 58 97 86 87"></div>
+      <div style="font-size:.7rem;font-weight:800;color:#666;margin:10px 0 4px;">📞 Contact d'urgence 2</div>
+      <div class="fr"><span class="lbl" style="background:var(--vert);">Lien</span>
+        <select id="fUrgLien2" class="inp" onchange="_toggleNomUrgence(2)">
+          <option>Père</option><option>Mère</option><option>Frère</option><option>Sœur</option><option>Autre</option>
+        </select>
+      </div>
+      <div class="fr" id="fUrgNomLigne2" style="display:none;"><span class="lbl" style="background:var(--vert);">Nom et prénom</span><input type="text" id="fUrgNom2" class="inp" placeholder="Ex: Koffi Jean"></div>
+      <div class="fr"><span class="lbl" style="background:var(--vert);">Numéro</span><input type="tel" id="fUrgTel2" class="inp" placeholder="Optionnel"></div>
+    </div>
+    <div class="emp-tabpane" id="empPaneDocs">
+        <div class="sec teal">📄 Documents officiels</div>
         <div class="doc-zone">
           <div class="doc-row">
             <span class="doc-lbl">CNI (PDF/Image)</span>
-            <div class="doc-info ok" id="lCni" onclick="triggerFile(&#39;fCniFile&#39;)">✅ Changement de nom (design) (1).png</div>
-            <button class="btn-view" onclick="viewDoc(&#39;cni&#39;)" id="bvCni" style="display: inline-block;">👁️</button>
-            <button class="btn-view" style="background:linear-gradient(135deg,#7C3AED,#EC4899);color:#fff;" onclick="aiScanCNI()" id="btnAIScanCni" data-testid="btn-ai-scan-cni" title="Scanner la CNI avec l&#39;IA et remplir automatiquement la fiche">🤖 Scan IA</button>
-            <button class="btn-clr" onclick="clearDoc(&#39;cni&#39;)">✕</button>
-            <input type="file" id="fCniFile" accept=".pdf,image/*" onchange="loadDoc(&#39;cni&#39;,this)">
+            <div class="doc-info" id="lCni" onclick="triggerFile('fCniFile')">📎 Cliquer pour charger</div>
+            <button class="btn-view" onclick="viewDoc('cni')" id="bvCni" style="display:none">👁️ Voir</button>
+            <button class="btn-view" onclick="telechargerDoc('cni')" id="bdCni" style="display:none">⬇️</button>
+            <button class="btn-view" style="background:linear-gradient(135deg,#7C3AED,#EC4899);color:#fff;" onclick="aiScanCNI()" id="btnAIScanCni" data-testid="btn-ai-scan-cni" title="Scanner la CNI avec l'IA">🤖 Scan IA</button>
+            <button class="btn-clr" onclick="clearDoc('cni')">✕</button>
+            <input type="file" id="fCniFile" accept=".pdf,image/*" onchange="loadDoc('cni',this)">
           </div>
           <div class="doc-row">
             <span class="doc-lbl">Extrait de Naissance</span>
-            <div class="doc-info" id="lExt" onclick="triggerFile(&#39;fExtFile&#39;)">📎 Cliquer pour charger</div>
-            <button class="btn-view" onclick="viewDoc(&#39;ext&#39;)" id="bvExt" style="display:none">👁️</button>
-            <button class="btn-view" style="background:linear-gradient(135deg,#7C3AED,#EC4899);color:#fff;" onclick="aiScanExtrait()" id="btnAIScanExt" data-testid="btn-ai-scan-ext" title="Scanner l&#39;extrait de naissance avec l&#39;IA">🤖 Scan IA</button>
-            <button class="btn-clr" onclick="clearDoc(&#39;ext&#39;)">✕</button>
-            <input type="file" id="fExtFile" accept=".pdf,image/*" onchange="loadDoc(&#39;ext&#39;,this)">
+            <div class="doc-info" id="lExt" onclick="triggerFile('fExtFile')">📎 Cliquer pour charger</div>
+            <button class="btn-view" onclick="viewDoc('ext')" id="bvExt" style="display:none">👁️ Voir</button>
+            <button class="btn-view" onclick="telechargerDoc('ext')" id="bdExt" style="display:none">⬇️</button>
+            <button class="btn-view" style="background:linear-gradient(135deg,#7C3AED,#EC4899);color:#fff;" onclick="aiScanExtrait()" id="btnAIScanExt" data-testid="btn-ai-scan-ext" title="Scanner l'extrait de naissance avec l'IA">🤖 Scan IA</button>
+            <button class="btn-clr" onclick="clearDoc('ext')">✕</button>
+            <input type="file" id="fExtFile" accept=".pdf,image/*" onchange="loadDoc('ext',this)">
           </div>
           <div class="doc-row">
             <span class="doc-lbl">Autre Document</span>
-            <div class="doc-info" id="lAut" onclick="triggerFile(&#39;fAutFile&#39;)">📎 Cliquer pour charger</div>
-            <button class="btn-view" onclick="viewDoc(&#39;aut&#39;)" id="bvAut" style="display:none">👁️</button>
-            <button class="btn-clr" onclick="clearDoc(&#39;aut&#39;)">✕</button>
-            <input type="file" id="fAutFile" accept=".pdf,image/*" onchange="loadDoc(&#39;aut&#39;,this)">
+            <div class="doc-info" id="lAut" onclick="triggerFile('fAutFile')">📎 Cliquer pour charger</div>
+            <button class="btn-view" onclick="viewDoc('aut')" id="bvAut" style="display:none">👁️ Voir</button>
+            <button class="btn-view" onclick="telechargerDoc('aut')" id="bdAut" style="display:none">⬇️</button>
+            <button class="btn-clr" onclick="clearDoc('aut')">✕</button>
+            <input type="file" id="fAutFile" accept=".pdf,image/*" onchange="loadDoc('aut',this)">
           </div>
         </div>
-
-        <!-- DOSSIER ADMINISTRATIF -->
         <div class="dossier-bar">
           <div class="dossier-hdr"><span>📁 Dossier Administratif</span><span class="dossier-count" id="dosCount">0 fichier(s)</span></div>
-          <div class="quick-btns" id="qbtns"><button class="qbtn" onclick="quickAddDos(&#39;Demande d&#39;explication&#39;)">📝 Demande d'explication</button><button class="qbtn" onclick="quickAddDos(&#39;Prêt d&#39;argent&#39;)">💰 Prêt d'argent</button><button class="qbtn" onclick="quickAddDos(&#39;Contrat&#39;)">📋 Contrat</button><button class="qbtn" onclick="quickAddDos(&#39;Avertissement&#39;)">⚠️ Avertissement</button><button class="qbtn" onclick="quickAddDos(&#39;Attestation&#39;)">🏅 Attestation</button><button class="qbtn" onclick="quickAddDos(&#39;Bulletin de paie&#39;)">💵 Bulletin de paie</button><button class="qbtn" onclick="quickAddDos(&#39;Fiche de poste&#39;)">🗂️ Fiche de poste</button><button class="qbtn" onclick="quickAddDos(&#39;Rapport d&#39;absence&#39;)">📅 Rapport d'absence</button><button class="qbtn" onclick="quickAddDos(&#39;Autre&#39;)">📄 Autre</button></div>
+          <div class="quick-btns" id="qbtns"></div>
         </div>
-      </div>
-
-      <!-- PHOTO -->
-      <div class="photo-col">
-        <div class="sec" style="font-size:.6rem;width:100%;text-align:center;">PHOTO</div>
-        <div class="photo-box" id="photoBox" onclick="triggerFile(&#39;fPhotoFile&#39;)">
-          <div class="photo-ph">👤<br>Cliquer<br>pour<br>charger</div>
-        </div>
-        <div class="photo-btns">
-          <button class="btn-sm" onclick="triggerFile(&#39;fPhotoFile&#39;)">📷</button>
-          <button class="btn-sm" onclick="clearPhoto()">🗑️</button>
-        </div>
-        <input type="file" id="fPhotoFile" accept="image/*" onchange="loadPhoto(this)">
-        <div style="font-size:.58rem;color:#999;text-align:center;margin-top:3px;">JPG PNG GIF</div>
-      </div>
-    </div><!-- fin form-grid -->
-
-    <hr class="sep">
-    <div class="action-bar">
-      <button class="btn b-add" onclick="ajouter()">➕ Ajouter</button>
-      <button class="btn b-mod" onclick="modifier()">✏️ Modifier</button>
-      <button class="btn b-clr" onclick="viderForm()">🧹 Vider</button>
-      <button class="btn b-prt" onclick="imprimerFiche()">🖨️ Imprimer fiche</button>
-      <button class="btn b-bdg" onclick="genererBadge()">🪪 Badge</button>
-      <button class="btn b-dos" onclick="ouvrirDossier()">📁 Dossier</button>
-      <button class="btn b-del" onclick="supprimer()">🗑️ Supprimer</button>
-      <button class="btn b-sav" onclick="sauvegarder(true)">💾 Sauvegarder</button>
     </div>
-
-    <div class="search-bar">
-      <span>🔍</span>
-      <input type="text" id="srch" placeholder="Rechercher Nom, Prénom, ID, CNI, CMU, Fonction, Contrat..." oninput="filtrerDebounce()">
-      <button class="btn-sm" onclick="document.getElementById(&#39;srch&#39;).value=&#39;&#39;;filtrer()">✕</button>
-    </div>
-    <div class="table-wrap">
-      <table id="tableEmployes"><thead><tr>
-        <th style="width:26px;"></th>
-        <th>ID</th><th>Nom</th><th>Prénom</th><th>Fonction</th><th>Contrat</th><th>Photo</th>
-      </tr></thead>
-      <tbody id="tBody"></tbody></table>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;gap:8px;flex-wrap:wrap;">
-      <span style="font-size:.63rem;color:#888;" id="countLbl">0 enregistrement(s)</span>
-      <span style="font-size:.59rem;color:#bbb;">IndexedDB · ~5 Go</span>
-    </div>
+    <div class="emp-tabpane" id="empPaneHisto"></div>
+    <div class="emp-tabpane" id="empPaneActiv"></div>
   </div>
-</div>
+  <div class="action-bar">
+    <button class="btn b-add" onclick="ajouter()">➕ Ajouter</button>
+    <button class="btn b-mod" onclick="empCliquerModifier()">✏️ Modifier</button>
+    <button class="btn b-prt" onclick="empCliquerVoir()">👁️ Voir</button>
+    <button class="btn b-clr" onclick="viderForm()">🧹 Vider</button>
+    <button class="btn b-prt" onclick="imprimerFiche()">🖨️ Imprimer fiche</button>
+    <button class="btn b-bdg" onclick="genererBadge()">🪪 Badge</button>
+    <button class="btn b-dos" onclick="ouvrirDossier()">📁 Dossier</button>
+    <button class="btn b-del" onclick="supprimer()">🗑️ Supprimer</button>
+    <button class="btn b-sav" onclick="empCliquerSauvegarder()">💾 Sauvegarder</button>
+  </div>
+</aside>
 </div><!-- fin page employés -->
 
 <!-- ======= PAGE CONGÉS ======= -->
@@ -14921,29 +15025,17 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       </div>
 
       <!-- BLOC 3: LOCALISATION DES EMPLOYÉS -->
-      <div class="ai-card" style="grid-column:1 / -1;">
+      <div class="ai-card" style="grid-column:1 / -1;min-height:640px;">
         <div class="ai-card-hdr"><span class="ai-card-emo">📍</span><span>Localisation des employés</span></div>
         <div class="ai-card-desc">Position du dernier pointage du jour pour chaque employé, sur la carte des sites GPS.</div>
         <div class="ai-form-actions">
           <button class="ai-btn ai-btn-primary" onclick="localisationCharger()">🔄 Actualiser</button>
           <span id="localisationMeta" class="ai-meta"></span>
         </div>
-        <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-top:8px;">
-          <div id="localisationMap" style="width:100%;height:360px;border-radius:10px;border:1.5px solid #E5E7EB;"></div>
-          <div id="localisationListe" style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
+        <div style="display:grid;grid-template-columns:minmax(0,2.4fr) minmax(220px,1fr);gap:12px;margin-top:8px;width:100%;">
+          <div id="localisationMap" style="width:100%;height:560px;min-height:560px;border-radius:10px;border:1.5px solid #E5E7EB;"></div>
+          <div id="localisationListe" style="max-height:560px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
         </div>
-      </div>
-
-      <!-- BLOC 4: RESUME EMPLOYE -->
-      <div class="ai-card">
-        <div class="ai-card-hdr"><span class="ai-card-emo">🧾</span><span>Résumé intelligent d'un employé</span></div>
-        <div class="ai-card-desc">Synthèse 360° (identité, poste, assiduité, congés, points de vigilance).</div>
-        <div class="ai-form-row">
-          <label class="ai-lbl">Employé :</label>
-          <select id="aiSumEmp" class="ai-input" data-testid="ai-sum-emp"></select>
-          <button class="ai-btn ai-btn-primary" onclick="aiSummarize()" data-testid="ai-sum-go">✨ Résumer</button>
-        </div>
-        <div id="aiSumOutput" class="ai-sum-output" data-testid="ai-sum-output"></div>
       </div>
     </div>
   </div>
@@ -14958,7 +15050,10 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <input type="text" id="lienDemandeAcces" class="ci" readonly value="" style="flex:1;font-size:.75rem;background:#F2F5F8;">
       <button class="btn b-add" onclick="copierLienDemandeAcces()">📋 Copier</button>
     </div>
-    <div style="font-size:.7rem;color:#666;margin:14px 0 8px;">Lien dédié pour quelqu'un qui doit uniquement gérer la planification des équipes (page Équipage) — la demande arrive déjà pré-cochée « Équipage uniquement », il ne reste qu'à approuver.</div>
+  </div>
+  <div class="settings-card">
+    <div class="sec">🔗 Lien dédié Équipage</div>
+    <div style="font-size:.7rem;color:#666;margin:8px 0;">Lien dédié pour quelqu'un qui doit uniquement gérer la planification des équipes (page Équipage) — la demande arrive déjà pré-cochée « Équipage uniquement », il ne reste qu'à approuver.</div>
     <div style="display:flex;gap:6px;align-items:center;">
       <input type="text" id="lienDemandeAccesEquipage" class="ci" readonly value="" style="flex:1;font-size:.75rem;background:#F2F5F8;">
       <button class="btn b-add" onclick="copierLienDemandeAccesEquipage()">📋 Copier</button>
@@ -15019,7 +15114,20 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
     <div id="drhListe"></div>
   </div>
-  <div class="settings-card">
+  <div class="settings-card settings-card-wide">
+    <div class="sec">🔐 Gestion des rôles et autorisations</div>
+    <div style="font-size:.7rem;color:#666;margin:8px 0;">Approuvez les demandes pour donner accès à l'application, attribuez le rôle, et gérez les comptes déjà approuvés.</div>
+    <button class="hdr-icon-btn" id="btnEmployesRH" style="display:none;" onclick="rhOuvrirPanneauEmployes()" title="Actualiser les demandes d'accès">
+      👥 Actualiser
+      <span id="rhBadgeAttente" class="hdr-icon-badge" style="display:none;"></span>
+    </button>
+    <div id="rhModalEmployes" style="display:block;position:relative;margin-top:10px;">
+      <div style="background:#1a2036;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:16px;width:100%;max-height:70vh;overflow-y:auto;color:#fff;font-family:'Nunito',sans-serif;position:relative;">
+        <div id="rhListeEmployesHTML"></div>
+      </div>
+    </div>
+  </div>
+  <div class="settings-card settings-card-wide">
     <div class="sec">🖼️ Logo &amp; Nom de l'entreprise</div>
     <div style="margin-top:8px;display:flex;align-items:center;gap:12px;background:#fff;padding:10px;border-radius:6px;border:1.5px solid #ddd;">
       <div id="settingsLogoPreview" style="width:60px;height:60px;border-radius:6px;background:#eee;display:flex;align-items:center;justify-content:center;font-size:1.8rem;overflow:hidden;border:1.5px solid #ccc;">🏢</div>
@@ -15060,8 +15168,10 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
         <span style="font-size:.7rem;color:#888;margin-left:6px;">(par défaut pour fiche / cumul / absents — le mensuel reste paysage et le badge reste portrait)</span>
       </div>
     </div>
+  </div>
 
-    <div class="sec" style="margin-top:14px;">🤖 Configuration IA</div>
+  <div class="settings-card">
+    <div class="sec">🤖 Configuration IA</div>
     <div style="background:linear-gradient(135deg,#F5F3FF,#FCE7F3);padding:10px;border-radius:6px;border:1.5px solid #C4B5FD;">
       <div class="cf"><span class="cl" style="background:#7C3AED;min-width:130px;">URL Backend IA</span><input type="text" id="setAIBackend" class="ci" placeholder="https://votre-backend.com (laisser vide pour utiliser le serveur par défaut)" oninput="updateAIBackend(this.value)" data-testid="set-ai-backend"></div>
       <div style="font-size:.66rem;color:#555;margin-left:138px;margin-top:-2px;">💡 Statut : <span id="aiBackendStatus" style="font-weight:700;">⏳ —</span></div>
@@ -15074,8 +15184,10 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
         <button class="btn" style="background:#7C3AED;color:#fff;margin-left:6px;" onclick="aiPingBackend()" data-testid="ai-ping-btn">🔄 Tester</button>
       </div>
     </div>
+  </div>
 
-    <div class="sec" style="margin-top:14px;">🔔 Notifications RH</div>
+  <div class="settings-card">
+    <div class="sec">🔔 Notifications RH</div>
     <div style="background:linear-gradient(135deg,#FEF3C7,#FCE7F3);padding:10px;border-radius:6px;border:1.5px solid #FBBF24;">
       <div class="cf"><span class="cl" style="background:#B45309;min-width:130px;">Email DRH (test)</span><input type="email" id="setNotifEmail" class="ci" placeholder="drh@entreprise.com" oninput="updateNotifEmail(this.value)"></div>
       <div style="font-size:.64rem;color:#555;margin-left:138px;margin-top:-2px;">💡 La détection des retards/absences/hors-zone et l'envoi des emails se font maintenant entièrement côté serveur (backend), indépendamment de cette page — réglage via la variable <code>DRH_EMAIL</code> sur Vercel. Le champ ci-dessus ne sert qu'à envoyer un email de test manuel pour vérifier que Resend est bien configuré.</div>
@@ -15084,8 +15196,10 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
         <span id="notifTestStatus" style="font-size:.68rem;font-weight:700;"></span>
       </div>
     </div>
+  </div>
 
-    <div class="sec" style="margin-top:14px;">📱 Pointage QR mobile</div>
+  <div class="settings-card settings-card-wide">
+    <div class="sec">📱 Pointage QR mobile</div>
     <div style="background:linear-gradient(135deg,#ECFEFF,#CFFAFE);padding:10px;border-radius:6px;border:1.5px solid #67E8F9;">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <div id="punchQrBox" style="width:130px;height:130px;background:#fff;border:1.5px solid #67E8F9;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
@@ -15173,8 +15287,10 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
         </div>
       </div>
     </div>
+  </div>
 
-    <div class="sec" style="margin-top:14px;">📅 Jours non ouvrables (dimanches &amp; jours fériés)</div>
+  <div class="settings-card">
+    <div class="sec">📅 Jours non ouvrables (dimanches &amp; jours fériés)</div>
     <div style="background:linear-gradient(135deg,#FEF3C7,#FCE7F3);padding:10px;border-radius:6px;border:1.5px solid #FBBF24;">
       <div style="font-size:.68rem;color:#92400E;margin-bottom:8px;">💡 Les <b>dimanches</b> sont automatiquement considérés comme non ouvrables (pas besoin de les ajouter). Ajoute ici uniquement les <b>jours fériés</b> — personne n'est marqué « Absent » automatiquement ces jours-là, mais chacun reste libre de badger s'il est bien programmé pour travailler (le pointage est alors gardé normalement).</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
@@ -15184,38 +15300,48 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       </div>
       <div id="ferieListe" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
     </div>
+  </div>
 
-    <div class="sec" style="margin-top:14px;">☁️ Synchronisation temps réel entre appareils</div>
+  <div class="settings-card">
+    <div class="sec">☁️ Synchronisation temps réel entre appareils</div>
     <div style="background:linear-gradient(135deg,#ECFDF5,#D1FAE5);padding:10px;border-radius:6px;border:1.5px solid #6EE7B7;">
       <div style="font-size:.75rem;color:#065F46;line-height:1.6;">
         ✅ <b>Déjà activée et fonctionnelle</b> — les pointages faits sur le téléphone personnel de chaque employé (scan du QR) remontent automatiquement vers ce poste RH, en direct, via la base de données Supabase déjà connectée. Aucune configuration supplémentaire n'est nécessaire.
       </div>
     </div>
+  </div>
 
-    <div class="sec" style="margin-top:14px;">🔐 Mot de passe</div>
+  <div class="settings-card">
+    <div class="sec">🔐 Mot de passe</div>
     <div class="pwd-box">
       <div class="cf"><span class="cl" style="background:var(--violet);min-width:120px;">Ancien MDP</span><input type="password" id="pwdA" class="ci"></div>
       <div class="cf"><span class="cl" style="background:var(--violet);min-width:120px;">Nouveau MDP</span><input type="password" id="pwdN" class="ci"></div>
       <div class="cf"><span class="cl" style="background:var(--violet);min-width:120px;">Confirmer</span><input type="password" id="pwdC" class="ci"></div>
       <button class="btn" style="background:var(--violet);color:#fff;margin-top:4px;" onclick="changerMDP()">🔑 Changer le mot de passe</button>
     </div>
+  </div>
 
-    <div class="sec" style="margin-top:14px;">🗃️ Données</div>
+  <div class="settings-card">
+    <div class="sec">🗃️ Données</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
       <button class="btn b-mod" onclick="exportJSON()">⬇️ Exporter (JSON)</button>
       <button class="btn" style="background:var(--bleu2);color:#fff;" onclick="triggerFile(&#39;fImport&#39;)">⬆️ Importer (JSON)</button>
       <button class="btn b-del" onclick="resetAll()">⚠️ Réinitialiser tout</button>
       <input type="file" id="fImport" accept=".json" onchange="importJSON(this)">
     </div>
+  </div>
 
-    <div class="sec" style="margin-top:14px;">☁️ Stockage cloud (photos, documents, selfies)</div>
+  <div class="settings-card">
+    <div class="sec">☁️ Stockage cloud (photos, documents, selfies)</div>
     <div style="font-size:.7rem;color:#666;margin:8px 0;">Déplace les photos employés, documents du dossier et selfies de pointage hors du gros paquet de données synchronisé, vers un espace de stockage à part — l'app reste rapide même avec beaucoup d'employés. Se fait automatiquement en tâche de fond pour les nouveaux fichiers ; utilisez le bouton ci-dessous pour migrer d'un coup ce qui existe déjà. Nécessite d'avoir créé le bucket <code>rh-fichiers</code> dans Supabase au préalable (SQL fourni à part).</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
       <button class="btn" style="background:#0F6E56;color:#fff;" onclick="migrerStockageMaintenant()">🚀 Migrer maintenant</button>
       <span id="migStockageStatut" style="font-size:.72rem;color:#666;"></span>
     </div>
+  </div>
 
-    <div class="sec" style="margin-top:14px;">ℹ️ Informations système</div>
+  <div class="settings-card">
+    <div class="sec">ℹ️ Informations système</div>
     <div style="font-size:.76rem;color:#555;line-height:2;margin-top:6px;background:#fff;padding:10px;border-radius:6px;">
       <div>📦 <b>Version :</b> 7.0 — Gestion RH Pro (QR Scan + EMP-ID)</div>
       <div>💾 <b>Stockage :</b> <span id="setStorage">0 Mo / 2048 Mo (0%) — IndexedDB</span></div>
@@ -15226,7 +15352,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
   </div>
 
-  <div class="settings-card" style="border:2px solid #7F1D1D;">
+  <div class="settings-card settings-card-wide" style="border:2px solid #7F1D1D;">
     <div class="sec" style="background:#7F1D1D;">🗑️ Réinitialiser les pointages d'une journée</div>
     <div style="font-size:.7rem;color:#666;margin:8px 0;">Efface DÉFINITIVEMENT tous les pointages (Présent/Absent/autre) de la date choisie, en base ET sur cet appareil — la journée redevient comme si aucun pointage n'avait encore eu lieu. Action irréversible.</div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
@@ -15462,8 +15588,8 @@ function kvSetPartage(key, value){
     try{ valeurPourSupabase = JSON.parse(value); }catch(e){ /* ce n'était pas du JSON, on garde tel quel */ }
   }
   supabaseRH.from('rh_donnees').upsert(
-    { cle:key, valeur:valeurPourSupabase, modifie_par:rhSessionActuelle.user.email, modifie_le:new Date().toISOString() },
-    { onConflict:'cle' }
+    { entreprise_id: _exigerEntreprise(), cle:key, valeur:valeurPourSupabase, modifie_par:rhSessionActuelle.user.email, modifie_le:new Date().toISOString() },
+    { onConflict: 'entreprise_id,cle' }
   ).then(()=>{}).catch(err=>console.warn('Synchronisation partagée échouée pour', key, ':', err));
 }
 
@@ -16291,6 +16417,26 @@ function initMensuelDate() {
 const SUPABASE_URL = "https://dkzfhznfgshtlguvtplw.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRremZoem5mZ3NodGxndXZ0cGx3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3MDI2NzksImV4cCI6MjEwMTI3ODY3OX0.pqS-r--UILsdCyWoQnfk6Qfi0SrxzfSK2XePUNMISkg";
 const supabaseRH = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+function _exigerEntreprise(){
+  if(!monEntrepriseId) throw new Error('Entreprise non résolue — opération refusée');
+  return monEntrepriseId;
+}
+function _filtreEntreprise(q){
+  return q.eq('entreprise_id', _exigerEntreprise());
+}
+function _payloadEntreprise(obj){
+  const eid = _exigerEntreprise();
+  const copie = Object.assign({}, obj);
+  delete copie.entreprise_id;
+  return Object.assign(copie, { entreprise_id: eid });
+}
+async function _supprimerUtilisateurTenant(email){
+  const { error } = await supabaseRH.from('rh_utilisateurs').delete().eq('email', email).eq('entreprise_id', _exigerEntreprise());
+  if(error) throw error;
+}
+function _selectUtilisateursTenant(){
+  return supabaseRH.from('rh_utilisateurs').select('*').eq('entreprise_id', _exigerEntreprise());
+}
 // Écoute native de Supabase pour détecter un lien de récupération de mot de
 // passe — plus fiable que d'analyser l'adresse à la main, car ça fonctionne
 // quel que soit le format exact du lien envoyé par email (ça a pu changer
@@ -16370,6 +16516,8 @@ function _afficherBanniereNouvelleVersion(){
 let rhSessionActuelle = null;
 let monRole = 'admin'; // 'admin' (accès complet) ou 'superviseur' (limité à sa zone)
 let maZone = null; // zone du superviseur connecté, null si admin
+let monEntrepriseId = null; // jamais saisi par l'utilisateur — lu depuis son profil
+let _espaceCompte = null;
 // Filtre une liste d'employés selon la zone du superviseur connecté — un
 // admin voit tout le monde, un superviseur ne voit que ceux de sa zone.
 function _filtrerParMaZone(liste){
@@ -16391,7 +16539,7 @@ async function ajouterSuperviseur(){
   if(!email || !email.includes('@')){ toast('⚠️ Adresse email invalide','warn'); return; }
   if(!zone){ toast('⚠️ Choisis une zone','warn'); return; }
   try{
-    const { error } = await supabaseRH.from('rh_utilisateurs').upsert({ email, role:'superviseur', zone }, {onConflict:'email'});
+    const { error } = await supabaseRH.from('rh_utilisateurs').upsert(_payloadEntreprise({ email, role:'superviseur', zone }), {onConflict:'entreprise_id,email'});
     if(error) throw error;
     document.getElementById('supEmailInput').value='';
     renderSuperviseurs();
@@ -16401,7 +16549,7 @@ async function ajouterSuperviseur(){
 async function retirerSuperviseur(email){
   if(!confirm(`Retirer les droits superviseur de ${email} ? Il redeviendra admin (accès complet).`))return;
   try{
-    await supabaseRH.from('rh_utilisateurs').delete().eq('email', email);
+    await _supprimerUtilisateurTenant(email);
     renderSuperviseurs();
     toast('✅ Retiré','ok');
   }catch(e){ toast('❌ Erreur : '+e.message,'err'); }
@@ -16469,12 +16617,14 @@ function _appliquerRestrictionsSuperviseur(){
 // comme véritable verrou (pas juste un masquage de bouton) : même un appel
 // direct depuis la console du navigateur (showPage('pgEmp')) est bloqué pour
 // un compte qui n'a pas le droit d'y accéder. Un rôle absent de cette liste
-// (admin, superviseur) a accès à tout — pas de restriction.
+// (admin) a accès à tout — pas de restriction. Le superviseur a les pages
+// métier, mais pas Paramètres (pgSet).
 const PAGES_AUTORISEES_PAR_ROLE = {
   lecteur_presence: ['pgPrz'],
   gestion_equipage: ['pgEqu'],
   presence_equipage: ['pgPrz','pgEqu'],
   drh: ['pgDash','pgPrz','pgEmp','pgCon','pgEqu'],
+  superviseur: ['pgDash','pgEmp','pgCon','pgBdg','pgPrz','pgEqu','pgMen','pgAbs','pgAI'],
 };
 // Rend la page Présence en lecture seule : retire les boutons d'action
 // (Présent/Absent/Justifier/Supprimer) et les contrôles de la barre latérale
@@ -16524,7 +16674,7 @@ async function renderSuperviseurs(){
   if(!box) return;
   _remplirZonesSuperviseur();
   try{
-    const { data } = await supabaseRH.from('rh_utilisateurs').select('email,zone').eq('role','superviseur').order('email');
+    const { data } = await _filtreEntreprise(supabaseRH.from('rh_utilisateurs').select('email,zone').eq('role','superviseur')).order('email');
     if(!data || !data.length){
       box.innerHTML = '<p style="font-size:.72rem;color:#888;font-style:italic;">Aucun superviseur pour l\'instant — tout le monde a l\'accès complet.</p>';
       return;
@@ -16540,7 +16690,7 @@ async function ajouterLecteurPresence(){
   const email = document.getElementById('lecEmailInput').value.trim().toLowerCase();
   if(!email || !email.includes('@')){ toast('⚠️ Adresse email invalide','warn'); return; }
   try{
-    const { error } = await supabaseRH.from('rh_utilisateurs').upsert({ email, role:'lecteur_presence', zone:null }, {onConflict:'email'});
+    const { error } = await supabaseRH.from('rh_utilisateurs').upsert(_payloadEntreprise({ email, role:'lecteur_presence', zone:null }), {onConflict:'entreprise_id,email'});
     if(error) throw error;
     document.getElementById('lecEmailInput').value='';
     renderLecteursPresence();
@@ -16550,7 +16700,7 @@ async function ajouterLecteurPresence(){
 async function retirerLecteurPresence(email){
   if(!confirm(`Retirer les droits de ${email} ? Il redeviendra admin (accès complet).`))return;
   try{
-    await supabaseRH.from('rh_utilisateurs').delete().eq('email', email);
+    await _supprimerUtilisateurTenant(email);
     renderLecteursPresence();
     toast('✅ Retiré','ok');
   }catch(e){ toast('❌ Erreur : '+e.message,'err'); }
@@ -16559,7 +16709,7 @@ async function renderLecteursPresence(){
   const box = document.getElementById('lecListe');
   if(!box) return;
   try{
-    const { data } = await supabaseRH.from('rh_utilisateurs').select('email').eq('role','lecteur_presence').order('email');
+    const { data } = await _filtreEntreprise(supabaseRH.from('rh_utilisateurs').select('email').eq('role','lecteur_presence')).order('email');
     if(!data || !data.length){
       box.innerHTML = '<p style="font-size:.72rem;color:#888;font-style:italic;">Aucun compte lecture seule pour l\'instant.</p>';
       return;
@@ -16575,7 +16725,7 @@ async function ajouterGestionEquipage(){
   const email = document.getElementById('equEmailInput').value.trim().toLowerCase();
   if(!email || !email.includes('@')){ toast('⚠️ Adresse email invalide','warn'); return; }
   try{
-    const { error } = await supabaseRH.from('rh_utilisateurs').upsert({ email, role:'gestion_equipage', zone:null }, {onConflict:'email'});
+    const { error } = await supabaseRH.from('rh_utilisateurs').upsert(_payloadEntreprise({ email, role:'gestion_equipage', zone:null }), {onConflict:'entreprise_id,email'});
     if(error) throw error;
     document.getElementById('equEmailInput').value='';
     renderGestionEquipage();
@@ -16585,7 +16735,7 @@ async function ajouterGestionEquipage(){
 async function retirerGestionEquipage(email){
   if(!confirm(`Retirer les droits de ${email} ? Il redeviendra admin (accès complet).`))return;
   try{
-    await supabaseRH.from('rh_utilisateurs').delete().eq('email', email);
+    await _supprimerUtilisateurTenant(email);
     renderGestionEquipage();
     toast('✅ Retiré','ok');
   }catch(e){ toast('❌ Erreur : '+e.message,'err'); }
@@ -16594,7 +16744,7 @@ async function renderGestionEquipage(){
   const box = document.getElementById('equRoleListe');
   if(!box) return;
   try{
-    const { data } = await supabaseRH.from('rh_utilisateurs').select('email').eq('role','gestion_equipage').order('email');
+    const { data } = await _filtreEntreprise(supabaseRH.from('rh_utilisateurs').select('email').eq('role','gestion_equipage')).order('email');
     if(!data || !data.length){
       box.innerHTML = '<p style="font-size:.72rem;color:#888;font-style:italic;">Aucun compte Équipage pour l\'instant.</p>';
       return;
@@ -16610,7 +16760,7 @@ async function ajouterPresenceEquipage(){
   const email = document.getElementById('przEquEmailInput').value.trim().toLowerCase();
   if(!email || !email.includes('@')){ toast('⚠️ Adresse email invalide','warn'); return; }
   try{
-    const { error } = await supabaseRH.from('rh_utilisateurs').upsert({ email, role:'presence_equipage', zone:null }, {onConflict:'email'});
+    const { error } = await supabaseRH.from('rh_utilisateurs').upsert(_payloadEntreprise({ email, role:'presence_equipage', zone:null }), {onConflict:'entreprise_id,email'});
     if(error) throw error;
     document.getElementById('przEquEmailInput').value='';
     renderPresenceEquipage();
@@ -16620,7 +16770,7 @@ async function ajouterPresenceEquipage(){
 async function retirerPresenceEquipage(email){
   if(!confirm(`Retirer les droits de ${email} ? Il redeviendra admin (accès complet).`))return;
   try{
-    await supabaseRH.from('rh_utilisateurs').delete().eq('email', email);
+    await _supprimerUtilisateurTenant(email);
     renderPresenceEquipage();
     toast('✅ Retiré','ok');
   }catch(e){ toast('❌ Erreur : '+e.message,'err'); }
@@ -16629,7 +16779,7 @@ async function renderPresenceEquipage(){
   const box = document.getElementById('przEquListe');
   if(!box) return;
   try{
-    const { data } = await supabaseRH.from('rh_utilisateurs').select('email').eq('role','presence_equipage').order('email');
+    const { data } = await _filtreEntreprise(supabaseRH.from('rh_utilisateurs').select('email').eq('role','presence_equipage')).order('email');
     if(!data || !data.length){
       box.innerHTML = '<p style="font-size:.72rem;color:#888;font-style:italic;">Aucun compte Présence + Équipage pour l\'instant.</p>';
       return;
@@ -16645,7 +16795,7 @@ async function ajouterDRH(){
   const email = document.getElementById('drhEmailInput').value.trim().toLowerCase();
   if(!email || !email.includes('@')){ toast('⚠️ Adresse email invalide','warn'); return; }
   try{
-    const { error } = await supabaseRH.from('rh_utilisateurs').upsert({ email, role:'drh', zone:null }, {onConflict:'email'});
+    const { error } = await supabaseRH.from('rh_utilisateurs').upsert(_payloadEntreprise({ email, role:'drh', zone:null }), {onConflict:'entreprise_id,email'});
     if(error) throw error;
     document.getElementById('drhEmailInput').value='';
     renderDRH();
@@ -16655,7 +16805,7 @@ async function ajouterDRH(){
 async function retirerDRH(email){
   if(!confirm(`Retirer les droits de ${email} ? Il redeviendra admin (accès complet).`))return;
   try{
-    await supabaseRH.from('rh_utilisateurs').delete().eq('email', email);
+    await _supprimerUtilisateurTenant(email);
     renderDRH();
     toast('✅ Retiré','ok');
   }catch(e){ toast('❌ Erreur : '+e.message,'err'); }
@@ -16664,7 +16814,7 @@ async function renderDRH(){
   const box = document.getElementById('drhListe');
   if(!box) return;
   try{
-    const { data } = await supabaseRH.from('rh_utilisateurs').select('email').eq('role','drh').order('email');
+    const { data } = await _filtreEntreprise(supabaseRH.from('rh_utilisateurs').select('email').eq('role','drh')).order('email');
     if(!data || !data.length){
       box.innerHTML = '<p style="font-size:.72rem;color:#888;font-style:italic;">Aucun compte DRH pour l\'instant.</p>';
       return;
@@ -16677,6 +16827,50 @@ async function renderDRH(){
   }catch(e){ box.innerHTML = '<p style="font-size:.72rem;color:#e74c3c;">Erreur de chargement.</p>'; }
 }
 let rhEstAdmin = false;
+let _dasEntreprisesHabilitees = [];
+let _dasEntrepriseSelection = null;
+
+function _dasCibleValide(){
+  const id = _dasEntrepriseSelection;
+  if(!id || !_dasEntreprisesHabilitees.some(e => String(e.id) === String(id))) return null;
+  return id;
+}
+function _dasCorpsReponse(data){
+  if(!data) return {};
+  if(typeof data === 'string'){
+    try{ return JSON.parse(data); }catch(e){ return { error: data }; }
+  }
+  return data;
+}
+async function _dasChargerListe(){
+  const { data, error } = await supabaseRH.functions.invoke('das-demandes-rh', { body: { action: 'liste' } });
+  const corps = _dasCorpsReponse(data);
+  if(error || corps.error){
+    _dasEntreprisesHabilitees = [];
+    _dasEntrepriseSelection = null;
+    return { error: (error && (error.message || String(error))) || corps.error };
+  }
+  _dasEntreprisesHabilitees = Array.isArray(corps.entreprises) ? corps.entreprises : [];
+  if(!_dasEntreprisesHabilitees.some(e => String(e.id) === String(_dasEntrepriseSelection))){
+    _dasEntrepriseSelection = _dasEntreprisesHabilitees.length ? _dasEntreprisesHabilitees[0].id : null;
+  }
+  return { error: null };
+}
+function _dasChoisirCible(id){
+  _dasEntrepriseSelection = id || null;
+}
+async function _dasApprouverDemande(email){
+  const sel = _dasCibleValide();
+  if(!sel) throw new Error('Choisissez une entreprise habilitée (liste serveur)');
+  const { data, error } = await supabaseRH.functions.invoke('das-demandes-rh', {
+    body: { action: 'approuver', email, entreprise_id: sel }
+  });
+  const corps = _dasCorpsReponse(data);
+  if(error || corps.error){
+    throw new Error((error && (error.message || String(error))) || corps.error || 'Approbation DAS refusée');
+  }
+  if(!corps.success) throw new Error('Approbation DAS incomplète');
+}
 
 function rhAfficherErreur(msg) {
   const el = document.getElementById('lockError');
@@ -16840,7 +17034,7 @@ async function rhValider() {
     const { data: admin } = await supabaseRH.from('admins').select('email').eq('email', email).maybeSingle();
     rhEstAdmin = !!admin;
     if (!admin) {
-      const { data: emp } = await supabaseRH.from('rh_employes').select('approuve,bloque').eq('email', email).maybeSingle();
+      const { data: emp } = await supabaseRH.from('rh_employes').select('approuve,bloque,entreprise_id').eq('email', email).maybeSingle();
       if (!emp || !emp.approuve) {
         await supabaseRH.auth.signOut();
         rhAfficherErreur("Votre compte n'a pas encore été approuvé par un administrateur.");
@@ -16856,12 +17050,37 @@ async function rhValider() {
     }
 
     rhSessionActuelle = data.session;
-    // Rôle et zone (superviseur limité à sa zone, ou admin par défaut si absent de la table)
+    monEntrepriseId = null;
+    monRole = 'admin';
+    maZone = null;
     try{
-      const { data: monProfil } = await supabaseRH.from('rh_utilisateurs').select('role,zone').eq('email', email).maybeSingle();
-      monRole = (monProfil && monProfil.role) || 'admin';
-      maZone = (monProfil && monProfil.zone) || null;
-    }catch(e){ monRole='admin'; maZone=null; }
+      const { data: empEnt } = await supabaseRH.from('rh_employes').select('entreprise_id').eq('email', email).maybeSingle();
+      if(empEnt && empEnt.entreprise_id) monEntrepriseId = empEnt.entreprise_id;
+    }catch(e){}
+    try{
+      if(monEntrepriseId){
+        const { data: monProfil } = await supabaseRH.from('rh_utilisateurs').select('role,zone,entreprise_id').eq('email', email).eq('entreprise_id', monEntrepriseId).maybeSingle();
+        if(monProfil){
+          if(monProfil.role) monRole = monProfil.role;
+          maZone = monProfil.zone || null;
+        }
+      } else {
+        const { data: profils } = await supabaseRH.from('rh_utilisateurs').select('role,zone,entreprise_id').eq('email', email).limit(2);
+        if(profils && profils.length === 1 && profils[0].entreprise_id){
+          monRole = profils[0].role || 'admin';
+          maZone = profils[0].zone || null;
+          monEntrepriseId = profils[0].entreprise_id;
+        }
+      }
+    }catch(e){}
+    try{
+      const { data: compteEmp } = await supabaseRH.from('rh_comptes_employes').select('user_id,employe_id,entreprise_id,statut').eq('user_id', data.user.id).maybeSingle();
+      if(compteEmp && compteEmp.statut==='actif'){
+        document.getElementById('lockScreen').style.display='none';
+        await startEspaceEmploye(compteEmp);
+        return;
+      }
+    }catch(e){ /* table pas encore créée : flux RH inchangé */ }
     document.getElementById('lockScreen').style.display = 'none';
     document.getElementById('appContent').style.display = 'block';
     rhAfficherBoutonAdmin();
@@ -17081,6 +17300,9 @@ async function lockApp() {
   document.getElementById('rhPassword').value = '';
   document.getElementById('lockScreen').style.display = 'flex';
   document.getElementById('appContent').style.display = 'none';
+  const esp = document.getElementById('espaceEmployeApp');
+  if(esp) esp.style.display='none';
+  if(window._espaceBadgeTimer){ clearInterval(window._espaceBadgeTimer); window._espaceBadgeTimer=null; }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -17101,7 +17323,8 @@ function _rhRejoindrePresence(email){
       // Rafraîchit le panneau des comptes s'il est ouvert, pour voir qui se
       // connecte/déconnecte en direct sans avoir à rouvrir le panneau.
       const modal = document.getElementById('rhModalEmployes');
-      if(modal && modal.style.display==='flex') rhOuvrirPanneauEmployes();
+      const pgSet = document.getElementById('pgSet');
+      if ((modal && modal.style.display === 'block') || (pgSet && pgSet.classList.contains('active'))) rhOuvrirPanneauEmployes();
     });
     _rhCanalPresence.subscribe(async (statut) => {
       if(statut === 'SUBSCRIBED'){
@@ -17119,7 +17342,15 @@ function _rhEstEnLigne(email){
 }
 
 async function rhChargerEmployes() {
-  const { data } = await supabaseRH.from('rh_employes').select('*').order('demande_le', { ascending: false });
+  if(rhEstAdmin){
+    const listeDas = await _dasChargerListe();
+    if(listeDas.error) console.warn('Liste DAS :', listeDas.error);
+  }
+  let q = supabaseRH.from('rh_employes').select('*').order('demande_le', { ascending: false });
+  if(monEntrepriseId){
+    q = q.or('entreprise_id.eq.'+monEntrepriseId+',entreprise_id.is.null');
+  }
+  const { data } = await q;
   rhListeEmployesCache = data || [];
   const enAttente = rhListeEmployesCache.filter(e => !e.approuve).length;
   const badge = document.getElementById('rhBadgeAttente');
@@ -17140,6 +17371,24 @@ async function rhOuvrirPanneauEmployes() {
   // demande disparaît de ce panneau (elle reste bien sûr active pour l'employé).
   const enAttente = rhListeEmployesCache.filter(emp => !emp.approuve);
   let html = '';
+  if(rhEstAdmin){
+    html += '<div style="margin:0 0 12px;padding:8px;border:1px solid rgba(255,255,255,.15);border-radius:8px;font-size:.72rem;">';
+    html += '<div style="font-weight:700;margin-bottom:6px;">Entreprise cible DAS (habilitation serveur)</div>';
+    if(!_dasEntreprisesHabilitees.length){
+      html += '<p style="color:#FBBF24;margin:0;">Aucune entreprise habilitée renvoyée par das-demandes-rh.</p>';
+    } else {
+      html += '<select id="dasEntrepriseCible" onchange="_dasChoisirCible(this.value)" style="padding:5px;border-radius:5px;font-size:.72rem;width:100%;">';
+      html += _dasEntreprisesHabilitees.map(e =>
+        `<option value="${e.id}"${String(e.id)===String(_dasEntrepriseSelection)?' selected':''}>${e.nom || e.id}</option>`
+      ).join('');
+      html += '</select>';
+    }
+    html += '<div style="margin-top:8px;">Demande non listée (entreprise_id NULL masquée par RLS) :</div>';
+    html += '<div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;">';
+    html += '<input id="dasEmailDemandeManuelle" type="email" placeholder="email de la demande" style="flex:1;min-width:160px;padding:5px;border-radius:5px;font-size:.72rem;">';
+    html += '<button type="button" class="lock-btn" style="width:auto;padding:6px 12px;font-size:.72rem;" onclick="rhDasApprouverSaisie()">✅ Rattacher et approuver</button>';
+    html += '</div></div>';
+  }
   if (enAttente.length === 0) {
     html += '<p style="color:rgba(255,255,255,.4);font-style:italic;text-align:center;padding:20px 0;">Aucune demande en attente pour l\'instant.</p>';
   } else {
@@ -17195,7 +17444,8 @@ async function rhOuvrirPanneauEmployes() {
     }).join('');
   }
   conteneur.innerHTML = html;
-  document.getElementById('rhModalEmployes').style.display = 'flex';
+  const panneau = document.getElementById('rhModalEmployes');
+  if (panneau) panneau.style.display = 'block';
 }
 // Bloque un compte déjà approuvé : il ne pourra plus se reconnecter (message
 // clair affiché à sa prochaine tentative), sans avoir à supprimer sa demande
@@ -17225,7 +17475,7 @@ async function rhSupprimerCompte(email){
     const { error: err1 } = await supabaseRH.from('rh_employes').delete().eq('email', email);
     if(err1) throw err1;
     // Retire aussi son rôle (superviseur/lecteur/équipage/DRH...) s'il en avait un.
-    await supabaseRH.from('rh_utilisateurs').delete().eq('email', email);
+    await _supprimerUtilisateurTenant(email);
     toast(`🗑️ Compte ${email} supprimé`,'warn');
     _historiqueAjouter('employe','suppression', `Compte RH supprimé : ${email}`);
     await rhOuvrirPanneauEmployes();
@@ -17233,14 +17483,34 @@ async function rhSupprimerCompte(email){
 }
 // Approuve la demande ET attribue le rôle choisi en une seule fois (au lieu
 // d'approuver puis devoir aller régler le rôle séparément dans Paramètres).
+async function rhDasApprouverSaisie(){
+  const el = document.getElementById('dasEmailDemandeManuelle');
+  const email = el ? String(el.value || '').trim().toLowerCase() : '';
+  if(!email || !email.includes('@')){ toast('⚠️ Email de demande invalide','warn'); return; }
+  await rhApprouverEmploye(email, true);
+}
+
 async function rhApprouverAvecRole(email, i){
   const role = document.getElementById('roleApprobation_'+i).value;
   const zoneEl = document.getElementById('zoneApprobation_'+i);
   const zone = (role==='superviseur') ? zoneEl.value : null;
   if(role==='superviseur' && !zone){ toast('⚠️ Choisis une zone pour ce superviseur','warn'); return; }
+  if(rhEstAdmin){
+    try{
+      await _dasApprouverDemande(email);
+      if(role!=='admin'){
+        const sel = _dasCibleValide();
+        if(!sel) throw new Error('Entreprise DAS non habilitée');
+        const { error } = await supabaseRH.from('rh_utilisateurs').upsert({ email, role, zone, entreprise_id: sel }, {onConflict:'entreprise_id,email'});
+        if(error) throw error;
+      }
+    }catch(e){ toast('❌ Erreur d\'approbation DAS : '+e.message,'err'); return; }
+    await rhOuvrirPanneauEmployes();
+    return;
+  }
   if(role!=='admin'){
     try{
-      const { error } = await supabaseRH.from('rh_utilisateurs').upsert({ email, role, zone }, {onConflict:'email'});
+      const { error } = await supabaseRH.from('rh_utilisateurs').upsert(_payloadEntreprise({ email, role, zone }), {onConflict:'entreprise_id,email'});
       if(error) throw error;
     }catch(e){ toast('❌ Erreur d\'attribution du rôle : '+e.message,'err'); return; }
   }
@@ -17248,6 +17518,13 @@ async function rhApprouverAvecRole(email, i){
 }
 
 async function rhApprouverEmploye(email, valeur) {
+  if(rhEstAdmin && valeur){
+    try{
+      await _dasApprouverDemande(email);
+    }catch(e){ alert('Erreur : ' + e.message); return; }
+    await rhOuvrirPanneauEmployes();
+    return;
+  }
   const { error } = await supabaseRH.from('rh_employes').update({
     approuve: valeur, approuve_le: new Date().toISOString(), approuve_par: (rhSessionActuelle && rhSessionActuelle.user.email) || '',
   }).eq('email', email);
@@ -17376,6 +17653,7 @@ function showPage(id) {
   }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  if(id!=='pgEmp' && typeof empFermerPanneau==='function') empFermerPanneau();
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   const map={pgDash:0,pgEmp:1,pgCon:2,pgBdg:3,pgPrz:4,pgEqu:5,pgMen:6,pgAbs:7,pgAI:8,pgSet:9};
   document.querySelectorAll('.tab-btn')[map[id]].classList.add('active');
@@ -17387,7 +17665,7 @@ function showPage(id) {
   if (id==='pgMen'){renderMensuel();}
   if (id==='pgAbs'){renderAbsences();}
   if (id==='pgAI'){aiInit();}
-  if (id==='pgSet'){updateSettingsInfo();renderSuperviseurs();renderLecteursPresence();renderGestionEquipage();renderPresenceEquipage();renderDRH();_remplirLienDemandeAcces();}
+  if (id==='pgSet'){updateSettingsInfo();renderSuperviseurs();renderLecteursPresence();renderGestionEquipage();renderPresenceEquipage();renderDRH();_remplirLienDemandeAcces(); if(rhEstAdmin) rhOuvrirPanneauEmployes();}
 }
 
 // ==================== CENTRE D'ALERTES ====================
@@ -17828,12 +18106,13 @@ async function rhSyncVersLigne(items){
   if (!rhSessionActuelle) return; // pas connecté à la base partagée
   try{
     const lignes = items.map(([cle, valeurJSON]) => ({
+      entreprise_id: _exigerEntreprise(),
       cle,
       valeur: JSON.parse(valeurJSON),
       modifie_par: rhSessionActuelle.user.email,
       modifie_le: new Date().toISOString(),
     }));
-    await supabaseRH.from('rh_donnees').upsert(lignes, { onConflict: 'cle' });
+    await supabaseRH.from('rh_donnees').upsert(lignes, { onConflict: 'entreprise_id,cle' });
     const badge = document.getElementById('rhSyncBadge');
     if (badge) badge.textContent = '☁️ Synchronisé';
   }catch(err){
@@ -17855,6 +18134,7 @@ async function rhSyncAnnuaire(){
     const partis = employes.filter(e => e.statutEmploi === 'Sorti');
 
     const lignes = actifs.map(e => ({
+      entreprise_id: _exigerEntreprise(),
       id: String(e.id), // identifiant brut — doit correspondre exactement aux clés utilisées dans "presences"
       nom: e.nom || '', prenom: e.prenom || '', photo: e.photo || '', fonc: e.fonc || '', site: e.site || '',
       serviceHabituel: e.serviceHabituel || 'jour', sexe: e.sexe || '', statutEmploi: e.statutEmploi || 'Actif',
@@ -17867,14 +18147,14 @@ async function rhSyncAnnuaire(){
     // ce qui pouvait laisser le pointage afficher des infos périmées SANS
     // AUCUN signal que la synchronisation avait réellement échoué.
     if(lignes.length){
-      const { error } = await supabaseRH.from('rh_annuaire').upsert(lignes, { onConflict: 'id' });
+      const { error } = await supabaseRH.from('rh_annuaire').upsert(lignes, { onConflict: 'entreprise_id,id' });
       if(error){
         console.error('❌ Échec synchronisation annuaire (pointage) :', error);
         toast('⚠️ Le pointage risque de ne pas voir vos dernières modifications (annuaire non synchronisé) — voir la console', 'err');
       }
     }
     if(partis.length){
-      const { error } = await supabaseRH.from('rh_annuaire').delete().in('id', partis.map(e=>String(e.id)));
+      const { error } = await supabaseRH.from('rh_annuaire').delete().in('id', partis.map(e=>String(e.id))).eq('entreprise_id', _exigerEntreprise());
       if(error) console.error('❌ Échec suppression annuaire (employés partis) :', error);
     }
   }catch(err){ console.warn('Erreur synchronisation annuaire:', err); }
@@ -17885,7 +18165,7 @@ async function rhSyncAnnuaire(){
 async function rhChargerDepuisLigne(){
   if (!rhSessionActuelle) return false;
   try{
-    const { data, error } = await supabaseRH.from('rh_donnees').select('*');
+    const { data, error } = await _filtreEntreprise(supabaseRH.from('rh_donnees').select('*'));
     if (!error && data && data.length > 0) {
       const parCle = {};
       data.forEach(l => parCle[l.cle] = l.valeur);
@@ -17979,7 +18259,7 @@ async function rhChargerDepuisLigne(){
     const dateLimitePointages = new Date();
     dateLimitePointages.setDate(dateLimitePointages.getDate() - 30);
     const dateLimitePointagesStr = _dateCIAujourdhui(dateLimitePointages);
-    const { data: pointages } = await supabaseRH.from('rh_pointages').select('*').gte('date_jour', dateLimitePointagesStr);
+    const { data: pointages } = await _filtreEntreprise(supabaseRH.from('rh_pointages').select('*').gte('date_jour', dateLimitePointagesStr));
     if (pointages && pointages.length) {
       pointages.forEach(p => {
         if (!presences[p.date_jour]) presences[p.date_jour] = {};
@@ -18037,11 +18317,13 @@ let rhIgnorerProchainSignal = false; // évite de réagir à notre propre écrit
 
 function rhEcouterChangementsEnLigne(){
   if (rhCanalEcoute) return; // déjà abonné
+  if(!monEntrepriseId) return;
   rhCanalEcoute = supabaseRH
-    .channel('rh-donnees-live')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_donnees' }, (payload) => {
+    .channel('rh-donnees-live-'+(monEntrepriseId||'none'))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_donnees', filter: monEntrepriseId ? ('entreprise_id=eq.'+monEntrepriseId) : 'entreprise_id=eq.__aucun__' }, (payload) => {
       const row = payload.new || payload.old;
       if (!row) return;
+      if (monEntrepriseId && String(row.entreprise_id) !== String(monEntrepriseId)) return;
       if (row.modifie_par === (rhSessionActuelle && rhSessionActuelle.user.email)) return; // notre propre écriture
       const badge = document.getElementById('rhSyncBadge');
 
@@ -18067,12 +18349,10 @@ function rhEcouterChangementsEnLigne(){
         toast('🔄 Un collègue a modifié les données — cliquez sur ☁️ pour recharger', 'warn');
       }
     })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_pointages' }, (payload) => {
-      // Les pointages QR viennent du téléphone des employés (jamais connectés à
-      // l'app) — on les intègre donc automatiquement, tout de suite, sans
-      // attendre un clic : c'est justement le but d'un pointage en direct.
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_pointages', filter: 'entreprise_id=eq.'+monEntrepriseId }, (payload) => {
       const row = payload.new || payload.old;
       if (!row) return;
+      if (String(row.entreprise_id) !== String(monEntrepriseId)) return;
       if (!presences[row.date_jour]) presences[row.date_jour] = {};
       presences[row.date_jour][row.emp_id] = { ...row.data, _modifie_le: row.modifie_le };
       db.set('rh_prz', JSON.stringify(presences)).catch(()=>{});
@@ -18113,7 +18393,7 @@ function rhEcouterChangementsEnLigne(){
       if(!rhSessionActuelle) return;
       try{
         const today = _dateCIAujourdhui();
-        const { data } = await supabaseRH.from('rh_pointages').select('*').eq('date_jour', today);
+        const { data } = await _filtreEntreprise(supabaseRH.from('rh_pointages').select('*').eq('date_jour', today));
         if(!data) return;
         let modifie = false;
         if(!presences[today]) presences[today] = {};
@@ -18260,6 +18540,7 @@ function nouveauID(){
   viderForm();
   const ids=employes.map(e=>parseInt(e.id)||0);
   document.getElementById('fID').value=ids.length?Math.max(...ids)+1:1;
+  empOuvrirPanneau(null, {nouveau:true});
 }
 function lireForm(){
   return{
@@ -18359,6 +18640,8 @@ function remplirForm(e){
   ['cni','ext','aut'].forEach(k=>updateDocLabel(k));
   const nb=(e.dossier||[]).length;
   document.getElementById('dosCount').textContent=`${nb} fichier(s)`;
+  _empMajEntete(e);
+  _empMajHistoActiv(e);
 }
 function viderForm(){
   ['fID','fNom','fPrenom','fDateNais','fLieuNais','fAdr','fEmb','fTel','fFonc','fSal','fDept','fSite','fEmail','fNat','fCNI','fCMU','fPere','fMere','fAutre','fFinContrat','fDateDepart','fUrgNom1','fUrgTel1','fUrgNom2','fUrgTel2'].forEach(i=>document.getElementById(i).value='');
@@ -18391,7 +18674,24 @@ async function ajouter(){
   if(employes.find(x=>x.id==e.id)){toast('⚠️ Cet ID existe déjà !','warn');return;}
   e.dossier=[];employes.push(e);employes.sort(_cmpEmp);afficherTableau();sauvegarder(false);
   _historiqueAjouter('employe','ajout', `Ajout de l'employé ${e.nom} ${e.prenom} (${fmtMatricule(e.id)})`);
-  toast('✅ Employé ajouté !','ok');viderForm();
+  toast('✅ Employé ajouté !','ok');
+  _empMajEntete(e); _empMajHistoActiv(e);
+  if((e.email||'').includes('@') && rhSessionActuelle){
+    try{
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/creer-compte-employe`, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Authorization': `Bearer ${rhSessionActuelle.access_token}` },
+        body: JSON.stringify({ employe_id: String(e.id), email: e.email.trim().toLowerCase() }),
+      });
+      const data = await r.json().catch(()=>({}));
+      if(r.ok && data.token){
+        const lien = `${location.origin}${location.pathname}?mode=activation&token=${encodeURIComponent(data.token)}`;
+        alert('Compte numérique créé (en attente).\n\nLien d\'activation (une fois, à transmettre à l\'employé) :\n'+lien);
+      } else {
+        console.warn('Compte employé non créé (SQL/fonction pas encore déployés) :', data.error||r.status);
+      }
+    }catch(err){ console.warn('Compte employé :', err); }
+  }
 }
 async function modifier(){
   if(_photoEnCours){ toast('⏳ Traitement de la photo en cours, un instant…','warn'); await _photoEnCours; }
@@ -18403,6 +18703,7 @@ async function modifier(){
   e.dossier=employes[i].dossier||[];
   employes[i]=e;afficherTableau();sauvegarder(false);toast('✅ Fiche modifiée !','ok');
   _historiqueAjouter('employe','modification', `Modification de la fiche de ${e.nom} ${e.prenom} (${fmtMatricule(e.id)})`);
+  _empMajEntete(e); _empMajHistoActiv(e);
 }
 function supprimer(){
   const id=document.getElementById('fID').value;
@@ -18413,6 +18714,7 @@ function supprimer(){
   _corbeilleAjouter('employe', `${emp.nom} ${emp.prenom} (${fmtMatricule(emp.id)})`, emp);
   _historiqueAjouter('employe','suppression', `Suppression de l'employé ${emp.nom} ${emp.prenom} (${fmtMatricule(emp.id)})`);
   afficherTableau();sauvegarder(false);viderForm();
+  empFermerPanneau();
   toast('🗑️ Fiche supprimée — récupérable dans la Corbeille','warn');
 }
 
@@ -18454,63 +18756,49 @@ function afficherTableau(liste){
   const tb=document.getElementById('tBody');tb.innerHTML='';
   data.forEach((e,i)=>{
     const tr=document.createElement('tr');
+    tr.className='emp-row';
+    tr.dataset.empId = String(e.id);
     if(e.statutEmploi==='Sorti') tr.style.opacity='.5'; else if(e.statutEmploi==='Suspendu'||e.statutEmploi==='Inactif') tr.style.opacity='.75';
     const nb=(e.dossier||[]).length;
+    const nDocs = (e.docCni?1:0)+(e.docExt?1:0)+(e.docAut?1:0)+nb;
     const badgeParti = e.statutEmploi==='Sorti' ? ` <span class="tag" style="background:#6B7280;color:#fff;" title="Sorti le ${fmt(e.dateDepart)||'—'}">🚪 Sorti</span>`
     : e.statutEmploi==='Suspendu' ? ` <span class="tag" style="background:#C8860A;color:#fff;">⏸️ Suspendu</span>`
     : e.statutEmploi==='Inactif' ? ` <span class="tag" style="background:#888;color:#fff;">💤 Inactif</span>` : '';
+    const ctcPrin = e.tel || '—';
+    const ctcUrg = (e.urgence1 && e.urgence1.tel) ? `${e.urgence1.lien||''} ${e.urgence1.tel}`.trim() : '—';
+    const sid = String(e.id).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     tr.innerHTML=`
-      <td style="text-align:center;cursor:pointer;" onclick="event.stopPropagation();_toggleDetailsEmp(this)">▶</td>
       <td style="font-family:'Roboto Mono',monospace;font-weight:700;">${fmtMatricule(e.id)}</td>
-      <td><b>${e.nom}</b>${badgeParti}</td><td>${e.prenom}</td>
+      <td><b>${e.nom||''}</b>${badgeParti}</td><td>${e.prenom||''}</td>
+      <td>${e.sexe||'—'}</td>
+      <td>${fmt(e.dateNais)||'—'}</td>
       <td>${e.fonc||''}</td>
       <td>${e.contrat?`<span class="tag" style="background:var(--bleu2);color:#fff;">${e.contrat}</span>`:''}</td>
-      <td>${_avatarEmploye(e, 40)}</td>
+      <td>${e.cni||'—'}</td>
+      <td>${e.cmu||'—'}</td>
+      <td>${ctcPrin}</td>
+      <td>${ctcUrg}</td>
+      <td>${nDocs?`<span class="tag tag-nb">${nDocs}</span>`:'—'}</td>
+      <td>${_avatarEmploye(e, 36)}</td>
+      <td style="white-space:nowrap;">
+        <button type="button" class="emp-ico voir" title="Vue rapide" onclick="event.stopPropagation();empOuvrirPanneau('${sid}')">👁️</button>
+        <button type="button" class="emp-ico edit" title="Modifier" onclick="event.stopPropagation();empOuvrirPanneau('${sid}',{mode:'edit'})">✏️</button>
+        <button type="button" class="emp-ico del" title="Supprimer" onclick="event.stopPropagation();empSupprimerLigne('${sid}')">🗑️</button>
+      </td>
     `;
     tr.addEventListener('click',()=>{
-      document.querySelectorAll('#tBody tr').forEach(r=>r.classList.remove('sel'));
+      document.querySelectorAll('#tBody tr.emp-row').forEach(r=>r.classList.remove('sel'));
       tr.classList.add('sel');
-      // indexCourant pointe sur la liste affichée (employes complets)
       indexCourant=employes.indexOf(e);
-      remplirForm(e);updateNavInfo();
+      empOuvrirPanneau(e.id);
     });
     tb.appendChild(tr);
-
-    // Ligne de détails, repliée par défaut — tout ce qui ne tenait pas dans
-    // la largeur de l'écran (Père/Mère, contacts d'urgence, CNI, CMU,
-    // documents...) sans avoir à faire défiler horizontalement.
-    const trDetail=document.createElement('tr');
-    trDetail.className='ligne-details';
-    trDetail.style.display='none';
-    trDetail.style.background='#F8FAFB';
-    trDetail.innerHTML=`<td colspan="7" style="padding:10px 16px;">
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:6px 20px;font-size:.78rem;">
-        <div><span style="color:#888;">Sexe :</span> ${e.sexe||'—'}</div>
-        <div><span style="color:#888;">Naissance :</span> ${fmt(e.dateNais)||'—'}</div>
-        <div><span style="color:#888;">Adresse :</span> ${e.adr||'—'}</div>
-        <div><span style="color:#888;">Embauche :</span> ${fmt(e.emb)||'—'}</div>
-        <div><span style="color:#888;">État civil :</span> ${e.etatCivil||'—'}</div>
-        <div><span style="color:#888;">Enfants :</span> ${e.hasEnf?`${e.nbEnf} enfant(s)`:'Non'}</div>
-        <div><span style="color:#888;">Tel :</span> ${e.tel||'—'}</div>
-        <div><span style="color:#888;">N°CNI :</span> ${e.cni||'—'}</div>
-        <div><span style="color:#888;">N°CMU :</span> ${e.cmu||'—'}</div>
-        <div><span style="color:#888;">Père :</span> ${e.pere||'—'}</div>
-        <div><span style="color:#888;">Mère :</span> ${e.mere||'—'}</div>
-        <div><span style="color:#0F6E56;font-weight:700;">📞 Contact principal :</span> ${(e.urgence1&&e.urgence1.tel)?`${e.urgence1.lien} — ${e.urgence1.tel}`:'—'}</div>
-        <div><span style="color:#C8860A;font-weight:700;">📞 Contact urgence 2 :</span> ${(e.urgence2&&e.urgence2.tel)?`${e.urgence2.lien} — ${e.urgence2.tel}`:'—'}</div>
-        <div><span style="color:#888;">CNI (doc) :</span> ${e.docCni?'<span class="tag tag-pdf">PDF</span>':'—'}</div>
-        <div><span style="color:#888;">Extrait :</span> ${e.docExt?'<span class="tag tag-pdf">PDF</span>':'—'}</div>
-        <div><span style="color:#888;">Dossier :</span> ${nb?`${nb} fichier(s)`:'—'}</div>
-      </div>
-    </td>`;
-    tb.appendChild(trDetail);
   });
   document.getElementById('countLbl').textContent =
     data.length === employes.length
       ? `${data.length} enregistrement(s)`
       : `${data.length} résultat(s) sur ${employes.length}`;
 }
-// Déplie/replie la ligne de détails juste en dessous de la ligne cliquée.
 function _toggleDetailsEmp(cellule){
   const ligneDetails = cellule.parentElement.nextElementSibling;
   if(!ligneDetails || !ligneDetails.classList.contains('ligne-details')) return;
@@ -18531,15 +18819,165 @@ function filtrer(){
   updateNavInfo();
 }
 function naviguer(dir){
-  const rows=document.querySelectorAll('#tBody tr');if(!rows.length)return;
-  indexCourant=Math.max(0,Math.min(rows.length-1,indexCourant+dir));
-  rows.forEach((r,i)=>r.classList.toggle('sel',i===indexCourant));
-  rows[indexCourant].click();rows[indexCourant].scrollIntoView({block:'nearest'});
+  const rows=[...document.querySelectorAll('#tBody tr.emp-row')];if(!rows.length)return;
+  let i = rows.findIndex(r=>r.classList.contains('sel'));
+  if(i<0) i = 0;
+  else i = Math.max(0,Math.min(rows.length-1,i+dir));
+  rows[i].click();rows[i].scrollIntoView({block:'nearest'});
   updateNavInfo();
 }
 function updateNavInfo(){
-  const r=document.querySelectorAll('#tBody tr');
-  document.getElementById('navInfo').textContent=(indexCourant>=0&&r.length)?`${indexCourant+1}/${r.length}`:`${r.length}/${r.length}`;
+  const r=document.querySelectorAll('#tBody tr.emp-row');
+  const i=[...r].findIndex(x=>x.classList.contains('sel'));
+  document.getElementById('navInfo').textContent=(i>=0&&r.length)?`${i+1}/${r.length}`:`${r.length}/${r.length}`;
+}
+
+function empSetMode(mode){
+  const panel=document.getElementById('empPanel');
+  if(!panel) return;
+  panel.classList.remove('mode-view','mode-edit');
+  panel.classList.add(mode==='edit'?'mode-edit':'mode-view');
+  ['cni','ext','aut'].forEach(k=>{ if(typeof updateDocLabel==='function') updateDocLabel(k); });
+}
+function empCliquerModifier(){
+  const panel=document.getElementById('empPanel');
+  if(!panel) return;
+  if(panel.classList.contains('mode-view')){
+    empSetMode('edit');
+    toast('✏️ Mode modification','ok');
+    return;
+  }
+  modifier();
+}
+function empCliquerVoir(){
+  empSetMode('view');
+}
+async function empCliquerSauvegarder(){
+  const id=document.getElementById('fID').value;
+  const existe=employes.some(x=>String(x.id)===String(id));
+  if(!existe){
+    await ajouter();
+    return;
+  }
+  await modifier();
+  empSetMode('view');
+}
+function empOuvrirPanneau(id, opts){
+  opts = opts || {};
+  const overlay=document.getElementById('empOverlay');
+  const panel=document.getElementById('empPanel');
+  if(!overlay||!panel) return;
+  if(opts.nouveau){
+    _empMajEntete(null);
+    document.getElementById('empPaneHisto').innerHTML='<div class="emp-empty">Aucun historique tant que la fiche n\'est pas enregistrée.</div>';
+    document.getElementById('empPaneActiv').innerHTML='<div class="emp-empty">Aucune activité tant que la fiche n\'est pas enregistrée.</div>';
+    empSetMode('edit');
+  } else {
+    const e = employes.find(x=>String(x.id)===String(id));
+    if(!e){ toast('⚠️ Employé introuvable','err'); return; }
+    indexCourant=employes.indexOf(e);
+    remplirForm(e);
+    document.querySelectorAll('#tBody tr.emp-row').forEach(r=>{
+      r.classList.toggle('sel', r.dataset.empId===String(e.id));
+    });
+    empSetMode(opts.mode==='edit'?'edit':'view');
+  }
+  overlay.classList.add('open');
+  panel.classList.add('open');
+  const pg=document.getElementById('pgEmp');
+  if(pg) pg.classList.add('emp-open');
+  empOnglet(opts.onglet || 'infos');
+  updateNavInfo();
+}
+function empFermerPanneau(){
+  const overlay=document.getElementById('empOverlay');
+  const panel=document.getElementById('empPanel');
+  if(overlay) overlay.classList.remove('open');
+  if(panel){
+    panel.classList.remove('open','mode-view','mode-edit');
+  }
+  const pg=document.getElementById('pgEmp');
+  if(pg) pg.classList.remove('emp-open');
+  viderForm();
+}
+function empOnglet(nom){
+  document.querySelectorAll('.emp-tab').forEach(b=>b.classList.toggle('on', b.getAttribute('data-emp-tab')===nom));
+  document.querySelectorAll('.emp-tabpane').forEach(p=>p.classList.remove('on'));
+  const map={infos:'empPaneInfos',contacts:'empPaneContacts',docs:'empPaneDocs',histo:'empPaneHisto',activ:'empPaneActiv'};
+  const pane=document.getElementById(map[nom]);
+  if(pane) pane.classList.add('on');
+}
+function empSupprimerLigne(id){
+  const e=employes.find(x=>String(x.id)===String(id));
+  if(!e) return;
+  remplirForm(e);
+  supprimer();
+}
+function _empMajEnteteDepuisForm(){
+  const id=document.getElementById('fID').value;
+  const e=employes.find(x=>String(x.id)===String(id));
+  _empMajEntete(e || {
+    id, nom:document.getElementById('fNom').value, prenom:document.getElementById('fPrenom').value,
+    fonc:document.getElementById('fFonc').value, contrat:document.getElementById('fContrat').value,
+    statutEmploi:document.getElementById('fStatutEmploi').value, emb:document.getElementById('fEmb').value
+  });
+}
+function _empMajEntete(e){
+  const titre=document.getElementById('empHeadTitre');
+  const nom=document.getElementById('empHeadNom');
+  const fonc=document.getElementById('empHeadFonc');
+  const ids=document.getElementById('empHeadIds');
+  const st=document.getElementById('empHeadStatut');
+  if(!nom) return;
+  if(!e){
+    if(titre) titre.textContent='Nouvel employé';
+    nom.textContent='—';
+    fonc.textContent='—';
+    ids.textContent=document.getElementById('fID').value ? ('ID '+fmtMatricule(document.getElementById('fID').value)) : '—';
+    st.textContent='';
+    st.style.background='';
+    return;
+  }
+  if(titre) titre.textContent='Détails de l\'employé';
+  nom.textContent=`${e.nom||''} ${e.prenom||''}`.trim() || '—';
+  fonc.textContent=e.fonc || '—';
+  ids.textContent=`Matricule / ID ${e.id!=null&&e.id!==''?fmtMatricule(e.id):'—'}`;
+  const statut=e.statutEmploi||'Actif';
+  st.textContent=statut;
+  st.style.background = statut==='Actif'?'#DCFCE7':statut==='Sorti'?'#E5E7EB':statut==='Suspendu'?'#FEF3C7':'#F1F5F9';
+  st.style.color = statut==='Actif'?'#166534':statut==='Sorti'?'#374151':statut==='Suspendu'?'#92400E':'#334155';
+}
+function _empMajHistoActiv(e){
+  const boxH=document.getElementById('empPaneHisto');
+  const boxA=document.getElementById('empPaneActiv');
+  if(!boxH||!boxA) return;
+  if(!e){
+    boxH.innerHTML='<div class="emp-empty">Aucun historique pour cette fiche.</div>';
+    boxA.innerHTML='<div class="emp-empty">Aucune activité enregistrée.</div>';
+    return;
+  }
+  const mat=fmtMatricule(e.id);
+  const nom=`${e.nom||''} ${e.prenom||''}`.trim();
+  const hist=(historique||[]).filter(h=>h && h.type==='employe' && typeof h.description==='string' && (h.description.includes(mat) || (nom && h.description.includes(nom))));
+  boxH.innerHTML = hist.length
+    ? `<div class="emp-feed">${hist.map(h=>`<div class="emp-feed-item"><b>${h.description}</b><span>${HISTORIQUE_ACTION_LBL[h.action]||h.action} · ${new Date(h.date).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})}</span></div>`).join('')}</div>`
+    : `<div class="emp-empty">Aucune entrée d'historique pour cet employé.</div>`;
+  const acts=[];
+  if(typeof presences==='object' && presences){
+    Object.keys(presences).forEach(date=>{
+      const rec=presences[date] && (presences[date][e.id] || presences[date][String(e.id)]);
+      if(rec && rec.statut) acts.push({d:date, t:'Présence', l:rec.statut});
+    });
+  }
+  (conges||[]).forEach(c=>{
+    if(String(c.emp)===String(e.id) || String(c.empId)===String(e.id)){
+      acts.push({d:c.deb||c.date||'', t:'Congé', l:`${c.type||'Congé'} · ${c.statut||''}`});
+    }
+  });
+  acts.sort((a,b)=>String(b.d).localeCompare(String(a.d)));
+  boxA.innerHTML = acts.length
+    ? `<div class="emp-feed">${acts.slice(0,80).map(a=>`<div class="emp-feed-item"><b>${a.t}</b><span>${fmt(a.d)||a.d||'—'} · ${a.l}</span></div>`).join('')}</div>`
+    : `<div class="emp-empty">Aucune présence ni congé enregistré pour cet employé.</div>`;
 }
 
 // ============================================================
@@ -18608,7 +19046,7 @@ async function _uploaderVersStorage(dataUrl, chemin){
   if(!dataUrl || _estUrlStockage(dataUrl)) return dataUrl; // déjà une URL, ou vide
   try{
     const blob = _dataUrlVersBlob(dataUrl);
-    const { error } = await supabaseRH.storage.from(STORAGE_BUCKET).upload(chemin, blob, { contentType: blob.type });
+    const { error } = await supabaseRH.storage.from(STORAGE_BUCKET).upload(chemin, blob, { upsert:true, contentType: blob.type });
     if(error) throw error;
     const { data } = supabaseRH.storage.from(STORAGE_BUCKET).getPublicUrl(chemin);
     const url = data && data.publicUrl;
@@ -18634,22 +19072,12 @@ async function _uploaderVersStorage(dataUrl, chemin){
 // vérification, et elle seule, qui autorise l'appelant à remplacer le fichier
 // local (base64) par ce lien.
 async function _verifierFichierAccessible(url){
-  // Délai de sécurité : sur un réseau lent/instable (kiosque mobile...), un
-  // fetch() peut rester en attente très longtemps sans jamais échouer ni
-  // réussir. On borne donc chaque tentative pour ne JAMAIS bloquer l'appelant
-  // — au pire, on retombe sur le fichier local (base64) comme avant.
-  const avecDelai = (opts) => {
-    const ctrl = new AbortController();
-    const minuteur = setTimeout(()=>ctrl.abort(), 8000);
-    return fetch(url, { ...opts, signal: ctrl.signal, cache:'no-store' })
-      .finally(()=>clearTimeout(minuteur));
-  };
   try{
-    const rep = await avecDelai({ method:'HEAD' });
+    const rep = await fetch(url, { method:'HEAD', cache:'no-store' });
     if(rep.ok) return true;
-  }catch(e){ /* certains réglages CORS/hébergeurs bloquent HEAD, ou délai dépassé — on retente en GET */ }
+  }catch(e){ /* certains réglages CORS/hébergeurs bloquent HEAD — on retente en GET */ }
   try{
-    const rep2 = await avecDelai({ method:'GET' });
+    const rep2 = await fetch(url, { method:'GET', cache:'no-store' });
     return rep2.ok;
   }catch(e2){ return false; }
 }
@@ -18876,11 +19304,36 @@ function loadDoc(key,input){
 }
 const DOC_LBL={cni:'lCni',ext:'lExt',aut:'lAut'};
 const DOC_BV={cni:'bvCni',ext:'bvExt',aut:'bvAut'};
+const DOC_BD={cni:'bdCni',ext:'bdExt',aut:'bdAut'};
 function updateDocLabel(k){
   const el=document.getElementById(DOC_LBL[k]);
   const btn=document.getElementById(DOC_BV[k]);
-  if(currentDocs[k]){el.textContent=`✅ ${currentDocs[k].name}`;el.className='doc-info ok';btn.style.display='inline-block';}
-  else{el.textContent='📎 Cliquer pour charger';el.className='doc-info';btn.style.display='none';}
+  const dl=document.getElementById(DOC_BD[k]);
+  const enVue=document.getElementById('empPanel') && document.getElementById('empPanel').classList.contains('mode-view');
+  if(currentDocs[k]){
+    el.textContent=currentDocs[k].name||'—';
+    el.className='doc-info ok';
+    if(btn) btn.style.display='inline-block';
+    if(dl) dl.style.display='inline-block';
+  } else {
+    el.textContent=enVue?'—':'📎 Cliquer pour charger';
+    el.className='doc-info';
+    if(btn) btn.style.display='none';
+    if(dl) dl.style.display='none';
+  }
+}
+function telechargerDoc(k){
+  const doc=currentDocs[k]; if(!doc) return;
+  const estUrl = typeof _estUrlStockage==='function' && _estUrlStockage(doc.data);
+  const href = estUrl ? `${doc.data}${doc.data.includes('?')?'&':'?'}download=${encodeURIComponent(doc.name||'document')}` : doc.data;
+  const a=document.createElement('a');
+  a.href=href;
+  a.download=doc.name||'document';
+  a.target='_blank';
+  a.rel='noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 function clearDoc(k){
   currentDocs[k]=null;updateDocLabel(k);
@@ -21807,7 +22260,7 @@ async function supprimerPresence(date, empId, nom){
   // Supprime aussi côté Supabase : sinon, si ce pointage venait d'un scan QR
   // (table rh_pointages), il reviendrait automatiquement à la prochaine synchronisation.
   if(rhSessionActuelle){
-    try{ await supabaseRH.from('rh_pointages').delete().eq('date_jour', date).eq('emp_id', String(empId)); }
+    try{ await _filtreEntreprise(supabaseRH.from('rh_pointages').delete().eq('date_jour', date).eq('emp_id', String(empId))); }
     catch(e){ console.warn('Erreur suppression pointage partagé:', e); }
   }
 }
@@ -22182,7 +22635,8 @@ async function reinitialiserPointagesDuJour(idChampDate){
   if(!confirm(`⚠️ Ceci va effacer DÉFINITIVEMENT tous les pointages du ${fmt(date)} (Présent/Absent/autre), en base ET sur cet appareil — ${nbLocal} entrée(s) actuellement visible(s) ici.\n\nCette action est IRRÉVERSIBLE. Continuer ?`)) return;
   if(!confirm(`Dernière confirmation : réinitialiser complètement le ${fmt(date)} pour TOUS les employés ?`)) return;
   try{
-    const { error } = await supabaseRH.from('rh_pointages').delete().eq('date_jour', date);
+    if(!monEntrepriseId){ toast('❌ Entreprise non résolue — réinitialisation refusée pour éviter un effacement global.','err'); return; }
+    const { error } = await supabaseRH.from('rh_pointages').delete().eq('date_jour', date).eq('entreprise_id', _exigerEntreprise());
     if(error){ toast('❌ Échec de la suppression en base : '+error.message, 'err'); return; }
   }catch(e){ toast('❌ Échec de la suppression en base (réseau) : '+e.message, 'err'); return; }
   presences[date] = {};
@@ -22558,15 +23012,15 @@ async function resetAll(){
   if(rhSessionActuelle){
     try{
       await supabaseRH.from('rh_donnees').upsert([
-        {cle:'rh_emp', valeur:[], modifie_par:rhSessionActuelle.user.email, modifie_le:new Date().toISOString()},
-        {cle:'rh_con', valeur:[], modifie_par:rhSessionActuelle.user.email, modifie_le:new Date().toISOString()},
-        {cle:'rh_prz', valeur:{}, modifie_par:rhSessionActuelle.user.email, modifie_le:new Date().toISOString()},
-        {cle:'rh_men', valeur:{}, modifie_par:rhSessionActuelle.user.email, modifie_le:new Date().toISOString()},
-        {cle:'rh_equ', valeur:[], modifie_par:rhSessionActuelle.user.email, modifie_le:new Date().toISOString()},
-        {cle:'rh_rem', valeur:{}, modifie_par:rhSessionActuelle.user.email, modifie_le:new Date().toISOString()},
-      ], {onConflict:'cle'});
-      await supabaseRH.from('rh_annuaire').delete().neq('id','');
-      await supabaseRH.from('rh_pointages').delete().neq('emp_id','');
+        {entreprise_id:_exigerEntreprise(),cle:'rh_emp', valeur:[], modifie_par:rhSessionActuelle.user.email, modifie_le:new Date().toISOString()},
+        {entreprise_id:_exigerEntreprise(),cle:'rh_con', valeur:[], modifie_par:rhSessionActuelle.user.email, modifie_le:new Date().toISOString()},
+        {entreprise_id:_exigerEntreprise(),cle:'rh_prz', valeur:{}, modifie_par:rhSessionActuelle.user.email, modifie_le:new Date().toISOString()},
+        {entreprise_id:_exigerEntreprise(),cle:'rh_men', valeur:{}, modifie_par:rhSessionActuelle.user.email, modifie_le:new Date().toISOString()},
+        {entreprise_id:_exigerEntreprise(),cle:'rh_equ', valeur:[], modifie_par:rhSessionActuelle.user.email, modifie_le:new Date().toISOString()},
+        {entreprise_id:_exigerEntreprise(),cle:'rh_rem', valeur:{}, modifie_par:rhSessionActuelle.user.email, modifie_le:new Date().toISOString()},
+      ], {onConflict: 'entreprise_id,cle'});
+      await supabaseRH.from('rh_annuaire').delete().eq('entreprise_id', _exigerEntreprise());
+      await supabaseRH.from('rh_pointages').delete().eq('entreprise_id', _exigerEntreprise());
     }catch(e){ console.warn('Erreur nettoyage base partagée:',e); toast('⚠️ Local effacé, mais erreur sur la base partagée','warn'); }
   }
 
@@ -22606,6 +23060,13 @@ document.getElementById('przDate').addEventListener('change',chargerPresence);
 // l'utilisateur tente de déverrouiller. On affiche un message pendant.
 (async function bootstrap(){
   const errEl=document.getElementById('lockError');
+  const params = new URLSearchParams(location.search);
+  if(params.get('mode')==='activation' && params.get('token')){
+    document.getElementById('lockScreen').style.display='none';
+    document.getElementById('activationApp').style.display='block';
+    window._activationToken = params.get('token');
+    return;
+  }
   const modeKiosque = _isKioskMode(); // vérifié UNE FOIS, en tout début, avant tout le reste
   if(modeKiosque){
     await startKiosk();
@@ -22739,12 +23200,10 @@ function aiInit(){
   const optHtml = ['<option value="">— Choisir un employé —</option>']
     .concat(employes.map(e=>`<option value="${e.id}">${fmtMatricule(e.id)} — ${(e.nom||'').toUpperCase()} ${e.prenom||''}</option>`))
     .join('');
-  ['aiDocEmp','aiSumEmp'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML = optHtml; });
-  // Pre-select current employee if possible
+  ['aiDocEmp'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML = optHtml; });
   if(indexCourant>=0 && employes[indexCourant]){
     const id = employes[indexCourant].id;
     const a = document.getElementById('aiDocEmp'); if(a) a.value = id;
-    const b = document.getElementById('aiSumEmp'); if(b) b.value = id;
   }
   aiPingBackend();
   localisationCharger();
@@ -23008,34 +23467,65 @@ async function aiDetectAnomalies(){
   }
 }
 
-// -------------------- 4. RÉSUMÉ EMPLOYÉ --------------------
-async function aiSummarize(){
-  const empId = document.getElementById('aiSumEmp').value;
-  const out = document.getElementById('aiSumOutput');
-  if(!empId){ aiToast('⚠️ Choisis un employé'); return; }
-  const emp = employes.find(e=>e.id===empId);
-  if(!emp){ aiToast('Employé introuvable'); return; }
-  out.textContent = '⏳ Synthèse en cours…';
-  // Compute small presence stats locally
-  let abs=0,just=0,ret=0,pres=0;
-  for(const d in presences){
-    const rec = presences[d] && presences[d][empId];
-    if(!rec) continue;
-    const s = rec.statut || '';
-    if(s==='A') abs++; else if(s==='J') just++; else if(s==='R') ret++; else if(s==='P') pres++;
-  }
-  const empConges = (conges||[]).filter(c=>c.emp===empId);
+async function validerActivationEmploye(){
+  const pwd = document.getElementById('activationMdp').value;
+  const pwd2 = document.getElementById('activationMdp2').value;
+  const msg = document.getElementById('activationMsg');
+  if(pwd.length<6){ msg.textContent='⚠️ 6 caractères minimum'; return; }
+  if(pwd!==pwd2){ msg.textContent='⚠️ Les mots de passe ne correspondent pas'; return; }
+  msg.textContent='Activation…';
   try{
-    const data = await aiCall('/api/ai/summary', {
-      employee: emp,
-      presences_stats: {presents:pres, absences:abs, justifiees:just, retards:ret},
-      conges: empConges,
-      language: aiGetLang(),
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/activer-compte-employe`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+      body: JSON.stringify({ token: window._activationToken, password: pwd }),
     });
-    out.innerHTML = _mdLegerVersHTML(data.summary || '(Pas de résumé)');
-  }catch(e){
-    out.textContent = '❌ Erreur : '+e.message;
+    const data = await r.json().catch(()=>({}));
+    if(!r.ok){ msg.textContent='❌ '+(data.error||'Échec'); return; }
+    if(data.session){ await supabaseRH.auth.setSession(data.session); }
+    msg.textContent='✅ Compte activé. Vous pouvez vous connecter.';
+    history.replaceState(null,'', location.pathname);
+  }catch(e){ msg.textContent='❌ '+e.message; }
+}
+
+async function startEspaceEmploye(compte){
+  _espaceCompte = compte;
+  monEntrepriseId = compte.entreprise_id || monEntrepriseId;
+  document.getElementById('appContent').style.display='none';
+  document.getElementById('kioskApp').style.display='none';
+  document.getElementById('espaceEmployeApp').style.display='block';
+  try{
+    const { data } = await supabaseRH.from('rh_annuaire').select('nom,prenom,id').eq('id', String(compte.employe_id)).eq('entreprise_id', String(compte.entreprise_id)).maybeSingle();
+    if(data){
+      document.getElementById('espaceNom').textContent = (data.nom||'')+' '+(data.prenom||'');
+      document.getElementById('espaceMatricule').textContent = fmtMatricule(data.id);
+    }
+  }catch(e){}
+  await espaceRafraichirBadge();
+  if(!window._espaceBadgeTimer){
+    window._espaceBadgeTimer = setInterval(espaceRafraichirBadge, 45000);
   }
+}
+
+async function espaceRafraichirBadge(){
+  const box = document.getElementById('espaceQrBox');
+  const meta = document.getElementById('espaceQrMeta');
+  if(!rhSessionActuelle){ if(meta) meta.textContent='Session requise'; return; }
+  try{
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/badge-token`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization': `Bearer ${rhSessionActuelle.access_token}` },
+      body: JSON.stringify({ action:'issue' }),
+    });
+    const data = await r.json().catch(()=>({}));
+    if(!r.ok || !data.qr){
+      if(box) box.textContent = data.error || 'QR indisponible (SQL/fonction à déployer)';
+      return;
+    }
+    const url = _creerQRDataURL(data.qr, 220, 'M');
+    if(box) box.innerHTML = url ? `<img src="${url}" style="width:220px;height:220px;image-rendering:pixelated;">` : data.qr;
+    if(meta) meta.textContent = 'Expire : '+new Date(data.expires_at).toLocaleTimeString('fr-FR');
+  }catch(e){ if(box) box.textContent = 'Erreur réseau'; }
 }
 
 // -------------------- 5. OCR CNI / EXTRAIT --------------------
@@ -23151,7 +23641,7 @@ let _siteEnEdition = null; // id du site en cours de modification, null = nouvea
 
 async function _sitesCharger(){
   try{
-    const { data, error } = await supabaseRH.from('rh_sites').select('*').order('id');
+    const { data, error } = await _filtreEntreprise(supabaseRH.from('rh_sites').select('*')).order('id');
     if(error) throw error;
     sitesGPS = data || [];
     await db.set('rh_sites_cache', JSON.stringify(sitesGPS)); // repli local si offline
@@ -23194,22 +23684,26 @@ function _kioskListe(){
 async function genererNouveauKiosque(){
   const nom = (document.getElementById('kioskNomInput')||{}).value?.trim();
   if(!nom){ toast('⚠️ Donne un nom à ce kiosque d\'abord','warn'); return; }
-  const id = crypto.randomUUID();
-  const secret = crypto.randomUUID()+crypto.randomUUID(); // secret plus long que l'id, jamais stocké en clair
-  const secretHash = await _sha256Hex(secret);
-  kiosquesAutorises.push({ id, nom, secretHash, actif:true });
-  // Écriture DIRECTE et immédiate vers rh_donnees, hors du circuit partagé
-  // sauvegarder()/triggerSave() — celui-ci a un délai interne (80ms) pendant
-  // lequel une autre sauvegarde concurrente (auto-save périodique 30s, ou
-  // une action précédente encore en attente) peut écraser rh_kiosques avec
-  // une version plus ancienne. Même principe déjà utilisé pour l'équipage.
-  try{ await rhSyncVersLigne([['rh_kiosques', JSON.stringify(kiosquesAutorises)]]); }
-  catch(e){ console.warn('Synchronisation immédiate de rh_kiosques échouée :', e); }
-  triggerSave(); // conserve aussi la sauvegarde locale (IndexedDB) habituelle
-  _kioskListe();
-  document.getElementById('kioskNomInput').value='';
-  // Affiché UNE SEULE FOIS — jamais récupérable après, comme un mot de passe.
-  alert(`✅ Kiosque "${nom}" créé.\n\nÀ CONFIGURER SUR L'APPAREIL MAINTENANT (ne sera plus jamais affiché) :\n\nID : ${id}\nSecret : ${secret}\n\nOuvre l'app sur cet appareil avec ce lien :\n${location.origin}${location.pathname}?mode=pointage&kioskId=${encodeURIComponent(id)}&kioskSecret=${encodeURIComponent(secret)}`);
+  if(!rhSessionActuelle){ toast('❌ Connectez-vous pour créer un kiosque','err'); return; }
+  try{
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/kiosk-config`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization': `Bearer ${rhSessionActuelle.access_token}` },
+      body: JSON.stringify({ nom }),
+    });
+    const data = await r.json().catch(()=>({}));
+    if(!r.ok || !data.id || !data.secret){
+      toast('❌ Création kiosque refusée : '+(data.error||r.status),'err');
+      return;
+    }
+    kiosquesAutorises.push({ id: data.id, nom, secretHash: await _sha256Hex(data.secret), actif:true });
+    triggerSave();
+    _kioskListe();
+    document.getElementById('kioskNomInput').value='';
+    alert(`✅ Kiosque "${nom}" créé.\n\nÀ CONFIGURER SUR L'APPAREIL MAINTENANT (ne sera plus jamais affiché) :\n\nID : ${data.id}\nSecret : ${data.secret}\n\nOuvre l'app sur cet appareil avec ce lien :\n${location.origin}${location.pathname}?mode=pointage&kioskId=${encodeURIComponent(data.id)}&kioskSecret=${encodeURIComponent(data.secret)}`);
+  }catch(e){
+    toast('❌ kiosk-config injoignable — création locale désactivée','err');
+  }
 }
 function _kioskBasculerActif(id){
   const k = kiosquesAutorises.find(x=>x.id===id);
@@ -23247,7 +23741,7 @@ async function _siteSupprimer(id){
   if(!s) return;
   if(!confirm(`Supprimer le site « ${s.nom||''} » ? Cette action est définitive.`)) return;
   try{
-    await supabaseRH.from('rh_sites').delete().eq('id', id);
+    await _filtreEntreprise(supabaseRH.from('rh_sites').delete().eq('id', id));
     punchToast('🗑️ Site supprimé');
     if(_siteEnEdition===id) _siteFormReset();
     await _sitesCharger();
@@ -23259,7 +23753,7 @@ async function _punchLoadSettings(){
   try{ cfg=JSON.parse(await db.get('rh_pointage_cfg')||'{}'); }catch(_){}
   if(rhSessionActuelle){
     try{
-      const { data } = await supabaseRH.from('rh_site_gps').select('*').eq('id',1).maybeSingle();
+      const { data } = await _filtreEntreprise(supabaseRH.from('rh_site_gps').select('*')).limit(1).maybeSingle();
       if(data && data.horaires){ cfg = { ...cfg, horaires: data.horaires }; }
     }catch(e){ console.warn('Lecture horaires partagés échouée, repli local:', e); }
   }
@@ -23332,22 +23826,33 @@ async function punchSaveSettings(){
     await db.set('rh_pointage_cfg', JSON.stringify(cfg));
     if(rhSessionActuelle){
       try{
-        await supabaseRH.from('rh_site_gps').update({
-          horaires, modifie_par: rhSessionActuelle.user.email, modifie_le: new Date().toISOString(),
-        }).eq('id', 1);
+        const { data: gpsRow } = await _filtreEntreprise(supabaseRH.from('rh_site_gps').select('id')).limit(1).maybeSingle();
+        if(gpsRow){
+          await _filtreEntreprise(supabaseRH.from('rh_site_gps').update({
+            horaires, modifie_par: rhSessionActuelle.user.email, modifie_le: new Date().toISOString(),
+          }).eq('id', gpsRow.id));
+        } else {
+          await supabaseRH.from('rh_site_gps').insert({
+            entreprise_id: _exigerEntreprise(),
+            horaires,
+            modifie_par: rhSessionActuelle.user.email,
+            modifie_le: new Date().toISOString(),
+          });
+        }
       }catch(e){ console.warn('Erreur publication horaires partagés:', e); punchToast('⚠️ Horaires enregistrés localement, mais pas partagés (vérifiez la connexion)'); }
     }
 
     // Site : uniquement si des coordonnées ont été saisies (le champ site est optionnel)
     if(site.lat!=null && site.lng!=null){
       if(_siteEnEdition!=null){
-        await supabaseRH.from('rh_sites').update({
+        await _filtreEntreprise(supabaseRH.from('rh_sites').update({
           nom: site.nom, lat: site.lat, lng: site.lng, radius_m: site.radius_m,
           modifie_par: rhSessionActuelle?rhSessionActuelle.user.email:null, modifie_le: new Date().toISOString(),
-        }).eq('id', _siteEnEdition);
+        }).eq('id', _siteEnEdition));
         punchToast('✅ Site mis à jour');
       } else {
         await supabaseRH.from('rh_sites').insert({
+          entreprise_id: _exigerEntreprise(),
           nom: site.nom, lat: site.lat, lng: site.lng, radius_m: site.radius_m,
           modifie_par: rhSessionActuelle?rhSessionActuelle.user.email:null, modifie_le: new Date().toISOString(),
         });
@@ -23515,31 +24020,6 @@ function _haversineM(lat1,lng1,lat2,lng2){
   const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
-// Détermine, pour une position GPS donnée, quel site comparer (celui assigné
-// à l'employé si reconnu, sinon le plus proche parmi tous) et si elle est
-// dans son rayon — logique PURE (aucun effet de bord, ne lit/n'écrit aucun
-// état global), extraite de _kioskStartGeo() pour être partagée avec la
-// veille de zone de l'écran d'accueil (_kioskDemarrerSurveillanceZone) sans
-// dupliquer la règle de correspondance de site. Appelée uniquement quand
-// sites.length>0 (zone configurée) — comportement de _kioskStartGeo inchangé.
-function _kioskEvaluerZone(lat, lng, sites, nomSiteEmploye){
-  let plusProche=null, dist=null, inZone=null, modeStrict=false;
-  const nomAttendu = (nomSiteEmploye || '').trim().toLowerCase();
-  const siteAttendu = nomAttendu ? sites.find(s=>(s.nom||'').trim().toLowerCase()===nomAttendu) : null;
-  if(siteAttendu){
-    modeStrict = true;
-    plusProche = siteAttendu;
-    dist = _haversineM(lat, lng, siteAttendu.lat, siteAttendu.lng);
-    inZone = dist <= (siteAttendu.radius_m||200);
-  } else {
-    sites.forEach(s=>{
-      const d = _haversineM(lat, lng, s.lat, s.lng);
-      if(plusProche===null || d<dist){ plusProche=s; dist=d; }
-    });
-    inZone = plusProche ? (dist <= (plusProche.radius_m||200)) : null;
-  }
-  return { plusProche, dist, inZone, modeStrict };
-}
 
 // ---------- Historique des pointages (lu directement depuis "presences") ----------
 async function punchShowHistory(){
@@ -23654,11 +24134,6 @@ let _kiosk = {
   geo: null,
   selfieData: null,
   rafId: null,
-  // 'pre' = contrôle de zone effectué AVANT d'autoriser ARRIVÉE/DÉPART ;
-  // 'confirm' = second contrôle, refait au moment du clic ARRIVÉE/DÉPART,
-  // juste avant le selfie. Détermine vers quelle étape _kioskStartGeo()
-  // avance après un contrôle réussi (voir _kioskStartGeo).
-  geoPurpose: null,
 };
 
 function _isKioskMode(){
@@ -23706,7 +24181,6 @@ async function startKiosk(){
   // reste de l'initialisation ni faire remonter d'exception vers bootstrap()
   // (qui pourrait sinon perturber l'affichage déjà en place).
   try{ await _kioskLoadCfg(); }catch(e){ console.warn('_kioskLoadCfg a échoué (kiosque quand même affiché) :', e); }
-  try{ _kioskDemarrerSurveillanceZone(); }catch(e){ console.warn('_kioskDemarrerSurveillanceZone a échoué (kiosque quand même utilisable, scan possible comme avant) :', e); }
   try{ _kioskChargerAnnuaire(); }catch(e){ console.warn('_kioskChargerAnnuaire a échoué :', e); } // annuaire public Supabase — fonctionne même sur un téléphone jamais connecté
   try{ _kioskFlusherPointagesEnAttente(); }catch(e){ console.warn('_kioskFlusherPointagesEnAttente a échoué :', e); }
   try{ _kioskDemarrerFlushPeriodique(); }catch(e){ console.warn('_kioskDemarrerFlushPeriodique a échoué :', e); }
@@ -23765,19 +24239,31 @@ function _kioskMajHorsHoraires(now){
   }
 }
 let _kioskAnnuaire = [];
-// Charge l'annuaire SANS les photos — seuls id/nom/prénom/fonction/site sont
-// nécessaires pour reconnaître un badge scanné (la comparaison se fait sur le
-// matricule, jamais sur la photo). Avant, cette requête ramenait la photo de
-// TOUS les employés actifs toutes les 10 secondes en tâche de fond : avec 500
-// employés, ça représente plusieurs dizaines de Mo téléchargées en boucle sur
-// le téléphone qui pointe, pour rien la plupart du temps. La photo de la
-// personne qui vient VRAIMENT de scanner est chargée à part, une seule ligne
-// à la fois, dans _kioskChargerPhotoAnnuaire.
+async function _kioskAppelContexte(action, extra){
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/kiosk-contexte`, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+    body: JSON.stringify(Object.assign({
+      action,
+      kioskId: localStorage.getItem('rh_kiosk_id'),
+      kioskSecret: localStorage.getItem('rh_kiosk_secret'),
+    }, extra||{})),
+  });
+  const data = await r.json().catch(()=>({}));
+  if(r.status===401){
+    const err = new Error(data.error||'Kiosque non authentifié');
+    err.status = 401;
+    throw err;
+  }
+  if(!r.ok){
+    const err = new Error(data.error||('kiosk-contexte '+r.status));
+    err.status = r.status;
+    throw err;
+  }
+  return data;
+}
 async function _kioskChargerAnnuaire(){
-  try{
-    const { data } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,sexe,statutEmploi,modifie_le');
-    _kioskAnnuaire = data || [];
-  }catch(e){ console.warn('Annuaire indisponible:', e); _kioskAnnuaire = []; }
+  _kioskAnnuaire = [];
   await _kioskVerifierHeureTelephone();
 }
 // Problème 4 (version stable) : le téléphone ne doit jamais pouvoir imposer
@@ -23810,7 +24296,7 @@ async function _kioskVerifierHeureTelephone(){
 // tout de suite, la photo suit une fraction de seconde après).
 async function _kioskChargerPhotoAnnuaire(id){
   try{
-    const { data } = await supabaseRH.from('rh_annuaire').select('photo').eq('id', String(id)).maybeSingle();
+    const data = await _kioskAppelContexte('photo', { empId: String(id) });
     if(data && data.photo && _kiosk.emp && String(_kiosk.emp.id)===String(id)){
       _kiosk.emp.photo = data.photo;
       _kioskRenderEmpCard();
@@ -23818,34 +24304,30 @@ async function _kioskChargerPhotoAnnuaire(id){
   }catch(e){ /* pas grave — la carte reste affichée sans photo */ }
 }
 async function _kioskLoadCfg(){
-  // Charge d'abord un éventuel repli local (rapide), puis écrase avec la
-  // version partagée Supabase si disponible — c'est elle la vraie référence,
-  // le téléphone de l'employé n'ayant jamais reçu la configuration localement.
   try{ _kiosk.cfg = JSON.parse(await db.get('rh_pointage_cfg')||'{}'); }catch(_){ _kiosk.cfg={}; }
   if(!_kiosk.cfg.horaires) _kiosk.cfg.horaires = DEFAULT_HORAIRES;
   try{
-    const { data } = await supabaseRH.from('rh_site_gps').select('*').eq('id',1).maybeSingle();
-    if(data && data.horaires) _kiosk.cfg.horaires = data.horaires;
-  }catch(e){ console.warn('Horaires partagés indisponibles, repli local utilisé:', e); }
-  try{
-    const { data } = await supabaseRH.from('rh_sites').select('*');
-    _kiosk.cfg.sites = (data||[]).filter(s=>s.lat!=null && s.lng!=null);
+    const data = await _kioskAppelContexte('bootstrap');
+    if(data.horaires) _kiosk.cfg.horaires = data.horaires;
+    _kiosk.cfg.sites = data.sites || [];
+    if(data.nom && data.nom !== companyName){
+      companyName = data.nom;
+      _kioskMettreAJourHorloge();
+    }
   }catch(e){
-    console.warn('Sites GPS partagés indisponibles :', e);
+    console.warn('Contexte kiosque indisponible :', e);
     _kiosk.cfg.sites = [];
+    if(e && e.status===401){
+      _kioskSetMsg('❌ Kiosque non authentifié — configurez kioskId et kioskSecret.','err');
+    }
   }
-  await _kioskChargerNomEntreprise();
 }
-// Nom de l'entreprise, pour l'écran d'accueil — un téléphone kiosque qui ne
-// s'est jamais connecté n'a pas ce nom en local, on va le chercher partagé.
-// Appelée au démarrage ET périodiquement, sinon un changement de nom dans
-// Paramètres ne se refléterait jamais sur un kiosque déjà ouvert.
 async function _kioskChargerNomEntreprise(){
   try{
-    const { data } = await supabaseRH.from('rh_donnees').select('valeur').eq('cle','rh_name').maybeSingle();
-    if(data && data.valeur && data.valeur !== companyName){
-      companyName = data.valeur;
-      _kioskMettreAJourHorloge(); // reflète tout de suite le nouveau nom à l'écran
+    const data = await _kioskAppelContexte('bootstrap');
+    if(data && data.nom && data.nom !== companyName){
+      companyName = data.nom;
+      _kioskMettreAJourHorloge();
     }
   }catch(e){ /* on garde le nom actuel si indisponible */ }
 }
@@ -23895,7 +24377,7 @@ function _kioskShowStep(step){
   if(el) el.style.display='flex';
   _kioskSetMsg('');
   _kioskMajIndicateurEtapes(step);
-  if(step==='scan'){ _kioskStartScan(); _kioskAppliquerEtatZoneIdle(); }
+  if(step==='scan') _kioskStartScan();
   if(step==='geo') _kioskStartGeo();
   if(step==='selfie') _kioskStartSelfie();
   if(step==='choixService') _kioskDemarrerAutoService();
@@ -23938,14 +24420,14 @@ function kioskAnnulerAutoService(){
 const KIOSK_ETAPES = [
   {id:'scan', lbl:'Badge'},
   {id:'geo', lbl:'Position'},
+  {id:'choixAction', lbl:'Arrivée/Départ'},
   {id:'selfie', lbl:'Selfie'},
 ];
 function _kioskMajIndicateurEtapes(step){
   const box = document.getElementById('kioskIndicateurEtapes');
   if(!box) return;
-  const etapesVisibles = ['scan','confirmBadge','choixService','geo','selfie','confirmSelfie'];
+  const etapesVisibles = ['scan','confirmBadge','choixService','geo','choixAction','selfie','confirmSelfie'];
   if(!etapesVisibles.includes(step)){ box.style.display='none'; return; }
-  // confirmBadge/choixService comptent comme faisant encore partie de l'étape "Badge"
   const etapeCourante = (step==='confirmBadge'||step==='choixService') ? 'scan' : (step==='confirmSelfie' ? 'selfie' : step);
   const idxCourant = KIOSK_ETAPES.findIndex(e=>e.id===etapeCourante);
   box.style.display='flex';
@@ -23962,7 +24444,7 @@ function _kioskMajIndicateurEtapes(step){
 }
 
 function kioskRestart(){
-  _kiosk.empId=null; _kiosk.emp=null; _kiosk.geo=null; _kiosk.selfieData=null; _kiosk.actionChoisie=null; _kiosk.serviceChoisi=null; _kiosk.curRecord=null; _kiosk.geoPurpose=null;
+  _kiosk.empId=null; _kiosk.emp=null; _kiosk.geo=null; _kiosk.selfieData=null; _kiosk.actionChoisie=null; _kiosk.serviceChoisi=null; _kiosk.curRecord=null;
   // Défense en profondeur : évite qu'un nom/prénom capturé lors d'un scan
   // précédent (rejeté via "Ce n'est pas moi") ne puisse jamais être transmis
   // avec un empId différent défini par un futur chemin d'appel qui
@@ -24088,6 +24570,14 @@ async function _kioskStartScan(){
   }
 }
 function _kioskParseEmpId(text){
+  const t = (text||'').trim();
+  if(/^RHB1\|.+\|RHB1$/.test(t)){
+    const parts = t.split('|');
+    _kiosk.badgeToken = parts[1];
+    _kiosk.qrNom = null; _kiosk.qrPrenom = null;
+    return '__BADGE_TOKEN__';
+  }
+  _kiosk.badgeToken = null;
   // Nouveau format compact des badges : EIDA1|MATRICULE|NOM|PRENOM|...
   const eida1 = _decoderQrEIDA1(text);
   if(eida1){
@@ -24129,89 +24619,83 @@ function _kioskBipScan(){
 async function _kioskOnBadgeDetected(id){
   _kioskBipScan();
   _kioskStopStream();
-  _kiosk.empId = id;
-  _kiosk.emp = employes.find(e=>fmtMatricule(e.id)===id) || null;
-  _kiosk.empSource = _kiosk.emp ? `employes[] local (${employes.length} chargés)` : null;
-  if(!_kiosk.emp){
-    // Pas trouvé en local (cas normal sur le téléphone de l'employé) — on cherche
-    // dans l'annuaire public déjà récupéré depuis Supabase au démarrage du kiosque.
-    const trouve = _kioskAnnuaire.find(a=>fmtMatricule(a.id)===id);
-    if(trouve){
-      _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: '', fonc: trouve.fonc, site: trouve.site||'', sexe: trouve.sexe||'', statutEmploi: trouve.statutEmploi||'Actif' };
-      _kiosk.empSource = `annuaire (cache mémoire, modifié_le: ${trouve.modifie_le||'?'})`;
-      _kioskChargerPhotoAnnuaire(trouve.id); // photo chargée à part, sans bloquer l'affichage
+  if(id==='__BADGE_TOKEN__' && _kiosk.badgeToken){
+    _kioskSetMsg('🔎 Validation du badge numérique…');
+    try{
+      const reponse = await fetch(`${SUPABASE_URL}/functions/v1/badge-token`, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+        body: JSON.stringify({
+          action:'resolve',
+          badgeToken: _kiosk.badgeToken,
+          kioskId: localStorage.getItem('rh_kiosk_id'),
+          kioskSecret: localStorage.getItem('rh_kiosk_secret'),
+        }),
+      });
+      const data = await reponse.json().catch(()=>({}));
+      if(!reponse.ok || !data.emp){
+        _kioskSetMsg('❌ Badge numérique refusé : '+(data.error||reponse.status), 'err');
+        setTimeout(kioskRestart, 3500);
+        return;
+      }
+      _kiosk.empId = fmtMatricule(data.emp.id);
+      _kiosk.emp = data.emp;
+      _kiosk.empSource = 'badge numérique (serveur)';
+      _kioskSetMsg('');
+      _kioskRenderEmpCard();
+      _kioskAfficherActionPrevue();
+      _kioskShowStep('confirmBadge');
+      return;
+    }catch(e){
+      _kioskSetMsg('❌ Badge numérique : réseau indisponible','err');
+      setTimeout(kioskRestart, 3500);
+      return;
     }
   }
-  if(!_kiosk.emp){
-    // Toujours pas trouvé (annuaire en cache pas encore à jour — cas typique
-    // d'un employé créé il y a moins d'une minute) — on interroge Supabase en
-    // DIRECT avant d'afficher quoi que ce soit. Sans ça, le pointage risquerait
-    // d'être enregistré sous une mauvaise clé et de devenir invisible ensuite
-    // dans Présence : mieux vaut attendre une seconde de plus ici.
-    _kioskSetMsg('🔎 Vérification du badge…');
-    try{
-      const { data } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,sexe,statutEmploi,modifie_le');
-      _kioskAnnuaire = data || _kioskAnnuaire; // on rafraîchit le cache au passage
-      const trouve = (data||[]).find(a=>fmtMatricule(a.id)===id);
-      if(trouve){
-        _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: '', fonc: trouve.fonc, site: trouve.site||'', sexe: trouve.sexe||'', statutEmploi: trouve.statutEmploi||'Actif' };
-        _kiosk.empSource = `annuaire (requête directe, modifié_le: ${trouve.modifie_le||'?'})`;
-        _kioskChargerPhotoAnnuaire(trouve.id);
-      }
-    }catch(e){ console.warn('Vérification directe du badge échouée :', e); }
-    _kioskSetMsg('');
+  _kiosk.empId = id;
+  _kiosk.emp = null;
+  _kiosk.empSource = null;
+  _kioskSetMsg('🔎 Vérification du badge…');
+  try{
+    const data = await _kioskAppelContexte('lookup', { empId: id });
+    if(data && data.emp){
+      const trouve = data.emp;
+      _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: '', fonc: trouve.fonc, site: trouve.site||'', sexe: trouve.sexe||'', statutEmploi: trouve.statutEmploi||'Actif', serviceHabituel: trouve.serviceHabituel, roleApplication: trouve.roleApplication||'' };
+      _kiosk.empSource = `kiosk-contexte (modifié_le: ${trouve.modifie_le||'?'})`;
+      _kioskChargerPhotoAnnuaire(trouve.id);
+    }
+  }catch(e){
+    if(e && e.status===401){
+      _kioskSetMsg('❌ Kiosque non authentifié','err');
+      setTimeout(kioskRestart, 3500);
+      return;
+    }
+    console.warn('Vérification du badge échouée :', e);
   }
+  _kioskSetMsg('');
   _kioskRenderEmpCard();
-  _kioskAfficherActionPrevue(); // détermine si ce sera une arrivée ou un départ
-  // Vérification fraîche en tâche de fond — TOUJOURS, quelle que soit la source
-  // utilisée pour l'affichage initial. On a eu la preuve qu'même "employes[]
-  // local" peut être périmé : un onglet resté ouvert un moment garde sa propre
-  // copie chargée une fois, jamais mise à jour toute seule quand on modifie une
-  // fiche depuis un AUTRE onglet/appareil. Cette revérification ponctuelle (une
-  // seule ligne Supabase, rapide) est donc le seul moyen fiable de garantir un
-  // affichage à jour, peu importe l'ancienneté de l'onglet. Corrige l'affichage
-  // en direct si un écart est trouvé, sans bloquer ni ralentir l'écran déjà là.
-  if(_kiosk.emp){
-    (async ()=>{
-      try{
-        const { data, error } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,sexe,statutEmploi,modifie_le').eq('id', String(_kiosk.emp.id)).maybeSingle();
-        if(error) console.warn('Revérification fraîche du badge échouée :', error);
-        if(data && _kiosk.empId===id){
-          const perime = data.fonc!==_kiosk.emp.fonc || data.nom!==_kiosk.emp.nom || data.prenom!==_kiosk.emp.prenom;
-          _kiosk.emp = { ..._kiosk.emp, nom:data.nom, prenom:data.prenom, fonc:data.fonc, site:data.site||_kiosk.emp.site, sexe:data.sexe||_kiosk.emp.sexe, statutEmploi:data.statutEmploi||_kiosk.emp.statutEmploi };
-          _kiosk.empSource = `annuaire revérifié (modifié_le: ${data.modifie_le||'?'})${perime?' — CORRIGÉ':' — déjà à jour'}`;
-          if(perime) _kioskRenderEmpCard();
-        }
-      }catch(e){ console.warn('Revérification fraîche du badge échouée :', e); }
-    })();
-  }
+  _kioskAfficherActionPrevue();
   if(!_kiosk.emp){
-    // Vraiment introuvable après vérification directe — on retente PLUSIEURS
-    // fois sur une fenêtre plus longue (le temps qu'une sauvegarde récente +
-    // sa synchronisation vers l'annuaire se terminent, ce qui peut prendre
-    // plus de 2 secondes) au lieu d'une seule tentative qui abandonnait trop
-    // vite. Le bouton de confirmation reste bloqué en attendant (voir
-    // kioskConfirmBadge).
     let tentative = 0;
-    const NB_TENTATIVES = 6; // 6 × 3s = 18s de fenêtre totale
+    const NB_TENTATIVES = 6;
     const essayerTrouverEmploye = async ()=>{
       tentative++;
-      if(_kiosk.emp || _kiosk.empId!==id) return; // trouvé entre-temps, ou l'utilisateur a scanné autre chose
+      if(_kiosk.emp || _kiosk.empId!==id) return;
       try{
-        const { data } = await supabaseRH.from('rh_annuaire').select('id,nom,prenom,fonc,site,serviceHabituel,sexe,statutEmploi,modifie_le');
-        const trouve = (data||[]).find(a=>fmtMatricule(a.id)===id);
+        const data = await _kioskAppelContexte('lookup', { empId: id });
+        const trouve = data && data.emp;
         if(trouve && _kiosk.empId===id){
-          _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: '', fonc: trouve.fonc, site: trouve.site||'', sexe: trouve.sexe||'', statutEmploi: trouve.statutEmploi||'Actif' };
+          _kiosk.emp = { id: trouve.id, nom: trouve.nom, prenom: trouve.prenom, photo: '', fonc: trouve.fonc, site: trouve.site||'', sexe: trouve.sexe||'', statutEmploi: trouve.statutEmploi||'Actif', serviceHabituel: trouve.serviceHabituel, roleApplication: trouve.roleApplication||'' };
           _kioskRenderEmpCard();
           _kioskChargerPhotoAnnuaire(trouve.id);
           return;
         }
-      }catch(e){ /* on retente quand même à la prochaine tentative */ }
+      }catch(e){ /* on retente */ }
       if(tentative < NB_TENTATIVES && _kiosk.empId===id && !_kiosk.emp){
         _kioskAfficherAttenteRecherche(tentative, NB_TENTATIVES);
         setTimeout(essayerTrouverEmploye, 3000);
       } else if(_kiosk.empId===id && !_kiosk.emp){
-        _kioskAfficherAttenteRecherche(NB_TENTATIVES, NB_TENTATIVES); // affiche le message d'échec final
+        _kioskAfficherAttenteRecherche(NB_TENTATIVES, NB_TENTATIVES);
       }
     };
     setTimeout(essayerTrouverEmploye, 2000);
@@ -24261,12 +24745,9 @@ async function _kioskAfficherActionPrevue(){
   let curHier = (cle && presences[hier]) ? (presences[hier][cle]||{}) : {};
   if(cle){
     try{
-      const { data } = await supabaseRH.from('rh_pointages').select('data').eq('date_jour', today).eq('emp_id', cle).maybeSingle();
-      if(data && data.data) curToday = {...curToday, ...data.data};
-    }catch(e){ /* on continue avec ce qu'on a localement */ }
-    try{
-      const { data } = await supabaseRH.from('rh_pointages').select('data').eq('date_jour', hier).eq('emp_id', cle).maybeSingle();
-      if(data && data.data) curHier = {...curHier, ...data.data};
+      const data = await _kioskAppelContexte('punch', { empId: cle });
+      if(data.todayData) curToday = {...curToday, ...data.todayData};
+      if(data.hierData) curHier = {...curHier, ...data.hierData};
     }catch(e){ /* on continue avec ce qu'on a localement */ }
   }
 
@@ -24330,22 +24811,10 @@ async function _kioskObtenirCarteServices(dateStr){
   // détection malgré une vraie programmation en base. On relit
   // systématiquement Supabase à chaque contrôle, pour avoir la donnée la
   // plus fraîche possible au moment du scan.
-  const { data, error } = await supabaseRH.from('rh_donnees').select('cle,valeur').in('cle',['rh_equ','rh_rem']);
-  // CORRECTION (cas Laurent Amoin, ID 300) : Supabase ne lève PAS
-  // d'exception sur un refus RLS ou une erreur de lecture — il renvoie
-  // juste { data:null, error:{...} }. Avant, "error" n'était jamais
-  // vérifié : un refus silencieux se traduisait par une liste d'équipages
-  // VIDE, faisant passer un employé réellement programmé pour "non
-  // programmé" (et donc, plus grave, sans aucune règle horaire appliquée
-  // à son départ). Maintenant, une vraie erreur est explicitement levée,
-  // pour que l'appelant puisse la distinguer d'un "vraiment non programmé".
-  if(error){
-    throw new Error('Lecture de rh_equ/rh_rem impossible : ' + error.message);
-  }
-  const parCle = {}; (data||[]).forEach(l=>{ parCle[l.cle]=l.valeur; });
-  const equipagesPourCheck = parCle.rh_equ || [];
-  const remplacementsPourCheck = parCle.rh_rem || {};
-  return _construireCarteServicesEffectifs(dateStr, equipagesPourCheck, remplacementsPourCheck);
+    const data = await _kioskAppelContexte('crews');
+    const equipagesPourCheck = data.rh_equ || [];
+    const remplacementsPourCheck = data.rh_rem || {};
+    return _construireCarteServicesEffectifs(dateStr, equipagesPourCheck, remplacementsPourCheck);
 }
 // Traçabilité locale des échecs de vérification équipage — visibilité admin
 // uniquement, jamais utilisée pour renvoyer un pointage automatiquement (ce
@@ -24413,20 +24882,10 @@ async function kioskConfirmBadge(){
     if(serviceProgramme && ['jour','nuit','24h'].includes(serviceProgramme)){
       // Programmé : le service est imposé directement, aucun choix libre.
       _kiosk.serviceChoisi = serviceProgramme;
-      // Contrôle de zone AVANT d'autoriser ARRIVÉE/DÉPART (voir _kioskStartGeo) —
-      // les boutons ne s'affichent que si ce contrôle réussit.
-      _kiosk.geoPurpose = 'pre';
       _kioskShowStep('geo');
       return;
     }
-    // Non trouvé, ou vérification impossible — dans les deux cas, le badge
-    // reste reconnu et le pointage est accepté et enregistré normalement,
-    // exactement comme avant l'introduction de cette vérification. Aucun
-    // service n'est deviné (reste null) ; un message d'exploitation reste
-    // affiché après coup comme avertissement (voir kioskValider,
-    // variable nonProgramme), jamais comme un refus.
     _kiosk.serviceChoisi = null;
-    _kiosk.geoPurpose = 'pre';
     _kioskShowStep('geo');
     return;
   }
@@ -24446,8 +24905,6 @@ function _kioskAfficherInfoServices(){
 function kioskChoisirService(service){
   clearInterval(_kioskAutoServiceInterval); // évite un double-déclenchement si le compte à rebours tournait encore
   _kiosk.serviceChoisi = service; // 'jour', 'nuit' ou '24h', choisi librement par l'employé
-  // Contrôle de zone AVANT d'autoriser ARRIVÉE/DÉPART (voir _kioskStartGeo).
-  _kiosk.geoPurpose = 'pre';
   _kioskShowStep('geo');
 }
 function kioskChoisirAction(action){
@@ -24471,41 +24928,12 @@ function kioskChoisirAction(action){
   }
   if(warnEl) warnEl.style.display='none';
   _kiosk.actionChoisie = action; // 'arrival' ou 'departure', choisi librement par l'employé
-  // Seconde vérification GPS, refaite précisément au moment de ce clic (une
-  // première a déjà eu lieu avant l'affichage de cet écran — voir les
-  // appelants de _kioskShowStep('geo') avec geoPurpose='pre') — la position
-  // peut avoir changé entre les deux (téléphone qui bouge, déplacement hors
-  // zone après le premier contrôle). Le serveur reste dans tous les cas
-  // l'autorité finale au moment de l'écriture (kioskValider, inchangé).
-  _kiosk.geoPurpose = 'confirm';
-  _kioskShowStep('geo');
+  _kioskShowStep('selfie');
 }
 function kioskRejectBadge(){ kioskRestart(); }
 
 // ---- Étape 2 : géolocalisation ----
-// Appelée à DEUX moments distincts du même pointage (Correction demandée :
-// "vérifier la zone AVANT d'autoriser ARRIVÉE/DÉPART, puis à nouveau au
-// clic") : une première fois juste après le scan/service, geoPurpose='pre',
-// AVANT que les boutons ARRIVÉE/DÉPART ne soient affichés (voir
-// kioskConfirmBadge/kioskChoisirService) ; une seconde fois au moment précis
-// du clic sur ARRIVÉE/DÉPART, geoPurpose='confirm', juste avant le selfie
-// (voir kioskChoisirAction). Les deux réutilisent exactement la même
-// vérification de zone (_kioskEvaluerZone, inchangée), mais reprennent
-// chacune une position GPS fraîche (jamais de réutilisation d'une position
-// déjà ancienne) et rafraîchissent la liste des sites directement depuis
-// Supabase avant de trancher, plutôt que de se fier uniquement au cache
-// chargé au démarrage du kiosque (utile si un site/rayon a été modifié
-// pendant que ce téléphone était déjà ouvert). Dans tous les cas, l'autorité
-// finale reste la fonction serveur pointage/index.ts (non modifiée) au
-// moment de l'écriture : un contrôle client réussi ici n'empêche jamais un
-// refus serveur ultérieur (403 Hors zone), voir kioskValider.
-async function _kioskStartGeo(){
-  const etapeSuivante = (_kiosk.geoPurpose === 'confirm') ? 'selfie' : 'choixAction';
-  try{
-    const { data } = await supabaseRH.from('rh_sites').select('*');
-    if(data) _kiosk.cfg.sites = data.filter(s=>s.lat!=null && s.lng!=null);
-  }catch(e){ console.warn('Zones GPS non rafraîchies depuis le serveur, repli sur le cache local :', e); }
-
+function _kioskStartGeo(){
   _kioskSetMsg('📍 Localisation en cours…');
   const spinnerEl = document.getElementById('kioskGeoSpinner');
   const texteEl = document.getElementById('kioskGeoTexte');
@@ -24525,7 +24953,7 @@ async function _kioskStartGeo(){
     }
     _kioskSetMsg('⚠️ GPS non supporté par cet appareil — pointage sans position.','warn');
     _kiosk.geo=null;
-    setTimeout(()=>_kioskShowStep(etapeSuivante), 1200);
+    setTimeout(()=>_kioskShowStep('choixAction'), 1200);
     return;
   }
   navigator.geolocation.getCurrentPosition(pos=>{
@@ -24536,8 +24964,20 @@ async function _kioskStartGeo(){
     // le plus proche parmi tous, comme avant.
     let plusProche=null, dist=null, inZone=null, modeStrict=false;
     if(zoneConfiguree){
-      const r = _kioskEvaluerZone(pos.coords.latitude, pos.coords.longitude, sites, _kiosk.emp && _kiosk.emp.site);
-      plusProche = r.plusProche; dist = r.dist; inZone = r.inZone; modeStrict = r.modeStrict;
+      const nomAttendu = (_kiosk.emp && _kiosk.emp.site || '').trim().toLowerCase();
+      const siteAttendu = nomAttendu ? sites.find(s=>(s.nom||'').trim().toLowerCase()===nomAttendu) : null;
+      if(siteAttendu){
+        modeStrict = true;
+        plusProche = siteAttendu;
+        dist = _haversineM(pos.coords.latitude,pos.coords.longitude, siteAttendu.lat, siteAttendu.lng);
+        inZone = dist <= (siteAttendu.radius_m||200);
+      } else {
+        sites.forEach(s=>{
+          const d = _haversineM(pos.coords.latitude,pos.coords.longitude, s.lat, s.lng);
+          if(plusProche===null || d<dist){ plusProche=s; dist=d; }
+        });
+        inZone = dist <= (plusProche.radius_m||200);
+      }
     }
     _kiosk.geo = {lat:pos.coords.latitude, lng:pos.coords.longitude, dist, inZone, site: plusProche?plusProche.nom:null, siteId: plusProche?plusProche.id:null, strict: modeStrict};
 
@@ -24577,7 +25017,7 @@ async function _kioskStartGeo(){
     }
 
     document.getElementById('kioskGeoTexte').textContent = zoneConfiguree ? `✅ Position confirmée — ${plusProche.nom}` : '✅ Position enregistrée';
-    setTimeout(()=>_kioskShowStep(etapeSuivante), 1400);
+    setTimeout(()=>_kioskShowStep('choixAction'), 1400);
   }, err=>{
     if(zoneConfiguree){
       _kioskSetMsg('❌ Position GPS refusée/indisponible ('+err.message+'), et une zone est exigée pour ce site — pointage refusé.','err');
@@ -24586,76 +25026,8 @@ async function _kioskStartGeo(){
     }
     _kioskSetMsg('⚠️ Position refusée/indisponible ('+err.message+') — pointage sans position.','warn');
     _kiosk.geo=null;
-    setTimeout(()=>_kioskShowStep(etapeSuivante), 1200);
+    setTimeout(()=>_kioskShowStep('choixAction'), 1200);
   }, {enableHighAccuracy:true, timeout:12000});
-}
-
-// ============================================================
-// Veille de zone sur l'écran d'accueil (AVANT même le scan du badge) — dès
-// qu'une zone est configurée pour ce kiosque, la position est surveillée en
-// continu pendant que l'écran d'accueil est affiché : hors du rayon
-// autorisé, le scan est bloqué et un bandeau "HORS ZONE" reste affiché ;
-// dès que l'appareil revient dans la zone, le scan se réactive
-// automatiquement, sans rien recharger. Complète _kioskStartGeo() (le
-// contrôle précis refait à CHAQUE scan, inchangé) — ne le remplace pas :
-// c'est toujours lui, et seulement lui, qui autorise réellement un
-// pointage, avec une lecture GPS fraîche à ce moment précis.
-// Utilise watchPosition() (mise à jour poussée par l'OS) plutôt qu'une
-// boucle de sondage répétée, pour ne pas consommer la batterie inutilement
-// — et enableHighAccuracy:false ici (suffisant pour ce simple bandeau
-// indicatif ; la précision fine reste réservée à _kioskStartGeo()).
-// Une position momentanément indisponible n'est JAMAIS traitée comme "hors
-// zone" — seul un vrai résultat de comparaison au rayon l'est.
-// ============================================================
-let _kioskZoneWatchId = null;
-if(typeof _kiosk!=='undefined') _kiosk.zoneIdle = { statut:'inconnu' }; // 'inconnu' | 'indisponible' | 'horszone' | 'ok'
-
-function _kioskDemarrerSurveillanceZone(){
-  const sites = (_kiosk.cfg && _kiosk.cfg.sites) || [];
-  if(!sites.length) return; // pas de zone configurée pour ce kiosque : rien à surveiller, écran d'accueil inchangé
-  if(!('geolocation' in navigator)) return;
-  if(_kioskZoneWatchId !== null) return; // déjà en cours (ex: bootstrap relancé) — pas de doublon
-  _kioskZoneWatchId = navigator.geolocation.watchPosition(
-    pos=>{
-      const sitesActuels = (_kiosk.cfg && _kiosk.cfg.sites) || [];
-      if(!sitesActuels.length){ _kiosk.zoneIdle = { statut:'inconnu' }; _kioskAppliquerEtatZoneIdle(); return; }
-      const r = _kioskEvaluerZone(pos.coords.latitude, pos.coords.longitude, sitesActuels, _kiosk.emp && _kiosk.emp.site);
-      _kiosk.zoneIdle = { statut: r.inZone===false ? 'horszone' : 'ok', site: r.plusProche?r.plusProche.nom:null, dist: r.dist };
-      _kioskAppliquerEtatZoneIdle();
-    },
-    err=>{
-      // Position indisponible/refusée : état neutre, jamais assimilé à "hors
-      // zone" — le scan reste possible comme avant l'ajout de cette veille ;
-      // c'est _kioskStartGeo(), inchangé, qui tranchera au moment du scan.
-      _kiosk.zoneIdle = { statut:'indisponible' };
-      _kioskAppliquerEtatZoneIdle();
-    },
-    { enableHighAccuracy:false, maximumAge:15000, timeout:20000 }
-  );
-}
-function _kioskArreterSurveillanceZone(){
-  if(_kioskZoneWatchId !== null){ navigator.geolocation.clearWatch(_kioskZoneWatchId); _kioskZoneWatchId = null; }
-}
-// Reflète _kiosk.zoneIdle sur l'écran d'accueil : bandeau "HORS ZONE" +
-// scan bloqué si hors zone confirmé ; dans tous les autres cas (dans la
-// zone, zone encore inconnue, position indisponible, ou pas de zone
-// configurée), écran inchangé — scan possible, exactement comme avant
-// l'ajout de cette veille.
-function _kioskAppliquerEtatZoneIdle(){
-  const bandeau = document.getElementById('kioskZoneGate');
-  const camBox = document.querySelector('#kioskStep-scan .kiosk-cam-box');
-  const manuel = document.querySelector('#kioskStep-scan .kiosk-manual');
-  const horsZone = !!(_kiosk.zoneIdle && _kiosk.zoneIdle.statut === 'horszone');
-  if(bandeau){
-    bandeau.style.display = horsZone ? 'flex' : 'none';
-    if(horsZone){
-      const dist = _kiosk.zoneIdle.dist!=null ? ` (${Math.round(_kiosk.zoneIdle.dist)} m)` : '';
-      const site = _kiosk.zoneIdle.site ? ` — ${_kiosk.zoneIdle.site}` : '';
-      bandeau.innerHTML = `🚫 HORS ZONE${site}${dist}<br><span style="font-weight:500;font-size:.7rem;opacity:.9;">Rapprochez-vous du site pour pouvoir pointer.</span>`;
-    }
-  }
-  if(camBox) camBox.style.display = horsZone ? 'none' : '';
-  if(manuel) manuel.style.display = horsZone ? 'none' : '';
 }
 
 // ---- Étape 3 : selfie (caméra avant) ----
@@ -24816,6 +25188,7 @@ async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, ten
           // dans quel cas aucune vérification n'est faite (inchangé).
           qrNom: _kiosk.qrNom || null,
           qrPrenom: _kiosk.qrPrenom || null,
+          badgeToken: _kiosk.badgeToken || null,
           lat: _kiosk.geo ? _kiosk.geo.lat : null,
           lng: _kiosk.geo ? _kiosk.geo.lng : null,
           geoDisponible: !!_kiosk.geo,
@@ -24824,16 +25197,12 @@ async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, ten
       if(reponse.ok){
         const resultat = await reponse.json().catch(()=>({}));
         if(resultat && resultat.success) return { success:true, definitif:false, statut:resultat.statut, retardTexte:resultat.retardTexte };
-      } else if([400,403,404].includes(reponse.status)){
+      } else if([400,401,403,404].includes(reponse.status)){
         // Refus définitif — inutile de retenter. Plus de repli direct non
         // plus : si le serveur refuse ce pointage (ex: employé non
         // programmé), il ne doit jamais être écrit sans sa vérification.
-        // La raison exacte (ex: "Hors zone", "Employé Suspendu") est lue ici
-        // pour être affichée telle quelle au lieu d'un message générique qui
-        // masquerait pourquoi le pointage a été refusé.
-        const corpsRefus = await reponse.json().catch(()=>({}));
-        console.warn(`Pointage refusé définitivement par le serveur (${reponse.status}) — pas de nouvelle tentative.`, corpsRefus);
-        return { success:false, definitif:true, raisonRefus: corpsRefus && corpsRefus.error };
+        console.warn(`Pointage refusé définitivement par le serveur (${reponse.status}) — pas de nouvelle tentative.`);
+        return { success:false, definitif:true };
       }
       console.warn(`Fonction serveur de pointage refusée (tentative ${i+1}/${tentatives+1}) :`, reponse.status);
     }catch(e){
@@ -24862,42 +25231,6 @@ function _kioskAjouterPointageEnAttente(dateEcriture, cle, rec, now, action){
     localStorage.setItem('rh_pointages_en_attente', JSON.stringify(liste));
   }catch(e){ /* pas grave — la version locale (presences) reste correcte de toute façon */ }
 }
-// Annule, dans le cache local (presences/rh_prz — IndexedDB), UNIQUEMENT la
-// trace laissée par un item de la file qui vient d'être refusé DÉFINITIVEMENT
-// (ou qui a expiré après 24h) — jamais une donnée plus récente. Corrige le
-// même bug que le rollback de kioskValider() (faux "déjà enregistrée" après
-// un refus), mais pour le cas où ce refus arrive plus tard, en tâche de fond,
-// via cette file de retry plutôt qu'immédiatement au moment du scan.
-//
-// Sécurité principale : on ne restaure QUE si l'entrée locale actuelle porte
-// encore EXACTEMENT le même identifiant (pointage_id_arrivee/pointage_id_
-// depart) que celui que CET item avait écrit à l'origine. Si un scan plus
-// récent (ou un autre appareil) a depuis remplacé cette entrée par un
-// identifiant différent, on ne touche à rien — cette donnée-là n'a rien à
-// voir avec l'item refusé et ne doit jamais être écrasée.
-async function _kioskAnnulerPointageEnFileRefuse(item){
-  try{
-    const idChamp = item.action==='arrival' ? 'pointage_id_arrivee' : 'pointage_id_depart';
-    const idTente = item.rec && item.rec[idChamp];
-    if(!idTente) return; // rien d'identifiable de façon sûre — on ne touche à rien par prudence
-    const localActuel = (presences[item.dateEcriture] && presences[item.dateEcriture][item.cle]) || {};
-    if(localActuel[idChamp] !== idTente) return; // remplacé depuis par une donnée plus récente — ne jamais écraser
-
-    // État RÉELLEMENT accepté par le serveur pour cet employé/cette date
-    // précise — peut contenir une arrivée légitime si seul le départ a été
-    // refusé, ou être vide si rien n'a jamais été confirmé pour ce jour-là.
-    let etatReel = {};
-    try{
-      const { data } = await supabaseRH.from('rh_pointages').select('data')
-        .eq('date_jour', item.dateEcriture).eq('emp_id', item.cle).maybeSingle();
-      if(data && data.data) etatReel = data.data;
-    }catch(e){ console.warn('Lecture rh_pointages échouée pendant le rollback de file (repli sur un état vide) :', e); }
-
-    if(!presences[item.dateEcriture]) presences[item.dateEcriture] = {};
-    presences[item.dateEcriture][item.cle] = etatReel;
-    await db.set('rh_prz', JSON.stringify(presences));
-  }catch(e){ console.warn('Annulation locale après refus/expiration en file échouée :', e); }
-}
 async function _kioskFlusherPointagesEnAttente(){
   // Protection contre les flush simultanés — si un flush est déjà en cours
   // (ex: celui du démarrage pas encore fini quand le minuteur périodique se
@@ -24920,25 +25253,13 @@ async function _kioskFlusherPointagesEnAttente(){
       const debut = item.premierEssai ? new Date(item.premierEssai).getTime() : Date.now();
       if(Date.now() - debut > LIMITE_MS){
         perdus.push({...item, retirePourExpiration: new Date().toISOString()});
-        // CORRECTION — sans ça, un pointage jamais transmis en 24h restait
-        // quand même visible en local (punch_in/punch_out fantôme) sur le
-        // kiosque, qui affichait alors "déjà enregistré" pour un pointage
-        // qui n'a jamais existé côté serveur.
-        await _kioskAnnulerPointageEnFileRefuse(item);
         continue;
       }
       const resultat = await _kioskEnvoyerPointageAvecReessai(item.dateEcriture, item.cle, item.rec, item.now, 1, item.action);
       // Un refus définitif (400/403/404) sort de la file pour de bon — le
       // retenter ne changera jamais rien, et l'y garder bloquerait la file
       // indéfiniment sur un pointage qui ne passera jamais.
-      if(!resultat.success && !resultat.definitif){
-        restants.push(item);
-      } else if(!resultat.success && resultat.definitif){
-        // CORRECTION — même rollback que ci-dessus : un refus définitif reçu
-        // ICI (en tâche de fond, potentiellement longtemps après le scan
-        // original) ne doit pas non plus laisser de trace fantôme locale.
-        await _kioskAnnulerPointageEnFileRefuse(item);
-      }
+      if(!resultat.success && !resultat.definitif) restants.push(item);
     }
     try{ localStorage.setItem('rh_pointages_en_attente', JSON.stringify(restants)); }catch(e){}
     if(perdus.length){
@@ -24998,10 +25319,10 @@ async function kioskValider(){
   // déjà enregistrer l'arrivée de cet employé aujourd'hui) — c'est la vraie
   // source de vérité partagée, contrairement au stockage local de ce téléphone.
   try{
-    const { data: existant } = await supabaseRH
-      .from('rh_pointages').select('data').eq('date_jour', dateEcriture).eq('emp_id', cle).maybeSingle();
-    if(existant && existant.data) cur = {...cur, ...existant.data};
-  }catch(e){ console.warn('Lecture Supabase échouée, on continue avec les données locales:',e); }
+    const data = await _kioskAppelContexte('punch', { empId: cle });
+    const existant = (dateEcriture === data.hier) ? (data.hierData||{}) : (data.todayData||{});
+    if(existant && (existant.punch_in || existant.punch_out)) cur = {...cur, ...existant};
+  }catch(e){ console.warn('Lecture pointage kiosque échouée, on continue avec les données locales:',e); }
 
   // Ancien système Firebase, gardé en repli optionnel si encore configuré
   const fdb = _fbReady ? _fbDb : await fbInit();
@@ -25020,16 +25341,6 @@ async function kioskValider(){
     setTimeout(kioskRestart, 3500);
     return;
   }
-
-  // Snapshot de l'état exact AVANT toute écriture optimiste (voir plus bas,
-  // "presences[dateEcriture][cle] = rec") — permet, en cas de refus DÉFINITIF
-  // du serveur (ex: hors zone), de restaurer très précisément cet état
-  // antérieur au lieu de laisser une trace fantôme (punch_in/punch_out/
-  // pointage_id_*) qui ferait croire au prochain scan que ce pointage refusé
-  // a été accepté. On restaure CET état précis (pas une suppression pure et
-  // simple de la clé) pour ne jamais perdre une arrivée/départ légitime déjà
-  // confirmée par un scan précédent.
-  const curAvantEcriture = {...cur};
 
   const action = _kiosk.actionChoisie || (!cur.punch_in ? 'arrival' : 'departure'); // repli si jamais non choisi
   const fonctionAgentDep = ((_kiosk.emp && _kiosk.emp.fonc) || '').toLowerCase();
@@ -25072,91 +25383,43 @@ async function kioskValider(){
   // mais le statut passe à "Absent" — comme un vrai absent, il reste dans la
   // liste des absents tant que la RH ne le justifie pas (bouton Justifier).
   const horsZone = _kiosk.geo && _kiosk.geo.inZone === false;
-  // Upload le selfie vers le stockage cloud avant de l'enregistrer — c'est le
-  // plus gros générateur de volume de l'app (un selfie à chaque pointage). En
-  // cas d'échec (pas de réseau, bucket pas encore créé), on garde le selfie
-  // en base64 tel quel : rien ne bloque le pointage.
-  let selfieAEnregistrer = _kiosk.selfieData;
-  if(selfieAEnregistrer){
-    const url = await _uploaderVersStorage(selfieAEnregistrer, `selfies/${dateEcriture}-${cle}.jpg`);
-    if(url) selfieAEnregistrer = url;
+  if(horsZone){
+    _kioskSetMsg('❌ Hors rayon — pointage refusé, aucune écriture.','err');
+    setTimeout(kioskRestart, 3500);
+    return;
+  }
+  if(!_kiosk.selfieData || typeof _kiosk.selfieData!=='string' || !_kiosk.selfieData.startsWith('data:image/')){
+    _kioskSetMsg('❌ Selfie obligatoire.','err');
+    return;
   }
   const rec = {
     ...cur,
     statut: horaireCheck.ok ? 'Présent' : 'Absent',
     retardTexte: horaireCheck.ok ? '' : horaireCheck.message,
     service,
-    hors_zone: horsZone, from_mobile:true, geo:_kiosk.geo, selfie:selfieAEnregistrer
+    hors_zone: false, from_mobile:true, geo:_kiosk.geo, selfie:_kiosk.selfieData
   };
-  // Identifiant unique du pointage (Priorité "3 problèmes") — généré UNE
-  // SEULE FOIS ici, à l'ouverture de ce scan précis, jamais régénéré ensuite
-  // (les tentatives suivantes et la file d'attente réutilisent ce même objet
-  // "rec", donc le même identifiant). Deux champs séparés (arrivée/départ)
-  // car les deux partagent la même ligne en base — un scan différent doit
-  // toujours avoir un identifiant différent, même pour l'autre sens du même
-  // jour. Permet au serveur de reconnaître un retry tardif du MÊME pointage
-  // et de ne jamais réécrire son heure dans ce cas.
   const pointageId = (typeof crypto!=='undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   if(action==='arrival'){ rec.punch_in = now; rec.pointage_id_arrivee = pointageId; }
   else { rec.punch_out = now; rec.pointage_id_depart = pointageId; }
-  presences[dateEcriture][cle] = rec;
-  try{ await db.set('rh_prz', JSON.stringify(presences)); }catch(e){ _kioskSetMsg('❌ Erreur de sauvegarde locale : '+e.message,'err'); return; }
 
-  // Remonte immédiatement vers Supabase : c'est ce qui permet à l'admin (et à
-  // tout autre téléphone) de voir ce pointage, même si ce téléphone n'a jamais
-  // été connecté à l'application. IMPORTANT : Supabase ne lève PAS d'exception
-  // sur un refus d'écriture (droits d'accès, etc.) — il renvoie juste
-  // { error }. Sans le vérifier explicitement, un refus passait totalement
-  // inaperçu : le pointage restait correct EN LOCAL (d'où "déjà pointé"
-  // affiché correctement sur ce même téléphone), mais n'atteignait jamais
-  // Supabase — donc jamais visible dans Présence côté admin. C'était la cause
-  // exacte du bug. Corrigé avec une vérification réelle + nouvelles tentatives
-  // automatiques, et une file d'attente qui se rétablit toute seule.
   const resultatEnvoi = await _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, 2, action);
   const succes = resultatEnvoi.success;
-  // Refus DÉFINITIF (ex: hors zone, employé suspendu) — le serveur a déjà
-  // tranché, rien à confirmer plus tard : ne doit JAMAIS être affiché comme
-  // "en attente de confirmation serveur" (distinct du cas transitoire —
-  // réseau, fonction indisponible — qui, lui, reste correctement en attente
-  // et sera retenté automatiquement).
-  const refusDefinitif = !succes && !!resultatEnvoi.definitif;
-  const raisonRefus = resultatEnvoi.raisonRefus || '';
-  const estRefusHorsZone = refusDefinitif && raisonRefus === 'Hors zone';
-  // CORRECTION — annule l'écriture optimiste faite plus haut si le serveur
-  // refuse DÉFINITIVEMENT ce pointage (ex: hors zone, 403). Sans ça,
-  // presences[dateEcriture][cle] gardait un punch_in/punch_out et un
-  // pointage_id_* jamais confirmés par le serveur, et le scan suivant
-  // affichait à tort "arrivée déjà enregistrée" alors que rien n'avait été
-  // accepté (ni écrit dans rh_pointages). On restaure exactement l'état
-  // d'avant cette tentative (curAvantEcriture), pas une simple suppression
-  // de la clé, pour ne jamais effacer une arrivée/départ légitime déjà
-  // confirmée par un scan antérieur.
-  if(refusDefinitif){
-    presences[dateEcriture][cle] = curAvantEcriture;
-    try{ await db.set('rh_prz', JSON.stringify(presences)); }
-    catch(e){ console.warn('Restauration locale après refus définitif échouée :', e); }
-  }
   if(!succes && !resultatEnvoi.definitif){
     _kioskAjouterPointageEnAttente(dateEcriture, cle, rec, now, action);
-    _kioskSetMsg('⚠️ Pointage enregistré sur ce téléphone, mais pas encore transmis — nouvelle tentative automatique au prochain scan ou chargement.','warn');
-  } else if(refusDefinitif){
-    // Raison exacte du refus, telle que renvoyée par la fonction serveur
-    // (voir supabase/functions/pointage/index.ts) — affichée précisément au
-    // lieu d'un message générique qui masquerait pourquoi le pointage a été
-    // refusé (ex: hors zone, employé suspendu...).
-    const raisons = {
-      'Hors zone': '🚫 HORS ZONE — pointage refusé, vous n\'êtes pas dans le rayon autorisé.',
-      'Employé introuvable': '❌ Pointage refusé : badge non reconnu par le serveur.',
-    };
-    const msg = raisons[raisonRefus]
-      || (raisonRefus.startsWith('Employé ') ? `❌ Pointage refusé : ${raisonRefus.toLowerCase()}.` : null)
-      || '❌ Pointage refusé par le serveur (employé non programmé, inactif, ou autre règle non respectée).';
-    _kioskSetMsg(msg,'err');
-  }
-
-  if(cloudRef){
-    try{ await cloudRef.set(rec, {merge:true}); }
-    catch(e){ console.warn('Écriture Firebase échouée (pointage local conservé) :',e); }
+    _kioskSetMsg('⚠️ Serveur temporairement injoignable — pointage en file, nouvelle tentative automatique.','warn');
+  } else if(!succes && resultatEnvoi.definitif){
+    _kioskSetMsg('❌ Pointage refusé par le serveur (employé inactif, hors zone, kiosque, ou règle non respectée).','err');
+    setTimeout(kioskRestart, 4000);
+    return;
+  } else if(succes){
+    if(!presences[dateEcriture]) presences[dateEcriture]={};
+    presences[dateEcriture][cle] = rec;
+    try{ await db.set('rh_prz', JSON.stringify(presences)); }catch(e){ console.warn('Sauvegarde locale post-serveur :', e); }
+    if(cloudRef){
+      try{ await cloudRef.set(rec, {merge:true}); }
+      catch(e){ console.warn('Écriture Firebase échouée :',e); }
+    }
   }
 
   // Vérifie si ce chauffeur/éboueur est bien programmé, dans le planning de son
@@ -25175,19 +25438,7 @@ async function kioskValider(){
   const noteZone = horsZone
     ? `<br><span style="color:#FCA5A5;font-weight:700;font-size:1.05rem;">⚠️ Hors zone (${Math.round(_kiosk.geo.dist)} m du site) — signalé pour vérification RH</span>`
     : '';
-  // Refus hors zone confirmé par le SERVEUR (peut arriver même quand le
-  // contrôle GPS local du kiosque avait laissé passer) — affiché de façon
-  // définitive et non ambiguë, jamais comme une simple attente.
-  const noteRefusServeur = refusDefinitif
-    ? (estRefusHorsZone
-        ? `<br><span style="color:#F87171;font-weight:800;font-size:1.1rem;">🚫 HORS ZONE — pointage refusé par le serveur. Rapprochez-vous du site puis rescannez votre badge.</span>`
-        : `<br><span style="color:#F87171;font-weight:800;font-size:1.05rem;">❌ Pointage refusé par le serveur.</span>`)
-    : '';
   const noteHoraire = (() => {
-    // Un refus définitif (ex: hors zone) tranche déjà tout — plus aucune
-    // estimation de retard "provisoire" n'a de sens à côté d'un refus déjà
-    // connu et définitif (voir noteRefusServeur ci-dessus).
-    if(refusDefinitif) return '';
     // Statut Présent/Absent affiché IMMÉDIATEMENT depuis la réponse du
     // serveur (autorité exclusive) dès qu'elle est disponible — aucun
     // recalcul local. "horaireCheck" (client) ne sert plus qu'en dernier
@@ -25214,17 +25465,11 @@ async function kioskValider(){
   // l'écriture — même si le pointage est déjà en sécurité en local et sera
   // retransmis automatiquement (voir _kioskEnvoyerPointageAvecReessai plus haut).
   // Cercle orange + texte "en attente" au lieu du ✓ vert quand ce n'est pas
-  // encore confirmé, pour rester honnête sur l'état réel — et cercle rouge
-  // "✕" distinct pour un refus définitif (hors zone...), qui n'est PAS une
-  // attente : rien ne sera retenté, ni jamais confirmé plus tard.
+  // encore confirmé, pour rester honnête sur l'état réel.
   const cercle = document.getElementById('kioskDoneCercle');
   if(cercle){
     if(succes){
       cercle.style.background = ''; cercle.querySelector('span').textContent = '✓';
-      cercle.classList.remove('kiosk-done-attente');
-    } else if(refusDefinitif){
-      cercle.style.background = 'linear-gradient(135deg,#7F1D1D,#DC2626)';
-      cercle.querySelector('span').textContent = '✕';
       cercle.classList.remove('kiosk-done-attente');
     } else {
       cercle.style.background = 'linear-gradient(135deg,#D97706,#F59E0B)';
@@ -25232,20 +25477,12 @@ async function kioskValider(){
       cercle.classList.add('kiosk-done-attente');
     }
   }
-  // "En attente de confirmation serveur" UNIQUEMENT pour un échec transitoire
-  // (réseau, fonction indisponible) qui sera réellement retenté — jamais pour
-  // un refus définitif (hors zone, employé suspendu...), qui ne le sera pas.
-  const noteEnAttente = (!succes && !refusDefinitif)
+  const noteEnAttente = !succes
     ? `<br><span style="color:#FCD34D;font-weight:800;font-size:1.05rem;">⏳ Pas encore confirmé par le serveur — enregistré sur cet appareil, transmission automatique en cours. Ne fermez pas l'application si possible.</span>`
     : '';
-  box.innerHTML = (refusDefinitif
-    ? (action==='arrival'
-        ? `✕ <b>${name}</b><br>Arrivée NON enregistrée (${hhmm})`
-        : `✕ <b>${name}</b><br>Départ NON enregistré (${hhmm})`)
-    : (action==='arrival'
-        ? `${succes?'✅':'⏳'} Bienvenue <b>${name}</b><br>Arrivée ${succes?'enregistrée':'notée'} à ${hhmm}`
-        : `${succes?'👋':'⏳'} Au revoir <b>${name}</b><br>Départ ${succes?'enregistré':'noté'} à ${hhmm}`)
-  ) + noteEnAttente + noteRefusServeur + noteZone + noteHoraire + noteProgramme;
+  box.innerHTML = (action==='arrival'
+    ? `${succes?'✅':'⏳'} Bienvenue <b>${name}</b><br>Arrivée ${succes?'enregistrée':'notée'} à ${hhmm}`
+    : `${succes?'👋':'⏳'} Au revoir <b>${name}</b><br>Départ ${succes?'enregistré':'noté'} à ${hhmm}`) + noteEnAttente + noteZone + noteHoraire + noteProgramme;
   // Note : les notifications RH (retard/hors-zone/absence) sont désormais gérées
   // entièrement côté backend (voir /api/notify/check), pas déclenchées d'ici.
   // Pas de fermeture automatique : le message doit rester affiché le temps que
