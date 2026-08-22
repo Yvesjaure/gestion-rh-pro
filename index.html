@@ -15435,6 +15435,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     <div style="background:linear-gradient(135deg,#F5F3FF,#FCE7F3);padding:10px;border-radius:6px;border:1.5px solid #C4B5FD;">
       <div class="cf"><span class="cl" style="background:#7C3AED;min-width:130px;">Fournisseur IA</span><input type="text" class="ci" value="OpenAI" readonly></div>
       <div class="cf"><span class="cl" style="background:#7C3AED;min-width:130px;">Modèle</span><input type="text" class="ci" value="gpt-4o-mini" readonly></div>
+      <div class="cf"><span class="cl" style="background:#7C3AED;min-width:130px;">URL Backend IA</span><input type="text" id="setAIBackend" class="ci" placeholder="https://votre-backend.com (laisser vide pour utiliser le serveur par défaut)" oninput="updateAIBackend(this.value)" data-testid="set-ai-backend"></div>
       <div style="font-size:.66rem;color:#555;margin-left:138px;margin-top:-2px;">💡 Test de connexion : Edge Function <code>ia-mistral</code> → OpenAI (clé serveur uniquement). Statut : <span id="aiBackendStatus" style="font-weight:700;">⏳ —</span></div>
       <div class="cf" style="margin-top:6px;">
         <span class="cl" style="background:#7C3AED;min-width:130px;">Langue IA</span>
@@ -24175,6 +24176,8 @@ function aiScanExtrait(){ _aiScanDoc('extrait'); }
   if(typeof old === 'function'){
     window.updateSettingsInfo = async function(){
       try{ await old.apply(this, arguments); }catch{}
+      const a = document.getElementById('setAIBackend');
+      if(a) a.value = (localStorage.getItem('rh_ai_backend')||'');
       const l = document.getElementById('setAILang');
       if(l) l.value = aiGetLang();
       const n = document.getElementById('setNotifEmail');
