@@ -13203,19 +13203,10 @@ tbody td{padding:3px 4px;border:1px solid #E8E8E8;white-space:nowrap;max-width:1
 .justif-form{background:#FFF9E6;border:1.5px solid var(--or);border-radius:7px;padding:12px;margin-top:8px;}
 
 /* ========== PARAMÈTRES ========== */
-#appContent.espace-das #tabEmp,
-#appContent.espace-das #tabCon,
-#appContent.espace-das #tabBdg,
-#appContent.espace-das #tabPrz,
-#appContent.espace-das #tabEqu,
-#appContent.espace-das #tabMen,
-#appContent.espace-das #tabAbs{display:none!important;}
 #appContent.espace-entreprise #tabIA{display:none!important;}
-#appContent.espace-das .settings-card[data-espace="entreprise"],
 #appContent.espace-entreprise .settings-card[data-espace="das"]{display:none!important;}
 #dashBlocDas{display:none;}
 #appContent.espace-das #dashBlocDas{display:block;}
-#appContent.espace-das #dashBlocEntreprise{display:none;}
 .dash-das-ent{margin:0 0 14px;padding:10px 12px;border:1px solid #E5E7EB;border-radius:8px;background:#fff;}
 .dash-das-ent h4{margin:0 0 8px;font-size:.82rem;color:var(--bleu);}
 .dash-das-user{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:.78rem;}
@@ -16619,14 +16610,6 @@ async function init() {
     console.error('Erreur chargement IndexedDB:',err);
     toast('⚠️ Erreur chargement données — vérifiez le navigateur','err');
   }
-  if(_rhEstDas()){
-    employes = [];
-    conges = [];
-    presences = {};
-    mensuel = {};
-    equipages = [];
-    remplacements = {};
-  }
   _remplirSelectDosType(); // toujours rempli, même sans type personnalisé enregistré
   // Établit l'empreinte de référence pour sauvegarder() juste après le
   // chargement — évite qu'elle croie que "tout" a changé et ne resynchronise
@@ -16915,7 +16898,7 @@ function _rhEstDas(){
   return !!rhEstAdmin;
 }
 function _pagesAutoriseesSession(){
-  if(_rhEstDas()) return ['pgDash','pgAI','pgSet'];
+  if(_rhEstDas()) return ['pgDash','pgEmp','pgCon','pgBdg','pgPrz','pgEqu','pgMen','pgAbs','pgAI','pgSet'];
   if(PAGES_AUTORISEES_PAR_ROLE[monRole]) return PAGES_AUTORISEES_PAR_ROLE[monRole];
   return ['pgDash','pgEmp','pgCon','pgBdg','pgPrz','pgEqu','pgMen','pgAbs','pgSet'];
 }
@@ -16937,13 +16920,8 @@ function _appliquerEspaceUi(){
     app.classList.toggle('espace-entreprise', !_rhEstDas());
   }
   const tabSet = document.getElementById('tabParametres');
-  if(tabSet) tabSet.textContent = _rhEstDas() ? '⚙️ Paramètres DAS' : '⚙️ Paramètres';
-  if(_rhEstDas()){
-    const h = document.getElementById('headerCompanyName');
-    if(h) h.textContent = '🏢 DAS — Digital Access Solutions';
-    const elFull = document.getElementById('headerCompanyFullName');
-    if(elFull){ elFull.textContent = 'Espace plateforme'; elFull.style.display = 'block'; }
-  }
+  if(tabSet) tabSet.textContent = '⚙️ Paramètres';
+  if(typeof updateHeaderTitle === 'function') updateHeaderTitle();
 }
 // Filtre une liste d'employés selon la zone du superviseur connecté — un
 // admin voit tout le monde, un superviseur ne voit que ceux de sa zone.
@@ -17372,6 +17350,25 @@ async function _dasChargerDemandesEnAttente(){
 }
 function _dasChoisirCible(id){
   _dasEntrepriseSelection = id || null;
+  if(_rhEstDas()) _dasAppliquerContexteEntreprise();
+}
+async function _dasAppliquerContexteEntreprise(){
+  if(!_rhEstDas()) return;
+  const id = _dasCibleValide();
+  monEntrepriseId = id;
+  _appliquerEspaceUi();
+  if(!id) return;
+  try{
+    if(rhCanalEcoute){
+      supabaseRH.removeChannel(rhCanalEcoute);
+      rhCanalEcoute = null;
+    }
+  }catch(_){}
+  await rhChargerDepuisLigne();
+  rhEcouterChangementsEnLigne();
+  if(typeof afficherTableau === 'function') afficherTableau();
+  if(typeof updateNavInfo === 'function') updateNavInfo();
+  if(typeof renderDashboard === 'function') renderDashboard();
 }
 async function _dasApprouverDemande(email){
   const sel = _dasCibleValide();
@@ -17585,12 +17582,13 @@ async function _rhOuvrirApresAuth(session){
         await _dasChargerUtilisateurs();
         const pend = await _dasChargerDemandesEnAttente();
         _dasDemandesCount = (pend.demandes || []).length;
+        await _dasAppliquerContexteEntreprise();
       } else {
         await rhChargerDepuisLigne();
+        rhEcouterChangementsEnLigne();
       }
       const badgeInit = document.getElementById('rhSyncBadge');
       if (badgeInit) badgeInit.textContent = '☁️ Synchronisé';
-      if(!_rhEstDas()) rhEcouterChangementsEnLigne();
       _rhRejoindrePresence(email);
       init();
       setTimeout(checkUrlScan, 250);
@@ -18412,10 +18410,15 @@ function updateCompanyUrgence(val) {
 }
 function updateHeaderTitle() {
   if(_rhEstDas()){
+    const cible = _dasCibleValide();
+    const ent = (_dasEntreprisesHabilitees || []).find(e => String(e.id) === String(cible));
     const h = document.getElementById('headerCompanyName');
-    if(h) h.textContent = '🏢 DAS — Digital Access Solutions';
+    if(h) h.textContent = ent ? ('🏢 DAS — ' + (ent.nom || 'Entreprise')) : '🏢 DAS — Digital Access Solutions';
     const elFull = document.getElementById('headerCompanyFullName');
-    if(elFull){ elFull.textContent = 'Espace plateforme'; elFull.style.display = 'block'; }
+    if(elFull){
+      elFull.textContent = ent ? 'Administration centrale — contexte entreprise' : 'Administration centrale';
+      elFull.style.display = 'block';
+    }
     return;
   }
   document.getElementById('headerCompanyName').textContent = '🏢 ' + (companyName || 'GESTION RH PRO');
@@ -18795,10 +18798,7 @@ function renderDashboardDas(){
   }).join('');
 }
 function renderDashboard(){
-  if(_rhEstDas()){
-    renderDashboardDas();
-    return;
-  }
+  if(_rhEstDas()) renderDashboardDas();
   const today = _dateCIAujourdhui();
   if(!presences[today]) presences[today]={};
 
@@ -19005,7 +19005,7 @@ async function rhSyncAnnuaire(){
 // et les utilise si elles existent (plus fiable que la copie locale seule)
 async function rhChargerDepuisLigne(){
   if (!rhSessionActuelle) return false;
-  if (_rhEstDas()) return false;
+  if (!monEntrepriseId) return false;
   try{
     const { data, error } = await _filtreEntreprise(supabaseRH.from('rh_donnees').select('*'));
     if (!error && data && data.length > 0) {
