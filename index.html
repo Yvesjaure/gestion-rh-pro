@@ -13203,6 +13203,23 @@ tbody td{padding:3px 4px;border:1px solid #E8E8E8;white-space:nowrap;max-width:1
 .justif-form{background:#FFF9E6;border:1.5px solid var(--or);border-radius:7px;padding:12px;margin-top:8px;}
 
 /* ========== PARAMÈTRES ========== */
+#appContent.espace-das #tabEmp,
+#appContent.espace-das #tabCon,
+#appContent.espace-das #tabBdg,
+#appContent.espace-das #tabPrz,
+#appContent.espace-das #tabEqu,
+#appContent.espace-das #tabMen,
+#appContent.espace-das #tabAbs{display:none!important;}
+#appContent.espace-entreprise #tabIA{display:none!important;}
+#appContent.espace-das .settings-card[data-espace="entreprise"],
+#appContent.espace-entreprise .settings-card[data-espace="das"]{display:none!important;}
+#dashBlocDas{display:none;}
+#appContent.espace-das #dashBlocDas{display:block;}
+#appContent.espace-das #dashBlocEntreprise{display:none;}
+.dash-das-ent{margin:0 0 14px;padding:10px 12px;border:1px solid #E5E7EB;border-radius:8px;background:#fff;}
+.dash-das-ent h4{margin:0 0 8px;font-size:.82rem;color:var(--bleu);}
+.dash-das-user{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:.78rem;}
+.dash-das-dot{width:9px;height:9px;border-radius:50%;background:#16A34A;flex-shrink:0;}
 #pgSet{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;width:100%;max-width:100%;box-sizing:border-box;align-items:stretch;padding:4px 8px 16px;}
 #pgSet.page.active{display:grid;}
 .settings-card{background:var(--gris);border-radius:8px;padding:16px;box-shadow:var(--ombre);max-width:none;margin:0;min-width:0;overflow:hidden;box-sizing:border-box;}
@@ -14477,7 +14494,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     <button class="tab-btn" id="tabEqu" onclick="showPage(&#39;pgEqu&#39;)">🚛 Équipage</button>
     <button class="tab-btn" id="tabMen" onclick="showPage(&#39;pgMen&#39;)">📊 Mensuel</button>
     <button class="tab-btn" id="tabAbs" onclick="showPage(&#39;pgAbs&#39;)">🚨 Absences</button>
-    <button class="tab-btn" id="tabIA" onclick="showPage(&#39;pgAI&#39;)" data-testid="tab-ai">🤖 IA Assistant</button>
+    <button class="tab-btn" id="tabIA" onclick="showPage(&#39;pgAI&#39;)" data-testid="tab-ai">🤖 Assistant IA DAS</button>
     <button class="tab-btn" id="tabParametres" onclick="showPage(&#39;pgSet&#39;)">⚙️ Paramètres</button>
   </div>
   <div class="header-right">
@@ -14573,6 +14590,22 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
 
 <!-- ======= PAGE EMPLOYÉS ======= -->
 <div class="page active" id="pgDash">
+  <div id="dashBlocDas">
+    <div class="dash-stats-row">
+      <div class="pres-card pres-total dash-stat-icone"><span>🏢</span><div><div class="pres-n" id="dashDasEntreprisesN">0</div><div class="pres-l">Entreprises habilitées</div></div></div>
+      <div class="pres-card pres-present dash-stat-icone"><span>🟢</span><div><div class="pres-n" id="dashDasOnlineN">0</div><div class="pres-l">Utilisateurs en ligne</div></div></div>
+      <div class="pres-card pres-justif dash-stat-icone"><span>⏳</span><div><div class="pres-n" id="dashDasDemandesN">0</div><div class="pres-l">Demandes de rattachement</div></div></div>
+    </div>
+    <div class="card" style="margin-top:12px;">
+      <div class="sec vert" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span>UTILISATEURS EN LIGNE</span>
+        <span id="dashDasOnlineBadge" style="font-size:1.1rem;">0</span>
+      </div>
+      <input type="search" id="dashDasFiltre" class="ci" placeholder="Rechercher un utilisateur ou filtrer par entreprise" style="width:100%;max-width:420px;margin:10px 0;" oninput="renderDashboardDas()">
+      <div id="dashDasOnlineListe" style="padding:6px 4px;"></div>
+    </div>
+  </div>
+  <div id="dashBlocEntreprise">
   <div class="dash-stats-row">
     <div class="pres-card pres-total dash-stat-icone"><span>👥</span><div><div class="pres-n" id="dashEffectif">0</div><div class="pres-l">Employés actifs</div></div></div>
     <div class="pres-card pres-present dash-stat-icone"><span>✅</span><div><div class="pres-n" id="dashPresentPct">0%</div><div class="pres-l">Présence aujourd'hui</div></div></div>
@@ -14592,6 +14625,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <div class="sec" style="background:#B7950B;">📋 Contrats à échéance (30j)</div>
       <div id="dashContratsListe" style="padding:10px 4px;font-size:.8rem;"></div>
     </div>
+  </div>
   </div>
 </div>
 <div class="page" id="pgEmp">
@@ -15227,8 +15261,8 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     <div class="ai-hero">
       <div class="ai-hero-icon">🤖</div>
       <div>
-        <div class="ai-hero-title">Assistant IA</div>
-        <div class="ai-hero-sub">Pose des questions, génère des documents, détecte des anomalies, scanne des CNI.</div>
+            <div class="ai-hero-title">Assistant IA DAS</div>
+            <div class="ai-hero-sub">Réservé au DAS — questions, documents et localisation pour le périmètre habilité.</div>
       </div>
       <div class="ai-hero-status" id="aiHeroStatus">⏳ Vérification…</div>
     </div>
@@ -15303,7 +15337,12 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
 
 <!-- ======= PAGE PARAMÈTRES ======= -->
 <div class="page" id="pgSet">
-  <div class="settings-card">
+  <div class="settings-card settings-card-wide" data-espace="das">
+    <div class="sec">🏢 Entreprises habilitées — DAS</div>
+    <div style="font-size:.7rem;color:#666;margin:8px 0;">Liste renvoyée par le serveur (das-demandes-rh). Une entreprise non habilitée n'apparaît pas ici.</div>
+    <div id="dasListeEntreprisesHtml"></div>
+  </div>
+  <div class="settings-card" data-espace="das">
     <div class="sec">🔗 Lien à partager — Demander un accès</div>
     <div style="font-size:.7rem;color:#666;margin:8px 0;">Envoie ce lien à quelqu'un (ex: ton patron) pour qu'il arrive directement sur l'écran « Demander un accès » — tu n'auras plus qu'à approuver sa demande et choisir son rôle.</div>
     <div style="display:flex;gap:6px;align-items:center;">
@@ -15311,7 +15350,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <button class="btn b-add" onclick="copierLienDemandeAcces()">📋 Copier</button>
     </div>
   </div>
-  <div class="settings-card">
+  <div class="settings-card" data-espace="das">
     <div class="sec">🔗 Lien dédié Équipage</div>
     <div style="font-size:.7rem;color:#666;margin:8px 0;">Lien dédié pour quelqu'un qui doit uniquement gérer la planification des équipes (page Équipage) — la demande arrive déjà pré-cochée « Équipage uniquement », il ne reste qu'à approuver.</div>
     <div style="display:flex;gap:6px;align-items:center;">
@@ -15319,7 +15358,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <button class="btn b-add" onclick="copierLienDemandeAccesEquipage()">📋 Copier</button>
     </div>
   </div>
-  <div class="settings-card">
+  <div class="settings-card" data-espace="entreprise">
     <div class="sec">🧑‍💼 Comptes superviseurs (accès limité à une zone)</div>
     <div style="font-size:.7rem;color:#666;margin:8px 0;">Un superviseur ne verra que les employés/pointages de la zone choisie. Un email absent de cette liste garde l'accès complet (admin).</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
@@ -15329,7 +15368,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
     <div id="supListe"></div>
   </div>
-  <div class="settings-card">
+  <div class="settings-card" data-espace="entreprise">
     <div class="sec">👁️ Comptes lecture seule — Présence uniquement</div>
     <div style="font-size:.7rem;color:#666;margin:8px 0;">Ce compte ne verra QUE la page Présence, sans possibilité de rien modifier (juste consulter) — utile pour un responsable qui veut suivre sans avoir accès au reste.</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
@@ -15338,7 +15377,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
     <div id="lecListe"></div>
   </div>
-  <div class="settings-card">
+  <div class="settings-card" data-espace="entreprise">
     <div class="sec">🚛 Comptes Équipage — planification uniquement</div>
     <div style="font-size:.7rem;color:#666;margin:8px 0;">Ce compte ne verra QUE la page Équipage, avec accès COMPLET dessus (créer/modifier les équipes, gérer les remplacements du jour) — utile pour déléguer la planification sans donner accès au reste.</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
@@ -15347,7 +15386,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
     <div id="equRoleListe"></div>
   </div>
-  <div class="settings-card">
+  <div class="settings-card" data-espace="entreprise">
     <div class="sec">📅🚛 Comptes Présence + Équipage</div>
     <div style="font-size:.7rem;color:#666;margin:8px 0;">Ce compte voit UNIQUEMENT Présence et Équipage, avec accès complet aux deux — rien d'autre (pas de Tableau de bord, Employés, Congés, Badges, Mensuel, Absences, IA, Paramètres).</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
@@ -15356,7 +15395,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
     <div id="przEquListe"></div>
   </div>
-  <div class="settings-card" style="border:2px solid #0F6E56;">
+  <div class="settings-card" data-espace="entreprise" style="border:2px solid #0F6E56;">
     <div class="sec" style="background:#0F6E56;">📱 Kiosques autorisés (sécurité du pointage)</div>
     <div style="font-size:.7rem;color:#666;margin:8px 0;">Chaque appareil qui sert de scanner de pointage doit être ici, sinon il ne peut pas envoyer de pointage. Après génération, le secret n'est affiché QU'UNE SEULE FOIS — note-le tout de suite pour configurer l'appareil.</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
@@ -15365,7 +15404,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
     <div id="kioskListe"></div>
   </div>
-  <div class="settings-card">
+  <div class="settings-card" data-espace="entreprise">
     <div class="sec">👔 Comptes DRH</div>
     <div style="font-size:.7rem;color:#666;margin:8px 0;">Ce compte voit le Tableau de bord, Présence, Employés, Congés, Équipage et la Corbeille, avec accès complet — rien d'autre (pas de Paramètres, IA, Historique, réservés à l'admin).</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
@@ -15387,7 +15426,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       </div>
     </div>
   </div>
-  <div class="settings-card settings-card-wide">
+  <div class="settings-card settings-card-wide" data-espace="entreprise">
     <div class="sec">🖼️ Logo &amp; Nom de l'entreprise</div>
     <div style="margin-top:8px;display:flex;align-items:center;gap:12px;background:#fff;padding:10px;border-radius:6px;border:1.5px solid #ddd;">
       <div id="settingsLogoPreview" style="width:60px;height:60px;border-radius:6px;background:#eee;display:flex;align-items:center;justify-content:center;font-size:1.8rem;overflow:hidden;border:1.5px solid #ccc;">🏢</div>
@@ -15430,8 +15469,8 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
   </div>
 
-  <div class="settings-card">
-    <div class="sec">🤖 Configuration IA</div>
+  <div class="settings-card" data-espace="das">
+    <div class="sec">🤖 Configuration IA DAS</div>
     <div style="background:linear-gradient(135deg,#F5F3FF,#FCE7F3);padding:10px;border-radius:6px;border:1.5px solid #C4B5FD;">
       <div class="cf"><span class="cl" style="background:#7C3AED;min-width:130px;">Fournisseur IA</span><input type="text" class="ci" value="OpenAI" readonly></div>
       <div class="cf"><span class="cl" style="background:#7C3AED;min-width:130px;">Modèle</span><input type="text" class="ci" value="gpt-4o-mini" readonly></div>
@@ -15448,7 +15487,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
   </div>
 
-  <div class="settings-card">
+  <div class="settings-card" data-espace="entreprise">
     <div class="sec">🔔 Notifications RH</div>
     <div style="background:linear-gradient(135deg,#FEF3C7,#FCE7F3);padding:10px;border-radius:6px;border:1.5px solid #FBBF24;">
       <div class="cf"><span class="cl" style="background:#B45309;min-width:130px;">Email DRH (test)</span><input type="email" id="setNotifEmail" class="ci" placeholder="drh@entreprise.com" oninput="updateNotifEmail(this.value)"></div>
@@ -15460,7 +15499,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
   </div>
 
-  <div class="settings-card settings-card-wide">
+  <div class="settings-card settings-card-wide" data-espace="entreprise">
     <div class="sec">📱 Pointage QR mobile</div>
     <div style="background:linear-gradient(135deg,#ECFEFF,#CFFAFE);padding:10px;border-radius:6px;border:1.5px solid #67E8F9;">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
@@ -15551,7 +15590,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
   </div>
 
-  <div class="settings-card">
+  <div class="settings-card" data-espace="entreprise">
     <div class="sec">📅 Jours non ouvrables (dimanches &amp; jours fériés)</div>
     <div style="background:linear-gradient(135deg,#FEF3C7,#FCE7F3);padding:10px;border-radius:6px;border:1.5px solid #FBBF24;">
       <div style="font-size:.68rem;color:#92400E;margin-bottom:8px;">💡 Les <b>dimanches</b> sont automatiquement considérés comme non ouvrables (pas besoin de les ajouter). Ajoute ici uniquement les <b>jours fériés</b> — personne n'est marqué « Absent » automatiquement ces jours-là, mais chacun reste libre de badger s'il est bien programmé pour travailler (le pointage est alors gardé normalement).</div>
@@ -15564,7 +15603,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
   </div>
 
-  <div class="settings-card">
+  <div class="settings-card" data-espace="entreprise">
     <div class="sec">☁️ Synchronisation temps réel entre appareils</div>
     <div style="background:linear-gradient(135deg,#ECFDF5,#D1FAE5);padding:10px;border-radius:6px;border:1.5px solid #6EE7B7;">
       <div style="font-size:.75rem;color:#065F46;line-height:1.6;">
@@ -15583,7 +15622,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
   </div>
 
-  <div class="settings-card">
+  <div class="settings-card" data-espace="entreprise">
     <div class="sec">🗃️ Données</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
       <button class="btn b-mod" onclick="exportJSON()">⬇️ Exporter (JSON)</button>
@@ -15593,7 +15632,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
   </div>
 
-  <div class="settings-card">
+  <div class="settings-card" data-espace="entreprise">
     <div class="sec">☁️ Stockage cloud (photos, documents, selfies)</div>
     <div style="font-size:.7rem;color:#666;margin:8px 0;">Déplace les photos employés, documents du dossier et selfies de pointage hors du gros paquet de données synchronisé, vers un espace de stockage à part — l'app reste rapide même avec beaucoup d'employés. Se fait automatiquement en tâche de fond pour les nouveaux fichiers ; utilisez le bouton ci-dessous pour migrer d'un coup ce qui existe déjà. Nécessite d'avoir créé le bucket <code>rh-fichiers</code> dans Supabase au préalable (SQL fourni à part).</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
@@ -15614,7 +15653,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
   </div>
 
-  <div class="settings-card settings-card-wide" style="border:2px solid #7F1D1D;">
+  <div class="settings-card settings-card-wide" data-espace="entreprise" style="border:2px solid #7F1D1D;">
     <div class="sec" style="background:#7F1D1D;">🗑️ Réinitialiser les pointages d'une journée</div>
     <div style="font-size:.7rem;color:#666;margin:8px 0;">Efface DÉFINITIVEMENT tous les pointages (Présent/Absent/autre) de la date choisie, en base ET sur cet appareil — la journée redevient comme si aucun pointage n'avait encore eu lieu. Action irréversible.</div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
@@ -16580,6 +16619,14 @@ async function init() {
     console.error('Erreur chargement IndexedDB:',err);
     toast('⚠️ Erreur chargement données — vérifiez le navigateur','err');
   }
+  if(_rhEstDas()){
+    employes = [];
+    conges = [];
+    presences = {};
+    mensuel = {};
+    equipages = [];
+    remplacements = {};
+  }
   _remplirSelectDosType(); // toujours rempli, même sans type personnalisé enregistré
   // Établit l'empreinte de référence pour sauvegarder() juste après le
   // chargement — évite qu'elle croie que "tout" a changé et ne resynchronise
@@ -16679,6 +16726,11 @@ function initMensuelDate() {
 const SUPABASE_URL = "https://dkzfhznfgshtlguvtplw.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRremZoem5mZ3NodGxndXZ0cGx3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3MDI2NzksImV4cCI6MjEwMTI3ODY3OX0.pqS-r--UILsdCyWoQnfk6Qfi0SrxzfSK2XePUNMISkg";
 const supabaseRH = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let rhEstAdmin = false;
+let _dasEntreprisesHabilitees = [];
+let _dasEntrepriseSelection = null;
+let _dasUtilisateurs = [];
+let _dasDemandesCount = 0;
 function _exigerEntreprise(){
   if(!monEntrepriseId) throw new Error('Entreprise non résolue — opération refusée');
   return monEntrepriseId;
@@ -16715,10 +16767,19 @@ function _rhArreterCanauxSession(){
       _rhCanalPresence = null;
     }
   }catch(_){}
+  try{
+    (_rhCanauxPresence || []).forEach(function(ch){
+      try{ supabaseRH.removeChannel(ch); }catch(_){}
+    });
+  }catch(_){}
+  _rhCanauxPresence = [];
 }
 function _rhFermerEtatSession(){
   rhSessionActuelle = null;
   rhEstAdmin = false;
+  _dasEntreprisesHabilitees = [];
+  _dasEntrepriseSelection = null;
+  _dasUtilisateurs = [];
   _rhArreterCanauxSession();
   const app = document.getElementById('appContent');
   if(app) app.style.display = 'none';
@@ -16845,10 +16906,45 @@ function _afficherBanniereNouvelleVersion(){
 let rhSessionActuelle = null;
 let rhCanalEcoute = null;
 let _rhCanalPresence = null;
-let monRole = 'admin'; // 'admin' (accès complet) ou 'superviseur' (limité à sa zone)
+let _rhCanauxPresence = [];
+let monRole = 'admin'; // 'admin' = administrateur entreprise ; DAS = rhEstAdmin (table admins), pas un rôle métier
 let maZone = null; // zone du superviseur connecté, null si admin
 let monEntrepriseId = null; // jamais saisi par l'utilisateur — lu depuis son profil
 let _espaceCompte = null;
+function _rhEstDas(){
+  return !!rhEstAdmin;
+}
+function _pagesAutoriseesSession(){
+  if(_rhEstDas()) return ['pgDash','pgAI','pgSet'];
+  if(PAGES_AUTORISEES_PAR_ROLE[monRole]) return PAGES_AUTORISEES_PAR_ROLE[monRole];
+  return ['pgDash','pgEmp','pgCon','pgBdg','pgPrz','pgEqu','pgMen','pgAbs','pgSet'];
+}
+function _libelleRoleCompte(role, estDas){
+  if(estDas) return 'DAS';
+  const r = String(role || 'admin');
+  if(r === 'admin') return 'Administrateur entreprise';
+  if(r === 'superviseur') return 'Superviseur';
+  if(r === 'drh') return 'Administration';
+  if(r === 'lecteur_presence') return 'Lecture présence';
+  if(r === 'gestion_equipage') return 'Équipage';
+  if(r === 'presence_equipage') return 'Présence + Équipage';
+  return r;
+}
+function _appliquerEspaceUi(){
+  const app = document.getElementById('appContent');
+  if(app){
+    app.classList.toggle('espace-das', _rhEstDas());
+    app.classList.toggle('espace-entreprise', !_rhEstDas());
+  }
+  const tabSet = document.getElementById('tabParametres');
+  if(tabSet) tabSet.textContent = _rhEstDas() ? '⚙️ Paramètres DAS' : '⚙️ Paramètres';
+  if(_rhEstDas()){
+    const h = document.getElementById('headerCompanyName');
+    if(h) h.textContent = '🏢 DAS — Digital Access Solutions';
+    const elFull = document.getElementById('headerCompanyFullName');
+    if(elFull){ elFull.textContent = 'Espace plateforme'; elFull.style.display = 'block'; }
+  }
+}
 // Filtre une liste d'employés selon la zone du superviseur connecté — un
 // admin voit tout le monde, un superviseur ne voit que ceux de sa zone.
 function _filtrerParMaZone(liste){
@@ -16955,7 +17051,7 @@ const PAGES_AUTORISEES_PAR_ROLE = {
   gestion_equipage: ['pgEqu'],
   presence_equipage: ['pgPrz','pgEqu'],
   drh: ['pgDash','pgPrz','pgEmp','pgCon','pgEqu'],
-  superviseur: ['pgDash','pgEmp','pgCon','pgBdg','pgPrz','pgEqu','pgMen','pgAbs','pgAI'],
+  superviseur: ['pgDash','pgEmp','pgCon','pgBdg','pgPrz','pgEqu','pgMen','pgAbs'],
 };
 // Rend la page Présence en lecture seule : retire les boutons d'action
 // (Présent/Absent/Justifier/Supprimer) et les contrôles de la barre latérale
@@ -17167,10 +17263,6 @@ async function renderDRH(){
       </div>`).join('');
   }catch(e){ box.innerHTML = '<p style="font-size:.72rem;color:#e74c3c;">'+ (e && e.message ? e.message : 'Erreur de chargement') +'</p>'; }
 }
-let rhEstAdmin = false;
-let _dasEntreprisesHabilitees = [];
-let _dasEntrepriseSelection = null;
-
 function _dasCibleValide(){
   const id = _dasEntrepriseSelection;
   if(!id || !_dasEntreprisesHabilitees.some(e => String(e.id) === String(id))) return null;
@@ -17214,19 +17306,69 @@ function _dasCorpsReponse(data){
   }
   return data;
 }
+function _rhMessageErreur(err){
+  if(!err) return '';
+  if(typeof err === 'string') return err;
+  return err.message || err.error || err.details || String(err);
+}
+function _dasMessageMetier(error, data, fallback){
+  const corps = _dasCorpsReponse(data);
+  if(corps && corps.error) return String(corps.error);
+  const ctx = error && error.context;
+  if(ctx && typeof ctx === 'object'){
+    try{
+      if(typeof ctx.error === 'string' && ctx.error) return ctx.error;
+      if(ctx.body && ctx.body.error) return String(ctx.body.error);
+    }catch(e){}
+  }
+  const m = error && (error.message || String(error));
+  if(m && !/non-2xx status code/i.test(m)) return m;
+  return fallback || 'Action DAS refusée';
+}
 async function _dasChargerListe(){
   const { data, error } = await supabaseRH.functions.invoke('das-demandes-rh', { body: { action: 'liste' } });
   const corps = _dasCorpsReponse(data);
   if(error || corps.error){
     _dasEntreprisesHabilitees = [];
     _dasEntrepriseSelection = null;
-    return { error: (error && (error.message || String(error))) || corps.error };
+    return { error: _dasMessageMetier(error, data, corps.error) };
   }
   _dasEntreprisesHabilitees = Array.isArray(corps.entreprises) ? corps.entreprises : [];
   if(!_dasEntreprisesHabilitees.some(e => String(e.id) === String(_dasEntrepriseSelection))){
     _dasEntrepriseSelection = _dasEntreprisesHabilitees.length ? _dasEntreprisesHabilitees[0].id : null;
   }
+  const boxEnt = document.getElementById('dasListeEntreprisesHtml');
+  if(boxEnt){
+    if(!_dasEntreprisesHabilitees.length){
+      boxEnt.innerHTML = '<p style="font-size:.75rem;color:#B45309;">Aucune entreprise habilitée pour ce compte DAS.</p>';
+    } else {
+      boxEnt.innerHTML = '<ul style="margin:0;padding-left:18px;font-size:.8rem;">' +
+        _dasEntreprisesHabilitees.map(e => '<li>'+(e.nom || e.id)+'</li>').join('') + '</ul>';
+    }
+  }
   return { error: null };
+}
+async function _dasChargerUtilisateurs(){
+  if(!_rhEstDas()){ _dasUtilisateurs = []; return { error: null }; }
+  const { data, error } = await supabaseRH.functions.invoke('das-demandes-rh', { body: { action: 'utilisateurs' } });
+  const corps = _dasCorpsReponse(data);
+  if(error || corps.error){
+    _dasUtilisateurs = [];
+    return { error: _dasMessageMetier(error, data, corps.error || 'Liste des utilisateurs indisponible') };
+  }
+  if(Array.isArray(corps.entreprises) && corps.entreprises.length){
+    _dasEntreprisesHabilitees = corps.entreprises;
+  }
+  _dasUtilisateurs = Array.isArray(corps.utilisateurs) ? corps.utilisateurs : [];
+  return { error: null };
+}
+async function _dasChargerDemandesEnAttente(){
+  const { data, error } = await supabaseRH.functions.invoke('das-demandes-rh', { body: { action: 'demandes' } });
+  const corps = _dasCorpsReponse(data);
+  if(error || corps.error){
+    return { error: _dasMessageMetier(error, data, corps.error || 'Liste des demandes indisponible'), demandes: [] };
+  }
+  return { error: null, demandes: Array.isArray(corps.demandes) ? corps.demandes : [] };
 }
 function _dasChoisirCible(id){
   _dasEntrepriseSelection = id || null;
@@ -17239,7 +17381,7 @@ async function _dasApprouverDemande(email){
   });
   const corps = _dasCorpsReponse(data);
   if(error || corps.error){
-    throw new Error((error && (error.message || String(error))) || corps.error || 'Approbation DAS refusée');
+    throw new Error(_dasMessageMetier(error, data, corps.error || 'Approbation DAS refusée'));
   }
   if(!corps.success) throw new Error('Approbation DAS incomplète');
 }
@@ -17375,7 +17517,11 @@ async function _rhOuvrirApresAuth(session){
       }
       const { data: admin } = await supabaseRH.from('admins').select('email').eq('email', email).maybeSingle();
       rhEstAdmin = !!admin;
-      if (!admin) {
+      if (admin) {
+        monEntrepriseId = null;
+        monRole = 'admin';
+        maZone = null;
+      } else {
         const { data: emp } = await supabaseRH.from('rh_employes').select('approuve,bloque,entreprise_id').eq('email', email).maybeSingle();
         if (!emp || !emp.approuve) {
           await supabaseRH.auth.signOut();
@@ -17392,47 +17538,59 @@ async function _rhOuvrirApresAuth(session){
       }
 
       rhSessionActuelle = session;
-      monEntrepriseId = null;
-      monRole = 'admin';
-      maZone = null;
-      try{
-        const { data: empEnt } = await supabaseRH.from('rh_employes').select('entreprise_id').eq('email', email).maybeSingle();
-        if(empEnt && empEnt.entreprise_id) monEntrepriseId = empEnt.entreprise_id;
-      }catch(e){}
-      try{
-        if(monEntrepriseId){
-          const { data: monProfil } = await supabaseRH.from('rh_utilisateurs').select('role,zone,entreprise_id').eq('email', email).eq('entreprise_id', monEntrepriseId).maybeSingle();
-          if(monProfil){
-            if(monProfil.role) monRole = monProfil.role;
-            maZone = monProfil.zone || null;
+      if(!_rhEstDas()){
+        monEntrepriseId = null;
+        monRole = 'admin';
+        maZone = null;
+        try{
+          const { data: empEnt } = await supabaseRH.from('rh_employes').select('entreprise_id').eq('email', email).maybeSingle();
+          if(empEnt && empEnt.entreprise_id) monEntrepriseId = empEnt.entreprise_id;
+        }catch(e){}
+        try{
+          if(monEntrepriseId){
+            const { data: monProfil } = await supabaseRH.from('rh_utilisateurs').select('role,zone,entreprise_id').eq('email', email).eq('entreprise_id', monEntrepriseId).maybeSingle();
+            if(monProfil){
+              if(monProfil.role) monRole = monProfil.role;
+              maZone = monProfil.zone || null;
+            }
+          } else {
+            const { data: profils } = await supabaseRH.from('rh_utilisateurs').select('role,zone,entreprise_id').eq('email', email).limit(2);
+            if(profils && profils.length === 1 && profils[0].entreprise_id){
+              monRole = profils[0].role || 'admin';
+              maZone = profils[0].zone || null;
+              monEntrepriseId = profils[0].entreprise_id;
+            }
           }
-        } else {
-          const { data: profils } = await supabaseRH.from('rh_utilisateurs').select('role,zone,entreprise_id').eq('email', email).limit(2);
-          if(profils && profils.length === 1 && profils[0].entreprise_id){
-            monRole = profils[0].role || 'admin';
-            maZone = profils[0].zone || null;
-            monEntrepriseId = profils[0].entreprise_id;
-          }
-        }
-      }catch(e){}
+        }catch(e){}
+      }
       dasMasquerPortail();
-      try{
-        const { data: compteEmp } = await supabaseRH.from('rh_comptes_employes').select('user_id,employe_id,entreprise_id,statut').eq('user_id', session.user.id).maybeSingle();
-        if(compteEmp && compteEmp.statut==='actif'){
-          document.getElementById('lockScreen').style.display='none';
-          await startEspaceEmploye(compteEmp);
-          return true;
-        }
-      }catch(e){ /* table pas encore créée : flux RH inchangé */ }
+      if(!_rhEstDas()){
+        try{
+          const { data: compteEmp } = await supabaseRH.from('rh_comptes_employes').select('user_id,employe_id,entreprise_id,statut').eq('user_id', session.user.id).maybeSingle();
+          if(compteEmp && compteEmp.statut==='actif'){
+            document.getElementById('lockScreen').style.display='none';
+            await startEspaceEmploye(compteEmp);
+            return true;
+          }
+        }catch(e){ /* table pas encore créée : flux RH inchangé */ }
+      }
       document.getElementById('lockScreen').style.display = 'none';
       document.getElementById('appContent').style.display = 'block';
       rhAfficherBoutonAdmin();
       _appliquerRestrictionsSuperviseur();
+      _appliquerEspaceUi();
       loginAttempts = 0;
-      await rhChargerDepuisLigne();
+      if(_rhEstDas()){
+        await _dasChargerListe();
+        await _dasChargerUtilisateurs();
+        const pend = await _dasChargerDemandesEnAttente();
+        _dasDemandesCount = (pend.demandes || []).length;
+      } else {
+        await rhChargerDepuisLigne();
+      }
       const badgeInit = document.getElementById('rhSyncBadge');
       if (badgeInit) badgeInit.textContent = '☁️ Synchronisé';
-      rhEcouterChangementsEnLigne();
+      if(!_rhEstDas()) rhEcouterChangementsEnLigne();
       _rhRejoindrePresence(email);
       init();
       setTimeout(checkUrlScan, 250);
@@ -17473,14 +17631,25 @@ async function rhValider() {
           btn.disabled = false; btn.textContent = texteOriginal;
           if (statut === 'ok') {
             rhBasculerMode(false);
-            document.getElementById('rhModeLabel').textContent = "Compte créé — en attente d'approbation par un administrateur.";
+            document.getElementById('rhModeLabel').textContent = "Demande d'accès enregistrée — en attente d'approbation par un administrateur.";
+            document.getElementById('rhEmail').value = email;
+            document.getElementById('rhPassword').value = '';
+            return;
+          }
+          if (statut === 'en_attente') {
+            rhBasculerMode(false);
+            document.getElementById('rhModeLabel').textContent = "Une demande d'accès existe déjà pour ce compte — en attente d'approbation DAS.";
             document.getElementById('rhEmail').value = email;
             document.getElementById('rhPassword').value = '';
             return;
           }
           if (statut === 'deja_approuve') {
-            rhAfficherErreur("Ce compte existe déjà et est actif — connectez-vous directement avec ce mot de passe.");
+            rhAfficherErreur("Ce compte est déjà approuvé — connectez-vous directement avec ce mot de passe.");
             rhBasculerMode(false);
+            return;
+          }
+          if (statut === 'echec') {
+            rhAfficherErreur("Compte existant, mais la demande d'accès n'a pas pu être enregistrée. Vérifiez l'email/mot de passe, ou contactez l'administrateur DAS.");
             return;
           }
           rhAfficherErreur("Un compte existe déjà pour cet email. Si c'est le vôtre, connectez-vous ; sinon utilisez « Mot de passe oublié » ou contactez l'administrateur.");
@@ -17488,8 +17657,13 @@ async function rhValider() {
         }
         rhAfficherErreur("Impossible de créer le compte : " + error.message); btn.disabled=false; btn.textContent=texteOriginal; return;
       }
-      const { error: errInsert } = await _inscrireDemandeRH(email);
-      if (errInsert) console.error('Erreur enregistrement demande RH :', errInsert);
+      const ins = await _inscrireDemandeRH(email);
+      if (ins.error || !ins.data || !ins.data.length) {
+        await supabaseRH.auth.signOut();
+        btn.disabled = false; btn.textContent = texteOriginal;
+        rhAfficherErreur('La demande d\'accès n\'a pas été enregistrée : ' + (_rhMessageErreur(ins.error) || 'INSERT rh_employes sans ligne retournée') + '. Le compte de connexion peut exister : reconnectez-vous via « Demander un accès » pour réessayer l\'enregistrement.');
+        return;
+      }
       await supabaseRH.auth.signOut();
       btn.disabled = false; btn.textContent = texteOriginal;
       rhBasculerMode(false);
@@ -17536,29 +17710,52 @@ function rhBasculerMode(forcerInscription) {
 // (avant que l'admin ait exécuté le petit ALTER TABLE) : on ne bloque JAMAIS la
 // création de compte pour ça, on retente juste sans ce champ.
 async function _inscrireDemandeRH(email) {
-  if (_demandeRoleVoulu) {
-    const r = await supabaseRH.from('rh_employes').insert({ email, role_demande: _demandeRoleVoulu }).select();
-    if (!r.error) return r;
+  const { data: sessWrap, error: sessErr } = await supabaseRH.auth.getSession();
+  if (sessErr) return { data: null, error: sessErr };
+  const session = sessWrap && sessWrap.session;
+  if (!session || !session.user) {
+    return { data: null, error: { message: 'Session absente : la demande d\'accès n\'a pas été enregistrée. Confirmez l\'email si demandé, puis réessayez avec le même compte.' } };
   }
-  return await supabaseRH.from('rh_employes').insert({ email }).select();
+  const emailJwt = String(session.user.email || '').trim().toLowerCase();
+  const emailForm = String(email || '').trim().toLowerCase();
+  if (emailForm && emailJwt && emailForm !== emailJwt) {
+    return { data: null, error: { message: 'L\'email saisi ne correspond pas au compte connecté.' } };
+  }
+  const emailLigne = emailJwt || emailForm;
+  if (!emailLigne || !emailLigne.includes('@')) {
+    return { data: null, error: { message: 'Email de demande invalide.' } };
+  }
+  const base = { email: emailLigne, approuve: false, entreprise_id: null };
+  const inserer = (payload) => supabaseRH.from('rh_employes').insert(payload).select('email,approuve,entreprise_id');
+  if (_demandeRoleVoulu) {
+    const r = await inserer(Object.assign({}, base, { role_demande: _demandeRoleVoulu }));
+    if (!r.error) return r;
+    if (!/role_demande/i.test(r.error.message || '')) return r;
+  }
+  return await inserer(base);
 }
-// Tente de terminer une inscription restée en suspens : le compte d'authentification
-// existe déjà (Supabase) mais aucune ligne rh_employes correspondante n'a été créée.
-// On se connecte d'abord avec les identifiants fournis — si ça réussit, c'est bien
-// la même personne qui retente (pas quelqu'un devinant un email au hasard) — puis on
-// complète l'inscription si besoin. Retourne 'ok' | 'deja_approuve' | 'echec'.
+// Compte Auth déjà existant : on vérifie rh_employes (pas le seul fait d'être
+// dans admins). Retourne 'ok' | 'en_attente' | 'deja_approuve' | 'echec'.
 async function _recupererInscriptionOrpheline(email, pass) {
   try {
     const { error } = await supabaseRH.auth.signInWithPassword({ email, password: pass });
     if (error) return 'echec';
-    const { data: admin } = await supabaseRH.from('admins').select('email').eq('email', email).maybeSingle();
-    const { data: emp } = await supabaseRH.from('rh_employes').select('approuve').eq('email', email).maybeSingle();
-    if (admin || (emp && emp.approuve)) { await supabaseRH.auth.signOut(); return 'deja_approuve'; }
-    if (!emp) { await _inscrireDemandeRH(email); }
+    const { data: sessWrap } = await supabaseRH.auth.getSession();
+    const emailJwt = String((sessWrap && sessWrap.session && sessWrap.session.user && sessWrap.session.user.email) || email || '').trim().toLowerCase();
+    const { data: emp, error: empErr } = await supabaseRH.from('rh_employes').select('email,approuve,entreprise_id').ilike('email', emailJwt).maybeSingle();
+    if (empErr) { await supabaseRH.auth.signOut(); return 'echec'; }
+    if (emp && emp.approuve) { await supabaseRH.auth.signOut(); return 'deja_approuve'; }
+    if (emp) { await supabaseRH.auth.signOut(); return 'en_attente'; }
+    const ins = await _inscrireDemandeRH(emailJwt);
+    const dup = ins.error && (ins.error.code === '23505' || /duplicate|unique/i.test(ins.error.message || ''));
+    if (dup) { await supabaseRH.auth.signOut(); return 'en_attente'; }
+    if (ins.error || !ins.data || !ins.data.length) {
+      await supabaseRH.auth.signOut();
+      return 'echec';
+    }
     await supabaseRH.auth.signOut();
     return 'ok';
   } catch (e) {
-    console.error('Erreur récupération inscription orpheline :', e);
     try { await supabaseRH.auth.signOut(); } catch(e2){}
     return 'echec';
   }
@@ -17794,46 +17991,114 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 let rhListeEmployesCache = [];
-// Présence en ligne : chaque compte connecté "pointe" sa présence sur un canal
-// partagé — l'admin lit cet état pour savoir qui est actuellement connecté,
-// sans avoir besoin d'un système de suivi séparé côté serveur.
+// Présence en ligne : canal par entreprise (isolation) ; le DAS écoute les
+// canaux des entreprises habilitées, sans canal global unique.
+function _rhEstEnLigne(email){
+  const cible = String(email || '').toLowerCase();
+  if(!cible) return false;
+  const canaux = (_rhCanauxPresence && _rhCanauxPresence.length) ? _rhCanauxPresence : (_rhCanalPresence ? [_rhCanalPresence] : []);
+  if(!canaux.length) return false;
+  try{
+    return canaux.some(function(ch){
+      try{
+        const state = ch.presenceState();
+        return Object.values(state).some(arr => arr.some(p => String(p.email || '').toLowerCase() === cible));
+      }catch(e){ return false; }
+    });
+  }catch(e){ return false; }
+}
+function _rhPresenceDetails(){
+  const out = [];
+  const canaux = (_rhCanauxPresence && _rhCanauxPresence.length) ? _rhCanauxPresence : (_rhCanalPresence ? [_rhCanalPresence] : []);
+  canaux.forEach(function(ch){
+    try{
+      const state = ch.presenceState();
+      Object.values(state).forEach(function(arr){
+        (arr || []).forEach(function(p){ if(p && p.email) out.push(p); });
+      });
+    }catch(e){}
+  });
+  return out;
+}
+async function _rhJoindreCanalPresence(nom, payload){
+  const ch = supabaseRH.channel(nom, { config: { presence: { key: (payload && payload.email) ? payload.email : ('listen-'+nom) } } });
+  ch.on('presence', { event: 'sync' }, () => {
+    const modal = document.getElementById('rhModalEmployes');
+    const pgSet = document.getElementById('pgSet');
+    if ((modal && modal.style.display === 'block') || (pgSet && pgSet.classList.contains('active'))) rhOuvrirPanneauEmployes();
+    if(document.getElementById('pgDash') && document.getElementById('pgDash').classList.contains('active')){
+      if(_rhEstDas()) renderDashboardDas();
+      else renderDashboard();
+    }
+  });
+  _rhCanauxPresence.push(ch);
+  _rhCanalPresence = ch;
+  ch.subscribe(async (statut) => {
+    if(statut === 'SUBSCRIBED' && payload){
+      await ch.track(payload);
+    }
+  });
+}
 function _rhRejoindrePresence(email){
   try{
-    if(_rhCanalPresence) return; // déjà rejoint cette session
-    _rhCanalPresence = supabaseRH.channel('rh-presence-en-ligne', { config: { presence: { key: email } } });
-    _rhCanalPresence.on('presence', { event: 'sync' }, () => {
-      // Rafraîchit le panneau des comptes s'il est ouvert, pour voir qui se
-      // connecte/déconnecte en direct sans avoir à rouvrir le panneau.
-      const modal = document.getElementById('rhModalEmployes');
-      const pgSet = document.getElementById('pgSet');
-      if ((modal && modal.style.display === 'block') || (pgSet && pgSet.classList.contains('active'))) rhOuvrirPanneauEmployes();
-    });
-    _rhCanalPresence.subscribe(async (statut) => {
-      if(statut === 'SUBSCRIBED'){
-        await _rhCanalPresence.track({ email, connecte_le: new Date().toISOString() });
-      }
-    });
+    if(_rhCanauxPresence.length) return;
+    const payload = {
+      email,
+      role: monRole,
+      das: _rhEstDas(),
+      entreprise_id: monEntrepriseId || null,
+      connecte_le: new Date().toISOString(),
+    };
+    if(_rhEstDas()){
+      _rhJoindreCanalPresence('rh-presence-das', payload);
+      (_dasEntreprisesHabilitees || []).forEach(function(e){
+        if(e && e.id) _rhJoindreCanalPresence('rh-presence-ent-'+e.id, null);
+      });
+      return;
+    }
+    if(!monEntrepriseId) return;
+    _rhJoindreCanalPresence('rh-presence-ent-'+monEntrepriseId, payload);
   }catch(e){ console.warn('Présence en ligne indisponible :', e); }
-}
-function _rhEstEnLigne(email){
-  if(!_rhCanalPresence) return false;
-  try{
-    const state = _rhCanalPresence.presenceState();
-    return Object.values(state).some(arr => arr.some(p => p.email === email));
-  }catch(e){ return false; }
 }
 
 async function rhChargerEmployes() {
+  let dasDemandesErreur = null;
+  let dasDemandes = [];
   if(rhEstAdmin){
     const listeDas = await _dasChargerListe();
-    if(listeDas.error) console.warn('Liste DAS :', listeDas.error);
+    if(listeDas.error) dasDemandesErreur = listeDas.error;
+    const pend = await _dasChargerDemandesEnAttente();
+    if(pend.error) dasDemandesErreur = dasDemandesErreur || pend.error;
+    dasDemandes = pend.demandes || [];
+    _dasDemandesCount = dasDemandes.length;
+    const u = await _dasChargerUtilisateurs();
+    if(u.error) dasDemandesErreur = dasDemandesErreur || u.error;
   }
-  let q = supabaseRH.from('rh_employes').select('*').order('demande_le', { ascending: false });
-  if(monEntrepriseId){
-    q = q.or('entreprise_id.eq.'+monEntrepriseId+',entreprise_id.is.null');
+  const parEmail = new Map();
+  if(_rhEstDas()){
+    (_dasUtilisateurs || []).forEach(row => {
+      if(!row || !row.email) return;
+      parEmail.set(String(row.email).toLowerCase()+'|'+String(row.entreprise_id||''), {
+        email: row.email,
+        approuve: true,
+        bloque: !!row.bloque,
+        entreprise_id: row.entreprise_id,
+        role: row.role,
+      });
+    });
+  } else if(monEntrepriseId){
+    const { data } = await supabaseRH.from('rh_employes').select('*').eq('entreprise_id', monEntrepriseId).order('demande_le', { ascending: false });
+    (data || []).forEach(row => {
+      if(row && row.email) parEmail.set(String(row.email).toLowerCase(), row);
+    });
   }
-  const { data } = await q;
-  rhListeEmployesCache = data || [];
+  dasDemandes.forEach(row => {
+    if(!row || !row.email) return;
+    const k = String(row.email).toLowerCase();
+    if(!parEmail.has(k)) parEmail.set(k, row);
+  });
+  rhListeEmployesCache = [...parEmail.values()];
+  rhListeEmployesCache._dasDemandesErreur = dasDemandesErreur || null;
   const enAttente = rhListeEmployesCache.filter(e => !e.approuve).length;
   const badge = document.getElementById('rhBadgeAttente');
   if (badge) { badge.style.display = enAttente > 0 ? 'flex' : 'none'; badge.textContent = enAttente; }
@@ -17842,8 +18107,9 @@ async function rhChargerEmployes() {
 
 function rhAfficherBoutonAdmin() {
   const btn = document.getElementById('btnEmployesRH');
-  if (btn) btn.style.display = rhEstAdmin ? 'inline-flex' : 'none';
-  if (rhEstAdmin) rhChargerEmployes();
+  const voir = _rhEstDas() || (monRole === 'admin' && !_rhEstDas());
+  if (btn) btn.style.display = voir ? 'inline-flex' : 'none';
+  if (voir) rhChargerEmployes();
 }
 
 async function rhOuvrirPanneauEmployes() {
@@ -17865,7 +18131,17 @@ async function rhOuvrirPanneauEmployes() {
       ).join('');
       html += '</select>';
     }
-    html += '<div style="margin-top:8px;">Demande non listée (entreprise_id NULL masquée par RLS) :</div>';
+    html += '<div style="margin-top:8px;">';
+    const nNonRattachees = enAttente.filter(e => !e.entreprise_id).length;
+    if(rhListeEmployesCache._dasDemandesErreur){
+      html += '<div style="color:#FCA5A5;">Liste des demandes : '+rhListeEmployesCache._dasDemandesErreur+'</div>';
+    } else if(nNonRattachees > 0){
+      html += '<div>Demandes en attente de rattachement : '+nNonRattachees+' (listées ci-dessous).</div>';
+    } else {
+      html += '<div>Aucune demande en attente de rattachement.</div>';
+    }
+    html += '<div style="margin-top:6px;opacity:.85;">Rattacher par email si besoin :</div>';
+    html += '</div>';
     html += '<div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;">';
     html += '<input id="dasEmailDemandeManuelle" type="email" placeholder="email de la demande" style="flex:1;min-width:160px;padding:5px;border-radius:5px;font-size:.72rem;">';
     html += '<button type="button" class="lock-btn" style="width:auto;padding:6px 12px;font-size:.72rem;" onclick="rhDasApprouverSaisie()">✅ Rattacher et approuver</button>';
@@ -17934,13 +18210,23 @@ async function rhOuvrirPanneauEmployes() {
 // ni à toucher à son rôle — réversible avec "Débloquer".
 async function rhBloquerCompte(email){
   if(!confirm(`Bloquer l'accès de ${email} ? Il ne pourra plus se connecter tant qu'il n'est pas débloqué.`)) return;
-  const { error } = await supabaseRH.from('rh_employes').update({ bloque: true }).eq('email', email);
+  let q = supabaseRH.from('rh_employes').update({ bloque: true }).eq('email', email);
+  if(!_rhEstDas()){
+    if(!monEntrepriseId){ toast('❌ Entreprise non résolue','err'); return; }
+    q = q.eq('entreprise_id', monEntrepriseId);
+  }
+  const { error } = await q;
   if(error){ toast('❌ Erreur : '+error.message,'err'); return; }
   toast(`⛔ ${email} bloqué`,'warn');
   await rhOuvrirPanneauEmployes();
 }
 async function rhDebloquerCompte(email){
-  const { error } = await supabaseRH.from('rh_employes').update({ bloque: false }).eq('email', email);
+  let q = supabaseRH.from('rh_employes').update({ bloque: false }).eq('email', email);
+  if(!_rhEstDas()){
+    if(!monEntrepriseId){ toast('❌ Entreprise non résolue','err'); return; }
+    q = q.eq('entreprise_id', monEntrepriseId);
+  }
+  const { error } = await q;
   if(error){ toast('❌ Erreur : '+error.message,'err'); return; }
   toast(`✅ ${email} débloqué`,'ok');
   await rhOuvrirPanneauEmployes();
@@ -17954,7 +18240,12 @@ async function rhDebloquerCompte(email){
 async function rhSupprimerCompte(email){
   if(!confirm(`Supprimer DÉFINITIVEMENT le compte de ${email} ?\n\nIl perdra tout accès et devra refaire une demande complète pour revenir — contrairement à "Bloquer", ce n'est pas réversible en un clic.`)) return;
   try{
-    const { error: err1 } = await supabaseRH.from('rh_employes').delete().eq('email', email);
+    let qDel = supabaseRH.from('rh_employes').delete().eq('email', email);
+    if(!_rhEstDas()){
+      if(!monEntrepriseId) throw new Error('Entreprise non résolue');
+      qDel = qDel.eq('entreprise_id', monEntrepriseId);
+    }
+    const { error: err1 } = await qDel;
     if(err1) throw err1;
     // Retire aussi son rôle (superviseur/lecteur/équipage/DRH...) s'il en avait un.
     await _supprimerUtilisateurTenant(email);
@@ -18000,23 +18291,32 @@ async function rhApprouverAvecRole(email, i){
 }
 
 async function rhApprouverEmploye(email, valeur) {
-  if(rhEstAdmin && valeur){
+  if(_rhEstDas() && valeur){
     try{
       await _dasApprouverDemande(email);
     }catch(e){ alert('Erreur : ' + e.message); return; }
     await rhOuvrirPanneauEmployes();
     return;
   }
-  const { error } = await supabaseRH.from('rh_employes').update({
-    approuve: valeur, approuve_le: new Date().toISOString(), approuve_par: (rhSessionActuelle && rhSessionActuelle.user.email) || '',
-  }).eq('email', email);
-  if (error) { alert('Erreur : ' + error.message); return; }
-  await rhOuvrirPanneauEmployes();
+  if(!_rhEstDas()){
+    if(!monEntrepriseId){ alert('Entreprise non résolue'); return; }
+    const { error } = await supabaseRH.from('rh_employes').update({
+      approuve: valeur, approuve_le: new Date().toISOString(), approuve_par: (rhSessionActuelle && rhSessionActuelle.user.email) || '',
+    }).eq('email', email).eq('entreprise_id', monEntrepriseId);
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await rhOuvrirPanneauEmployes();
+    return;
+  }
 }
 
 async function rhAnnulerDemande(email) {
   if (!confirm(`Annuler définitivement la demande de ${email} ?`)) return;
-  const { error } = await supabaseRH.from('rh_employes').delete().eq('email', email);
+  let q = supabaseRH.from('rh_employes').delete().eq('email', email);
+  if(!_rhEstDas()){
+    if(!monEntrepriseId){ alert('Entreprise non résolue'); return; }
+    q = q.eq('entreprise_id', monEntrepriseId);
+  }
+  const { error } = await q;
   if (error) { alert('Erreur : ' + error.message); return; }
   await rhOuvrirPanneauEmployes();
 }
@@ -18111,6 +18411,13 @@ function updateCompanyUrgence(val) {
   companyUrgence = val; kvSetPartage('rh_urgence', val);
 }
 function updateHeaderTitle() {
+  if(_rhEstDas()){
+    const h = document.getElementById('headerCompanyName');
+    if(h) h.textContent = '🏢 DAS — Digital Access Solutions';
+    const elFull = document.getElementById('headerCompanyFullName');
+    if(elFull){ elFull.textContent = 'Espace plateforme'; elFull.style.display = 'block'; }
+    return;
+  }
   document.getElementById('headerCompanyName').textContent = '🏢 ' + (companyName || 'GESTION RH PRO');
   const elFull = document.getElementById('headerCompanyFullName');
   if(elFull){
@@ -18123,22 +18430,19 @@ function updateHeaderTitle() {
 // PAGES
 // ============================================================
 function showPage(id) {
-  // Verrou réel (pas juste esthétique) : un compte restreint (lecteur_presence,
-  // gestion_equipage, presence_equipage...) ne peut pas naviguer vers une page
-  // hors de sa liste autorisée, même en appelant showPage() directement depuis
-  // la console du navigateur — pas seulement en cliquant un onglet masqué.
-  const autorisees = PAGES_AUTORISEES_PAR_ROLE[monRole];
+  const autorisees = _pagesAutoriseesSession();
   if(autorisees && !autorisees.includes(id)){
     console.warn(`Accès refusé à ${id} pour le rôle ${monRole}`);
     toast('⛔ Accès non autorisé pour ce compte','err');
-    id = autorisees[0]; // renvoie vers sa page autorisée plutôt que de rester bloqué
+    id = autorisees[0];
   }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if(id!=='pgEmp' && typeof empFermerPanneau==='function') empFermerPanneau();
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  const map={pgDash:0,pgEmp:1,pgCon:2,pgBdg:3,pgPrz:4,pgEqu:5,pgMen:6,pgAbs:7,pgAI:8,pgSet:9};
-  document.querySelectorAll('.tab-btn')[map[id]].classList.add('active');
+  const tabParPage = {pgDash:'tabDash',pgEmp:'tabEmp',pgCon:'tabCon',pgBdg:'tabBdg',pgPrz:'tabPrz',pgEqu:'tabEqu',pgMen:'tabMen',pgAbs:'tabAbs',pgAI:'tabIA',pgSet:'tabParametres'};
+  const tabEl = document.getElementById(tabParPage[id]);
+  if(tabEl) tabEl.classList.add('active');
   if (id==='pgDash'){renderDashboard();}
   if (id==='pgCon'){remplirSelEmp('cEmp');afficherConges();updateStats();}
   if (id==='pgBdg'){remplirSelEmp('bdgEmp'); _bdgOrgSync(); renderTousLesBadges(); _remplirSelectCouleursBadge();}
@@ -18147,7 +18451,7 @@ function showPage(id) {
   if (id==='pgMen'){renderMensuel();}
   if (id==='pgAbs'){renderAbsences();}
   if (id==='pgAI'){aiInit();}
-  if (id==='pgSet'){updateSettingsInfo();renderSuperviseurs();renderLecteursPresence();renderGestionEquipage();renderPresenceEquipage();renderDRH();_remplirLienDemandeAcces(); if(rhEstAdmin) rhOuvrirPanneauEmployes();}
+  if (id==='pgSet'){updateSettingsInfo();renderSuperviseurs();renderLecteursPresence();renderGestionEquipage();renderPresenceEquipage();renderDRH();_remplirLienDemandeAcces(); if(_rhEstDas() || monRole==='admin') rhOuvrirPanneauEmployes();}
 }
 
 // ==================== CENTRE D'ALERTES ====================
@@ -18439,7 +18743,62 @@ async function rafraichirBadgeAlertes(){
   if(badge){ badge.style.display = actives.length ? 'flex' : 'none'; badge.textContent = actives.length; }
 }
 
+function renderDashboardDas(){
+  const nEnt = (_dasEntreprisesHabilitees || []).length;
+  const elN = document.getElementById('dashDasEntreprisesN');
+  if(elN) elN.textContent = nEnt;
+  const elD = document.getElementById('dashDasDemandesN');
+  if(elD) elD.textContent = _dasDemandesCount || 0;
+  const filtre = ((document.getElementById('dashDasFiltre') || {}).value || '').trim().toLowerCase();
+  const nomParId = {};
+  (_dasEntreprisesHabilitees || []).forEach(e => { nomParId[String(e.id)] = e.nom || e.id; });
+  const enLigneEmails = new Set(_rhPresenceDetails().map(p => String(p.email || '').toLowerCase()).filter(Boolean));
+  const parEnt = {};
+  function _ajouterUserDas(eid, u){
+    const nom = nomParId[eid] || (eid === '__das__' ? 'DAS' : eid || '—');
+    if(filtre && !(String(nom).toLowerCase().includes(filtre) || String(u.email).toLowerCase().includes(filtre) || _libelleRoleCompte(u.role, !!u.das).toLowerCase().includes(filtre))) return;
+    if(!parEnt[eid]) parEnt[eid] = { nom, users: [] };
+    if(parEnt[eid].users.some(x => String(x.email).toLowerCase() === String(u.email).toLowerCase())) return;
+    parEnt[eid].users.push(u);
+  }
+  (_dasUtilisateurs || []).forEach(u => {
+    if(!_rhEstEnLigne(u.email)) return;
+    _ajouterUserDas(String(u.entreprise_id || ''), u);
+  });
+  _rhPresenceDetails().forEach(p => {
+    const email = String(p.email || '').toLowerCase();
+    if(!email) return;
+    if(p.das){
+      _ajouterUserDas('__das__', { email, role: 'das', das: true });
+      return;
+    }
+    const eid = String(p.entreprise_id || '');
+    if(eid && nomParId[eid]) _ajouterUserDas(eid, { email, role: p.role || 'admin', entreprise_id: eid });
+  });
+  const nOnline = Object.values(parEnt).reduce((acc, g) => acc + g.users.length, 0);
+  const elOn = document.getElementById('dashDasOnlineN');
+  if(elOn) elOn.textContent = nOnline;
+  const elB = document.getElementById('dashDasOnlineBadge');
+  if(elB) elB.textContent = nOnline;
+  const liste = document.getElementById('dashDasOnlineListe');
+  if(!liste) return;
+  const groupes = Object.keys(parEnt).sort((a,b) => (parEnt[a].nom || '').localeCompare(parEnt[b].nom || ''));
+  if(!groupes.length){
+    liste.innerHTML = '<div style="opacity:.55;font-size:.78rem;">Aucun utilisateur en ligne pour les entreprises habilitées.</div>';
+    return;
+  }
+  liste.innerHTML = groupes.map(id => {
+    const g = parEnt[id];
+    return `<div class="dash-das-ent"><h4>${g.nom}</h4>${g.users.map(u =>
+      `<div class="dash-das-user"><span class="dash-das-dot"></span><span>${_libelleRoleCompte(u.role, !!u.das)}</span><span style="opacity:.65;margin-left:auto;">En ligne</span></div>`
+    ).join('')}</div>`;
+  }).join('');
+}
 function renderDashboard(){
+  if(_rhEstDas()){
+    renderDashboardDas();
+    return;
+  }
   const today = _dateCIAujourdhui();
   if(!presences[today]) presences[today]={};
 
@@ -18646,6 +19005,7 @@ async function rhSyncAnnuaire(){
 // et les utilise si elles existent (plus fiable que la copie locale seule)
 async function rhChargerDepuisLigne(){
   if (!rhSessionActuelle) return false;
+  if (_rhEstDas()) return false;
   try{
     const { data, error } = await _filtreEntreprise(supabaseRH.from('rh_donnees').select('*'));
     if (!error && data && data.length > 0) {
@@ -23739,6 +24099,11 @@ async function aiCall(path, body, {timeoutMs=120000}={}){
 }
 
 async function aiPingBackend(){
+  if(!_rhEstDas()){
+    const status = document.getElementById('aiBackendStatus');
+    if(status){ status.textContent = '⛔ Réservé au DAS'; status.style.color='#DC2626'; }
+    return false;
+  }
   const status = document.getElementById('aiBackendStatus');
   const hero = document.getElementById('aiHeroStatus');
   if(status) status.textContent = '⏳ Test en cours…';
@@ -23772,7 +24137,11 @@ async function aiPingBackend(){
 }
 
 function aiInit(){
-  // Fill selects
+  if(!_rhEstDas()){
+    toast('⛔ Assistant IA DAS réservé au DAS','err');
+    showPage('pgDash');
+    return;
+  }
   const optHtml = ['<option value="">— Choisir un employé —</option>']
     .concat(employes.map(e=>`<option value="${e.id}">${fmtMatricule(e.id)} — ${(e.nom||'').toUpperCase()} ${e.prenom||''}</option>`))
     .join('');
@@ -23936,6 +24305,7 @@ function aiQuickQ(q){
 }
 
 async function aiAskChat(){
+  if(!_rhEstDas()){ toast('⛔ Assistant IA DAS réservé au DAS','err'); return; }
   const inp = document.getElementById('aiChatInput');
   const msg = (inp.value||'').trim();
   if(!msg) return;
@@ -23961,6 +24331,7 @@ async function aiAskChat(){
 
 // -------------------- 2. DOC GENERATION --------------------
 async function aiGenerateDoc(){
+  if(!_rhEstDas()){ toast('⛔ Assistant IA DAS réservé au DAS','err'); return; }
   const empId = document.getElementById('aiDocEmp').value;
   const docType = document.getElementById('aiDocType').value;
   const extra = (document.getElementById('aiDocExtra').value||'').trim();
