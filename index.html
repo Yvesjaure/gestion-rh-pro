@@ -14838,6 +14838,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       <div id="hdrMenu" style="display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);min-width:190px;overflow:hidden;z-index:50;">
         <button class="hdr-menu-item" onclick="toggleHdrMenu();rhRecharger();" id="rhSyncBadge" title="Cliquer pour recharger les dernières données partagées">☁️ Local uniquement</button>
         <button class="hdr-menu-item" onclick="toggleHdrMenu();toggleTheme();">🌙 Mode sombre/clair</button>
+        <button class="hdr-menu-item" onclick="toggleHdrMenu();_rhToggleSons();">🔔 Sons <span id="rhSonsLabel"></span></button>
         <button class="hdr-menu-item" id="menuCorbeille" onclick="toggleHdrMenu();ouvrirCorbeille();">🗑️ Corbeille</button>
         <button class="hdr-menu-item" id="menuHistorique" onclick="toggleHdrMenu();ouvrirHistorique();">📜 Historique</button>
       </div>
@@ -15846,6 +15847,10 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     <div id="dasRolesAlerte" class="das-alerte-unique" style="display:none;">Aucune entreprise sélectionnée.<br>Sélectionnez une entreprise dans « Entreprises habilitées » pour gérer ses comptes.</div>
   </div>
   <div class="settings-card" data-espace="entreprise">
+    <div class="sec">📋 Mon forfait</div>
+    <div id="monForfaitContenu"><p style="font-size:.8rem;color:#888;">Chargement…</p></div>
+  </div>
+  <div class="settings-card" data-espace="entreprise">
     <div class="sec">🧑‍💼 Comptes superviseurs (accès limité à une zone)</div>
     <div style="font-size:.7rem;color:#666;margin:8px 0;">Un superviseur ne verra que les employés/pointages de la zone choisie. Le compte entreprise (hors de cette liste) conserve l'accès complet à son tenant.</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
@@ -16568,8 +16573,14 @@ async function _supprimerFichiersStorageEmploye(emp){
   catch(e){ console.warn("Suppression des fichiers de stockage échouée (l'employé reste supprimé quand même) :", e); }
 }
 // Ajoute une ligne au journal d'activité, plafonné à 1000 entrées.
-function _historiqueAjouter(type, action, description){
-  historique.unshift({ id: Date.now()+Math.random(), date: new Date().toISOString(), type, action, description });
+function _historiqueAjouter(type, action, description, opts){
+  const entry = { id: Date.now()+Math.random(), date: new Date().toISOString(), type, action, description };
+  try{ entry.email = (rhSessionActuelle && rhSessionActuelle.user && rhSessionActuelle.user.email) ? rhSessionActuelle.user.email : ''; }catch(_){ entry.email = ''; }
+  if(opts && typeof opts === 'object'){
+    if(opts.avant !== undefined) entry.avant = opts.avant;
+    if(opts.apres !== undefined) entry.apres = opts.apres;
+  }
+  historique.unshift(entry);
   if(historique.length>1000) historique = historique.slice(0,1000);
 }
 
@@ -16582,6 +16593,14 @@ function restaurerElement(id){
   if(item.expireLe && new Date(item.expireLe) < new Date()){ toast('⛔ Cet élément a expiré — restauration impossible','err'); return; }
   if(item.type==='employe'){
     if(employes.some(e=>e.id===item.data.id)){ toast('⚠️ Un employé avec cet ID existe déjà — restauration impossible','err'); return; }
+    // Quota check
+    if(_rhMonForfait && typeof _rhMonForfait === 'object'){
+      var _qC = _rhMonForfait.employes_couverts ? Number(_rhMonForfait.employes_couverts) : 0;
+      if(_qC > 0 && item.data.statutEmploi !== 'Sorti'){
+        var _qA = employes.filter(function(x){ return x.statutEmploi !== 'Sorti'; }).length;
+        if(_qA >= _qC){ toast('Abonnement insuffisant : la restauration dépasserait le forfait ('+_qC+' employés couverts).','err'); return; }
+      }
+    }
     employes.push(item.data);
     employes.sort(_cmpEmp);
   } else if(item.type==='presence'){
@@ -16737,6 +16756,62 @@ function viderHistorique(){
 
 let companyLogo = '';
 let companyLogo2 = '';
+let _rhMonForfait = null; // Données rh_das_abo de l'entreprise connectée
+function _rhRendreMonForfait(){
+  const box = document.getElementById('monForfaitContenu');
+  if(!box) return;
+  if(!_rhMonForfait || typeof _rhMonForfait !== 'object'){
+    box.innerHTML = '<p style="font-size:.8rem;color:#888;">Aucun forfait configuré.</p>';
+    return;
+  }
+  const f = _rhMonForfait;
+  const st = f.statut === 'expire' ? '🟠 Expiré' : (f.statut === 'suspendu' ? '⏸️ Suspendu' : '🟢 Actif');
+  const labels = { '1_mois':'1 mois','3_mois':'3 mois','6_mois':'6 mois','1_an':'1 an' };
+  const lib = labels[f.forfait] || f.forfait || 'Non défini';
+  const debut = f.debut || '—';
+  const exp = f.expiration || '—';
+  let jTxt = '—';
+  if(f.expiration){
+    const diff = Math.ceil((new Date(f.expiration+'T00:00:00Z') - new Date(new Date().toISOString().slice(0,10)+'T00:00:00Z'))/(86400000));
+    jTxt = diff < 0 ? '0 (expiré)' : diff + ' jour' + (diff > 1 ? 's' : '');
+  }
+  const nbEmp = Array.isArray(employes) ? employes.filter(function(e){ return e.statutEmploi !== 'Sorti'; }).length : 0;
+  const couverts = f.employes_couverts ? Number(f.employes_couverts) : 0;
+  let barreHTML = '';
+  if(couverts > 0){
+    const pct = Math.min(100, Math.round((nbEmp / couverts) * 100));
+    const couleur = nbEmp > couverts ? '#DC2626' : (pct >= 90 ? '#B45309' : '#0E7490');
+    barreHTML = '<div style="margin-top:10px;">'+
+      '<div style="font-size:.75rem;color:#555;">Employés : <b>' + nbEmp + ' / ' + couverts + '</b> (' + pct + ' %)</div>'+
+      '<div style="background:#e5e7eb;border-radius:6px;height:10px;margin-top:4px;overflow:hidden;">'+
+      '<div style="width:' + Math.min(pct, 100) + '%;height:100%;background:' + couleur + ';border-radius:6px;transition:width .3s;"></div></div></div>';
+  } else {
+    barreHTML = '<div style="margin-top:6px;font-size:.75rem;color:#555;">Employés actifs : <b>' + nbEmp + '</b></div>';
+  }
+  let depassHTML = '';
+  if(couverts > 0 && nbEmp > couverts){
+    depassHTML = '<div style="margin-top:10px;padding:10px;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;">'+
+      '<div style="font-size:.8rem;color:#991B1B;font-weight:700;">⚠ Abonnement insuffisant</div>'+
+      '<div style="font-size:.75rem;color:#991B1B;margin-top:4px;">Votre abonnement couvre <b>'+couverts+'</b> employés. '+
+      'Votre entreprise compte actuellement <b>'+nbEmp+'</b> employés.<br>'+
+      'Veuillez régulariser votre abonnement pour couvrir l\'ensemble du personnel.</div></div>';
+  }
+  let prixHTML = '';
+  if(f.prix_total){
+    prixHTML = '<div>Montant : <b>' + Number(f.prix_total).toLocaleString('fr-FR') + ' FCFA</b>';
+    if(f.remise) prixHTML += ' <span style="color:#0E7490;font-size:.75rem;">(remise ' + f.remise + ' %)</span>';
+    prixHTML += '</div>';
+  }
+  box.innerHTML =
+    '<div style="font-size:.85rem;line-height:1.7;">'+
+    '<div>Forfait : <b>' + lib + '</b></div>'+
+    '<div>Statut : <b>' + st + '</b></div>'+
+    prixHTML +
+    '<div>Début : ' + debut + '</div>'+
+    '<div>Expiration : ' + exp + '</div>'+
+    '<div>Jours restants : <b>' + jTxt + '</b></div>'+
+    '</div>' + barreHTML + depassHTML;
+}
 // Construit le HTML d'un ou deux logos côte à côte (logo principal + logo
 // partenaire optionnel) — réutilisé partout où un badge est généré.
 function _logoBoxHTML(src, wrapClass, imgClass, phHTML, sizeCote){
@@ -17623,6 +17698,7 @@ function _rhFermerEtatSession(){
   rhSessionActuelle = null;
   rhEstAdmin = false;
   _rhDasMotDePasseValide = false;
+  _rhEgressReset();
   _dasEntreprisesHabilitees = [];
   _dasEntrepriseSelection = null;
   _dasUtilisateurs = [];
@@ -18675,10 +18751,13 @@ function _dasHtmlCarteEntreprise(c, archive){
     (c.email ? '<div class="ent-ligne">E-mail : '+_dasEscHtml(c.email)+'</div>' : '')+
     (c.responsable ? '<div class="ent-ligne">Responsable : '+_dasEscHtml(c.responsable)+'</div>' : '')+
     '<div class="ent-ligne">Statut : <b>'+_dasLibelleStatutAbo(c.statut)+'</b></div>'+
-    '<div class="ent-ligne">Employés : <b>'+Number(c.employes||0)+'</b></div>'+
+    '<div class="ent-ligne">Employés actuels : <b>'+Number(c.employes||0)+'</b>'+(c.employes_couverts ? ' / couverts : <b>'+c.employes_couverts+'</b>' : '')+(c.employes_couverts && Number(c.employes||0) > c.employes_couverts ? ' <span style="color:#DC2626;font-weight:700;">⚠ Dépassement +'+( Number(c.employes||0) - c.employes_couverts )+'</span>' : '')+'</div>'+
     '<div class="ent-ligne">Forfait : <b>'+_dasEscHtml(c.forfait_libelle || 'Non défini')+'</b></div>'+
+    (c.prix_total ? '<div class="ent-ligne">Montant payé : <b>'+Number(c.prix_total).toLocaleString('fr-FR')+' FCFA</b>'+(c.remise ? ' (remise '+c.remise+' %)' : '')+'</div>' : '')+
     '<div class="ent-ligne">Début : '+(c.debut || '—')+' · Expiration : '+(c.expiration || '—')+'</div>'+
     '<div class="ent-ligne">Jours restants : <b>'+jTxt+'</b></div>'+
+    '<div class="cf" style="margin:6px 0 0;"><span class="cl" style="min-width:70px;">Employés couverts</span>'+
+    '<input type="number" class="ci das-abo-nb-emp" data-eid="'+id+'" value="'+(c.employes_couverts || c.employes || '')+'" min="1" style="max-width:100px;" placeholder="Nb"></div>'+
     '<div class="cf" style="margin:6px 0 0;"><span class="cl" style="min-width:70px;">Forfait</span>'+
     '<select class="ci das-abo-sel" data-eid="'+id+'" style="max-width:140px;">'+opts+'</select></div>'+
     '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">'+actions+'</div></div>';
@@ -18728,6 +18807,10 @@ async function _dasForfaitAction(action, el){
   const body = { action: action, entreprise_id: entrepriseId };
   if(action === 'forfait_definir' || action === 'forfait_renouveler'){
     body.forfait = sel ? sel.value : '1_mois';
+    const inputNbEmp = carte ? carte.querySelector('.das-abo-nb-emp') : null;
+    const nbEmp = inputNbEmp ? parseInt(inputNbEmp.value, 10) : 0;
+    if(!nbEmp || nbEmp < 1){ toast('Indiquez le nombre d\'employés couverts.','warn'); return; }
+    body.employes_couverts = nbEmp;
   }
   const { data, error } = await supabaseRH.functions.invoke('das-demandes-rh', { body: body });
   const corps = _dasCorpsReponse(data);
@@ -18739,6 +18822,7 @@ async function _dasForfaitAction(action, el){
     return;
   }
   toast(action === 'entreprise_supprimer_definitivement' ? '✅ Entreprise retirée du DAS' : '✅ Mise à jour enregistrée','ok');
+  _historiqueAjouter('forfait', action, (nom||entrepriseId)+' — '+action.replace(/_/g,' '), { avant: sel ? sel.value : '', apres: action });
   const avant = monEntrepriseId;
   if(action === 'entreprise_supprimer_definitivement'){
     try{
@@ -19103,6 +19187,7 @@ async function _dasAppliquerContexteEntreprise(){
     await _rhArreterCanauxPresence();
     if(gen !== _rhRealtimeGeneration) return;
     if(typeof _dasViderDonneesTenant === 'function') _dasViderDonneesTenant();
+    _rhEgressReset();
     const id = _dasCibleValide();
     monEntrepriseId = id;
     _dasResetIdentiteLocale();
@@ -20751,6 +20836,18 @@ function applyTheme(theme){
   const saved = localStorage.getItem('rh_theme');
   if(saved === 'dark') applyTheme('dark');
 })();
+function _rhToggleSons(){
+  const actif = _rhSonsActifs();
+  try{ localStorage.setItem('rh_notification_sounds_enabled', actif ? 'false' : 'true'); }catch(_){}
+  _rhMajLabelSons();
+  toast(actif ? '🔇 Sons désactivés' : '🔔 Sons activés', 'ok');
+  if(!actif) playNotificationSound('action-success');
+}
+function _rhMajLabelSons(){
+  const el = document.getElementById('rhSonsLabel');
+  if(el) el.textContent = _rhSonsActifs() ? '(activés)' : '(désactivés)';
+}
+document.addEventListener('DOMContentLoaded', _rhMajLabelSons);
 
 function _dasDoitSauterAccueil(){
   try{
@@ -21092,6 +21189,8 @@ async function rhDeconnexion(){
   window._rhDonneesCloudChargees = false;
   _rhVerrouille = false;
   _rhDasMotDePasseValide = false;
+  _rhMonForfait = null;
+  _rhEgressReset();
   _rhInvaliderRealtimeDas();
   _rhArreterPollPointages();
   await _rhArreterCanalDonnees();
@@ -22327,6 +22426,16 @@ async function _safeSetIDB(items){
 // toutes les 30 secondes même quand rien n'a bougé. Décisif à grande échelle
 // (des centaines d'employés avec photos/documents = plusieurs dizaines de Mo).
 let _rhDernierEtatJSON = {};
+// ── OPTIMISATION EGRESS SUPABASE ──────────────────────────────────────────
+let _rhEgressDernierTsDonnees = null;
+let _rhEgressDernierTsPointages = null;
+let _rhEgressDonneesDejaChargees = false;
+function _rhEgressReset(){
+  _rhEgressDernierTsDonnees = null;
+  _rhEgressDernierTsPointages = null;
+  _rhEgressDonneesDejaChargees = false;
+}
+// ──────────────────────────────────────────────────────────────────────────
 let _rhSauvegardeBloquee = false;
 let _rhSauvegardeBloqueeMotif = '';
 let _rhAutoriserRhEmpVide = false;
@@ -22508,6 +22617,20 @@ async function sauvegarder(manual=false, opts) {
     if(manual) toast(_rhFormaterErreurSync(sync), 'err');
     return { ok: false, sync: sync };
   }
+  // ── CONTRÔLE QUOTA EMPLOYÉS (frontend) ─────────────────────────────
+  if(empMod && _rhMonForfait && typeof _rhMonForfait === 'object'){
+    var _qCouverts = _rhMonForfait.employes_couverts ? Number(_rhMonForfait.employes_couverts) : 0;
+    if(_qCouverts > 0){
+      var _qActuels = Array.isArray(employes) ? employes.filter(function(e){ return e.statutEmploi !== 'Sorti'; }).length : 0;
+      if(_qActuels > _qCouverts){
+        var _qSync = { ok: false, reason: 'quota', error: 'Votre abonnement couvre '+_qCouverts+' employés. Vous en avez actuellement '+_qActuels+'. Veuillez régulariser votre abonnement.' };
+        if(!silencieux) _rhMajUiSyncEchec(_qSync);
+        toast(_qSync.error, 'err');
+        return { ok: false, sync: _qSync };
+      }
+    }
+  }
+  // ───────────────────────────────────────────────────────────────────
   if(!silencieux){
     document.getElementById('saveDot').className='save-dot saving';
     document.getElementById('saveLabel').textContent='Synchronisation…';
@@ -22686,8 +22809,30 @@ async function rhChargerDepuisLigne(opts){
     return false;
   }
   try{
-    const { data, error } = await _filtreEntreprise(supabaseRH.from('rh_donnees').select('*'));
+    // ── OPTIMISATION EGRESS #1 : rh_donnees ──────────────────────────────
+    let _egressSkipDonnees = false;
+    if(_rhEgressDonneesDejaChargees && _rhEgressDernierTsDonnees && silencieux){
+      try{
+        const { data: meta, error: metaErr } = await _filtreEntreprise(
+          supabaseRH.from('rh_donnees').select('cle,modifie_le')
+        );
+        if(!metaErr && meta && meta.length > 0){
+          let maxTs = '';
+          meta.forEach(function(r){ if(r.modifie_le && r.modifie_le > maxTs) maxTs = r.modifie_le; });
+          if(maxTs && maxTs === _rhEgressDernierTsDonnees){
+            _egressSkipDonnees = true;
+          }
+        }
+      }catch(_egressErr){ /* fallback: full load */ }
+    }
+
+    if(!_egressSkipDonnees){
+    const { data, error } = await _filtreEntreprise(supabaseRH.from('rh_donnees').select('cle,valeur,modifie_le'));
     if (!error && data && data.length > 0) {
+      let _egressMaxTs = '';
+      data.forEach(function(r){ if(r.modifie_le && r.modifie_le > _egressMaxTs) _egressMaxTs = r.modifie_le; });
+      if(_egressMaxTs) _rhEgressDernierTsDonnees = _egressMaxTs;
+
       const parCle = {};
       data.forEach(l => parCle[l.cle] = l.valeur);
       if (parCle.rh_emp !== undefined) {
@@ -22803,7 +22948,15 @@ async function rhChargerDepuisLigne(opts){
         const val = parCle.rh_alertes_lues;
         try{ localStorage.setItem('rh_alertes_lues', typeof val==='string' ? val : JSON.stringify(val)); }catch(_){}
       }
+      // ── Mon forfait (visible côté entreprise) ─────────────────────────
+      if (parCle.rh_das_abo !== undefined){
+        _rhMonForfait = parCle.rh_das_abo;
+        _rhRendreMonForfait();
+      }
+      // ─────────────────────────────────────────────────────────────────
     }
+    _rhEgressDonneesDejaChargees = true;
+    } // fin if(!_egressSkipDonnees)
 
     // Fusionne les pointages faits directement depuis le téléphone des employés
     // (scan QR — jamais passés par l'admin, donc pas dans rh_donnees).
@@ -22812,20 +22965,36 @@ async function rhChargerDepuisLigne(opts){
     // chaque connexion et toutes les 60s), alors que son seul usage est de
     // rattraper des pointages RÉCENTS. Aucune donnée plus ancienne n'est
     // touchée ni supprimée — juste plus lue par CETTE requête précise.
+    // ── OPTIMISATION EGRESS #2 : rh_pointages ──────────────────────────
     const dateLimitePointages = new Date();
     dateLimitePointages.setDate(dateLimitePointages.getDate() - 30);
     const dateLimitePointagesStr = _dateCIAujourdhui(dateLimitePointages);
-    const { data: pointages } = await _filtreEntreprise(supabaseRH.from('rh_pointages').select('*').gte('date_jour', dateLimitePointagesStr));
+    let _ptgQuery = _filtreEntreprise(
+      supabaseRH.from('rh_pointages')
+        .select('emp_id,date_jour,data,modifie_le')
+        .gte('date_jour', dateLimitePointagesStr)
+    );
+    if(_rhEgressDernierTsPointages && silencieux){
+      _ptgQuery = _ptgQuery.gte('modifie_le', _rhEgressDernierTsPointages);
+    }
+    const { data: pointages } = await _ptgQuery;
     if (pointages && pointages.length) {
       pointages.forEach(p => {
         if (!presences[p.date_jour]) presences[p.date_jour] = {};
         const local = presences[p.date_jour][p.emp_id];
-        // On ne garde le pointage venu du téléphone que s'il est plus récent
         if (!local || !local._modifie_le || new Date(p.modifie_le) > new Date(local._modifie_le)) {
           presences[p.date_jour][p.emp_id] = { ...p.data, _modifie_le: p.modifie_le };
         }
       });
     }
+    {
+      let _ptgMaxTs = _rhEgressDernierTsPointages || '';
+      if(pointages && pointages.length){
+        pointages.forEach(function(p){ if(p.modifie_le && p.modifie_le > _ptgMaxTs) _ptgMaxTs = p.modifie_le; });
+      }
+      if(_ptgMaxTs) _rhEgressDernierTsPointages = _ptgMaxTs;
+    }
+    // ─────────────────────────────────────────────────────────────────────
 
     // Reflète aussi dans le stockage local, pour un accès hors-ligne
     await _safeSetIDB([
@@ -23396,6 +23565,18 @@ async function ajouter(){
   if(_photoEnCours){ toast('⏳ Traitement de la photo en cours, un instant…','warn'); await _photoEnCours; }
   const e=lireForm();if(!validerForm(e))return;
   if(employes.find(x=>x.id==e.id && (!_rhEstDas() || String(x._dasEntId||'')===String(_dasCibleValide()||'')))){toast('⚠️ Cet ID existe déjà !','warn');return;}
+  // ── Pré-vérification quota ────────────────────────────────────────
+  if(_rhMonForfait && typeof _rhMonForfait === 'object'){
+    var _qC = _rhMonForfait.employes_couverts ? Number(_rhMonForfait.employes_couverts) : 0;
+    if(_qC > 0){
+      var _qA = employes.filter(function(x){ return x.statutEmploi !== 'Sorti'; }).length;
+      if(_qA >= _qC){
+        toast('Abonnement insuffisant : votre forfait couvre '+_qC+' employés ('+_qA+' actuellement). Régularisez votre abonnement.','err');
+        return;
+      }
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────
   if(_rhEstDas()){
     e._dasEntId = String(_dasCibleValide());
     e._dasEntNom = _dasNomEntreprise(e._dasEntId);
@@ -28203,6 +28384,18 @@ function importJSON(input){
         }catch(err){ console.warn('Sauvegarde automatique avant import échouée :', err); }
       }
       if(!confirm(`⚠️ Importer ${(d.employes||[]).length} employé(s) ? Ça va REMPLACER les ${employes.length} employé(s) actuellement chargé(s) (une sauvegarde de l'état actuel vient d'être téléchargée par précaution, vérifie ton dossier Téléchargements).`))return;
+      // ── Quota check import ────────────────────────────────────────
+      if(_rhMonForfait && typeof _rhMonForfait === 'object'){
+        var _qC = _rhMonForfait.employes_couverts ? Number(_rhMonForfait.employes_couverts) : 0;
+        if(_qC > 0){
+          var _qImp = (d.employes||[]).filter(function(x){ return (x.statutEmploi||'') !== 'Sorti'; }).length;
+          if(_qImp > _qC){
+            toast('Import refusé : le fichier contient '+_qImp+' employés actifs mais votre abonnement couvre '+_qC+' employés. Régularisez votre abonnement.','err');
+            return;
+          }
+        }
+      }
+      // ──────────────────────────────────────────────────────────────
       employes=d.employes||[];conges=d.conges||[];presences=d.presences||{};mensuel=d.mensuel||{};equipages=d.equipages||[];
       employes.sort(_cmpEmp);
       if(d.mdp){motDePasse=d.mdp;kvSet('rh_mdp',d.mdp);}
@@ -28460,54 +28653,46 @@ document.getElementById('przDate').addEventListener('change',chargerPresence);
 // ============================================================
 // ===================== IA ASSISTANT =========================
 // ============================================================
-const AI_DEFAULT_BACKEND = "https://ai-scanner-app-1.preview.emergentagent.com";
 
-function aiGetBackend(){
-  const saved = (localStorage.getItem('rh_ai_backend')||'').trim();
-  return saved || AI_DEFAULT_BACKEND;
+async function aiCall(action, body, {timeoutMs=120000}={}){
+  const sessWrap = await supabaseRH.auth.getSession();
+  const access = sessWrap.data && sessWrap.data.session && sessWrap.data.session.access_token;
+  if(!access) throw new Error('Session RH requise');
+  body.action = action;
+  if(typeof _exigerEntreprise === 'function'){
+    try{ body.entreprise_id = _exigerEntreprise(); }catch(_){}
+  }
+  const ctrl = new AbortController();
+  const tid = setTimeout(()=>ctrl.abort(), timeoutMs);
+  try{
+    const { data, error } = await supabaseRH.functions.invoke('ia-mistral', {
+      body: body,
+      headers: { Authorization: 'Bearer ' + access }
+    });
+    if(error) throw new Error(error.message || String(error));
+    const corps = (typeof data === 'string') ? (()=>{ try{ return JSON.parse(data); }catch(e){ return { error: data }; } })() : (data || {});
+    if(corps.error) throw new Error(corps.error);
+    return corps;
+  } finally { clearTimeout(tid); }
 }
 function aiGetLang(){ return localStorage.getItem('rh_ai_lang') || 'fr'; }
-
-function updateAIBackend(v){ localStorage.setItem('rh_ai_backend', (v||'').trim()); aiPingBackend(); }
 function updateAILang(v){ localStorage.setItem('rh_ai_lang', v||'fr'); }
 
-// ============================================================
-// ===================== NOTIFICATIONS RH (EMAIL) =============
-// ============================================================
-// Envoie un email à la DRH au moment même où un événement est détecté
-// (retard, absence, hors zone GPS) — pas de tâche de fond nécessaire,
-// ça se déclenche depuis l'appareil qui traite le pointage.
+// ── Notifications RH (email) — fonctions utilitaires conservées ─────
 function notifGetEmail(){ return (localStorage.getItem('rh_notif_email')||'').trim(); }
 function updateNotifEmail(v){ localStorage.setItem('rh_notif_email', (v||'').trim()); }
-
 async function envoyerNotificationRH(subject, message){
   const to = notifGetEmail();
-  if(!to) return; // pas d'email configuré → notifications désactivées silencieusement
-  try{
-    const url = aiGetBackend().replace(/\/+$/,'') + '/api/notify/send';
-    const res = await fetch(url, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ to, subject, message }),
-    });
-    const data = await res.json().catch(()=>({}));
-    if(!data.ok) console.warn('Notification RH non envoyée :', data.detail || res.status);
-  }catch(e){ console.warn('Notification RH — erreur réseau :', e.message); }
+  if(!to) return;
+  // TODO : router via une Edge Function dédiée quand le système email sera configuré
+  console.info('Notification RH (non envoyée, email backend non configuré) :', subject);
 }
+// ─────────────────────────────────────────────────────────────────────
 async function testerNotifEmail(){
   const to = notifGetEmail();
   const statusEl = document.getElementById('notifTestStatus');
   if(!to){ if(statusEl){statusEl.textContent='⚠️ Renseigne d\'abord un email';statusEl.style.color='#B45309';} return; }
-  if(statusEl){ statusEl.textContent='⏳ Envoi en cours…'; statusEl.style.color='#B45309'; }
-  try{
-    const url = aiGetBackend().replace(/\/+$/,'') + '/api/notify/send';
-    const res = await fetch(url, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ to, subject:'✅ Test — Notifications RH', message:'Ceci est un email de test depuis Gestion RH Pro. Si tu reçois ce message, les notifications automatiques sont bien configurées.' }),
-    });
-    const data = await res.json().catch(()=>({}));
-    if(data.ok){ if(statusEl){statusEl.textContent='✅ Email envoyé — vérifie la boîte de réception';statusEl.style.color='#16A34A';} }
-    else { if(statusEl){statusEl.textContent='❌ '+(data.detail||'Échec');statusEl.style.color='#DC2626';} }
-  }catch(e){ if(statusEl){statusEl.textContent='❌ '+e.message;statusEl.style.color='#DC2626';} }
+  if(statusEl){ statusEl.textContent='⚠️ Système email non encore configuré — backend requis';statusEl.style.color='#B45309'; }
 }
 
 function aiToast(msg, ms=2400){
@@ -28518,21 +28703,6 @@ function aiToast(msg, ms=2400){
   setTimeout(()=>t.remove(), ms);
 }
 
-async function aiCall(path, body, {timeoutMs=120000}={}){
-  const url = aiGetBackend().replace(/\/+$/,'') + path;
-  const ctrl = new AbortController();
-  const tid = setTimeout(()=>ctrl.abort(), timeoutMs);
-  try{
-    const res = await fetch(url, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(body), signal: ctrl.signal
-    });
-    const txt = await res.text();
-    let data; try{ data = JSON.parse(txt); }catch{ data = {ok:false, raw:txt}; }
-    if(!res.ok) throw new Error(data.detail || ('HTTP '+res.status));
-    return data;
-  } finally { clearTimeout(tid); }
-}
 
 async function aiPingBackend(){
   if(!_rhEstDas()){
@@ -28749,7 +28919,7 @@ async function aiAskChat(){
   aiAppendMsg('user', msg);
   const loading = aiAppendMsg('bot', '🤖 Réflexion en cours…', 'loading');
   try{
-    const data = await aiCall('/api/ai/chat', {
+    const data = await aiCall('chat', {
       message: msg,
       employees: employes,
       presences: presences,
@@ -28779,7 +28949,7 @@ async function aiGenerateDoc(){
   document.getElementById('aiDocPrintBtn').disabled = true;
   document.getElementById('aiDocCopyBtn').disabled = true;
   try{
-    const data = await aiCall('/api/ai/generate-document', {
+    const data = await aiCall('generate-document', {
       doc_type: docType,
       employee: emp,
       company_name: companyName,
@@ -28819,7 +28989,7 @@ async function aiDetectAnomalies(){
   results.innerHTML = '<div style="padding:14px;color:#7C3AED;font-style:italic;">🔍 Analyse en cours…</div>';
   meta.textContent = '';
   try{
-    const data = await aiCall('/api/ai/detect-anomalies', {
+    const data = await aiCall('detect-anomalies', {
       employees: employes,
       presences: presences,
       conges: conges,
@@ -29343,7 +29513,7 @@ async function _aiScanDoc(docType){
   const origTxt = btn ? btn.textContent : '';
   if(btn){ btn.disabled = true; btn.textContent = '🤖 Analyse…'; }
   try{
-    const data = await aiCall('/api/ai/ocr-document', {
+    const data = await aiCall('ocr-document', {
       image_base64: docObj.data,
       doc_type: docType==='extrait'?'extrait':'cni',
     });
@@ -30460,15 +30630,48 @@ function _kioskBipScan(){
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
-    // Bip aigu et court façon caisse de supermarché (onde carrée, pas sinusoïdale)
     osc.type = 'square';
     osc.frequency.setValueAtTime(2800, ctx.currentTime);
     gain.gain.setValueAtTime(0.5, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.09);
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.09);
-  }catch(e){ /* audio non disponible sur cet appareil — on ignore silencieusement */ }
+  }catch(e){}
 }
+// ── SYSTÈME DE SONS DE NOTIFICATION ──────────────────────────────────────
+// Sons générés par Web Audio API (pas de fichier externe à héberger).
+// Désactivable via localStorage('rh_notification_sounds_enabled').
+function _rhSonsActifs(){
+  try{ return localStorage.getItem('rh_notification_sounds_enabled') !== 'false'; }catch(_){ return true; }
+}
+function playNotificationSound(type){
+  if(!_rhSonsActifs()) return;
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    const t = ctx.currentTime;
+    if(type === 'success'){
+      osc.type = 'sine'; osc.frequency.setValueAtTime(880, t); osc.frequency.setValueAtTime(1320, t+0.08);
+      gain.gain.setValueAtTime(0.3, t); gain.gain.exponentialRampToValueAtTime(0.001, t+0.18);
+      osc.start(t); osc.stop(t+0.18);
+    } else if(type === 'error'){
+      osc.type = 'square'; osc.frequency.setValueAtTime(330, t); osc.frequency.setValueAtTime(220, t+0.12);
+      gain.gain.setValueAtTime(0.25, t); gain.gain.exponentialRampToValueAtTime(0.001, t+0.25);
+      osc.start(t); osc.stop(t+0.25);
+    } else if(type === 'notification'){
+      osc.type = 'sine'; osc.frequency.setValueAtTime(1047, t); osc.frequency.setValueAtTime(1319, t+0.06);
+      gain.gain.setValueAtTime(0.15, t); gain.gain.exponentialRampToValueAtTime(0.001, t+0.12);
+      osc.start(t); osc.stop(t+0.12);
+    } else {
+      osc.type = 'sine'; osc.frequency.setValueAtTime(660, t);
+      gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.001, t+0.1);
+      osc.start(t); osc.stop(t+0.1);
+    }
+  }catch(e){}
+}
+// ──────────────────────────────────────────────────────────────────────────
 async function _kioskOnBadgeDetected(id){
   _kioskBipScan();
   _kioskStopStream();
@@ -31237,6 +31440,7 @@ async function kioskValider(){
   // liste des absents tant que la RH ne le justifie pas (bouton Justifier).
   const horsZone = _kiosk.geo && _kiosk.geo.inZone === false;
   if(horsZone){
+    playNotificationSound('error');
     _kioskSetMsg('❌ Hors rayon — pointage refusé, aucune écriture.','err');
     setTimeout(kioskRestart, 3500);
     return;
@@ -31262,10 +31466,12 @@ async function kioskValider(){
     _kioskAjouterPointageEnAttente(dateEcriture, cle, rec, now, action);
     _kioskSetMsg('⚠️ Serveur temporairement injoignable — pointage en file, nouvelle tentative automatique.','warn');
   } else if(!succes && resultatEnvoi.definitif){
+    playNotificationSound('error');
     _kioskSetMsg('❌ Pointage refusé par le serveur (employé inactif, hors zone, kiosque, ou règle non respectée).','err');
     setTimeout(kioskRestart, 4000);
     return;
   } else if(succes){
+    playNotificationSound('success');
     if(!presences[dateEcriture]) presences[dateEcriture]={};
     presences[dateEcriture][cle] = rec;
     try{ await db.set('rh_prz', JSON.stringify(presences)); }catch(e){ console.warn('Sauvegarde locale post-serveur :', e); }
