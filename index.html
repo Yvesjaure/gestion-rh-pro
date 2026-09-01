@@ -13263,6 +13263,7 @@ tbody td{padding:3px 4px;border:1px solid #E8E8E8;white-space:nowrap;max-width:1
 #appContent.espace-entreprise .th-emp-sel,
 #appContent.espace-entreprise .td-emp-sel{display:none!important;}
 #appContent.espace-entreprise .settings-card[data-espace="das"]{display:none!important;}
+#appContent.espace-das .settings-card[data-espace="entreprise"]{display:none!important;}
 #appContent.espace-das #tabParametres{font-size:.72rem;}
 #appContent.das-sans-contexte #dashBlocEntreprise{display:none;}
 .das-alerte-unique{background:#FFF7ED;border:1px solid #FDBA74;color:#9A3412;border-radius:8px;padding:10px 12px;font-size:.78rem;margin:8px 0;}
@@ -14570,25 +14571,36 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
 
     <!-- Étape choix du service (Jour / Nuit) -->
     <div class="kiosk-step" id="kioskStep-choixService">
-      <div style="text-align:center;font-size:1.6rem;margin-bottom:14px;">🕐</div>
-      <div style="text-align:center;font-weight:800;margin-bottom:14px;">Sur quel service pointez-vous ?</div>
-      <div id="kioskAutoServiceBox" style="display:none;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.25);border-radius:10px;padding:8px 12px;margin:0 auto 8px;max-width:340px;text-align:center;">
-        <div style="color:#fff;font-size:.72rem;margin-bottom:4px;">Programmé pour <b id="kioskAutoServiceLbl"></b> — confirmation dans <span id="kioskAutoServiceCompte">60</span>s</div>
-        <div style="background:rgba(255,255,255,.15);height:3px;border-radius:999px;overflow:hidden;margin-bottom:6px;">
-          <div id="kioskAutoServiceBarre" style="background:#FCA5A5;height:100%;width:100%;transition:width 1s linear;"></div>
+      <div id="kioskAutoServiceBox" style="display:none;text-align:center;max-width:380px;margin:0 auto;">
+        <div style="font-size:2rem;margin-bottom:8px;">🕐</div>
+        <div style="font-weight:800;font-size:1.1rem;margin-bottom:10px;">SUR QUEL SERVICE<br>POINTEZ-VOUS ?</div>
+        <div style="background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.25);border-radius:14px;padding:16px 14px;">
+          <div style="color:#FCD34D;font-size:.72rem;font-weight:800;letter-spacing:.04em;margin-bottom:6px;">PROGRAMMÉ DANS VOTRE ÉQUIPAGE</div>
+          <div id="kioskAutoServiceLbl" style="color:#fff;font-weight:900;font-size:1.5rem;margin-bottom:10px;"></div>
+          <div style="color:#fff;font-size:.8rem;opacity:.85;margin-bottom:6px;">Confirmation dans <b id="kioskAutoServiceCompte">60</b> s</div>
+          <div style="background:rgba(255,255,255,.15);height:4px;border-radius:999px;overflow:hidden;margin-bottom:14px;">
+            <div id="kioskAutoServiceBarre" style="background:#FCA5A5;height:100%;width:100%;transition:width 1s linear;"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <button class="kiosk-btn" style="background:#16A34A;color:#fff;font-size:1rem;padding:16px;width:100%;" onclick="kioskConfirmerAutoService()">✅ OUI — CONFIRMER <span id="kioskAutoServiceLblBtn"></span></button>
+            <button class="kiosk-btn kiosk-btn-sec" style="font-size:.9rem;padding:14px;width:100%;" onclick="kioskAnnulerAutoService()">❌ NON — CHOISIR MOI-MÊME</button>
+          </div>
         </div>
-        <button class="kiosk-btn kiosk-btn-sec" style="font-size:.68rem;padding:6px 12px;width:auto;" onclick="kioskAnnulerAutoService()">✕ Annuler, je choisis moi-même</button>
       </div>
-      <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px;margin:0 auto;">
-        <button class="kiosk-btn" style="background:linear-gradient(135deg,#E8A020,#C8860A);color:#1A3A5C;font-size:1.05rem;padding:16px;text-align:center;justify-content:center;" onclick="kioskChoisirService('jour')">
-          ☀️ SERVICE JOUR<br><span id="kioskInfoJour" style="font-size:.7rem;font-weight:500;opacity:.9;"></span>
-        </button>
-        <button class="kiosk-btn" style="background:linear-gradient(135deg,#1A3A5C,#2E6DA4);color:#fff;font-size:1.05rem;padding:16px;text-align:center;justify-content:center;" onclick="kioskChoisirService('nuit')">
-          🌙 SERVICE NUIT<br><span id="kioskInfoNuit" style="font-size:.7rem;font-weight:500;opacity:.9;"></span>
-        </button>
-        <button class="kiosk-btn" style="background:linear-gradient(135deg,#6D28D9,#8B5CF6);color:#fff;font-size:1.05rem;padding:16px;text-align:center;justify-content:center;" onclick="kioskChoisirService('24h')">
-          🕛 SERVICE 24H<br><span id="kioskInfo24h" style="font-size:.7rem;font-weight:500;opacity:.9;"></span>
-        </button>
+      <div id="kioskManualServiceBox">
+        <div style="text-align:center;font-size:1.6rem;margin-bottom:14px;">🕐</div>
+        <div style="text-align:center;font-weight:800;margin-bottom:14px;">Sur quel service pointez-vous ?</div>
+        <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px;margin:0 auto;">
+          <button class="kiosk-btn" style="background:linear-gradient(135deg,#E8A020,#C8860A);color:#1A3A5C;font-size:1.05rem;padding:16px;text-align:center;justify-content:center;" onclick="kioskChoisirService('jour')">
+            ☀️ SERVICE JOUR<br><span id="kioskInfoJour" style="font-size:.7rem;font-weight:500;opacity:.9;"></span>
+          </button>
+          <button class="kiosk-btn" style="background:linear-gradient(135deg,#1A3A5C,#2E6DA4);color:#fff;font-size:1.05rem;padding:16px;text-align:center;justify-content:center;" onclick="kioskChoisirService('nuit')">
+            🌙 SERVICE NUIT<br><span id="kioskInfoNuit" style="font-size:.7rem;font-weight:500;opacity:.9;"></span>
+          </button>
+          <button class="kiosk-btn" style="background:linear-gradient(135deg,#6D28D9,#8B5CF6);color:#fff;font-size:1.05rem;padding:16px;text-align:center;justify-content:center;" onclick="kioskChoisirService('24h')">
+            🕛 SERVICE 24H<br><span id="kioskInfo24h" style="font-size:.7rem;font-weight:500;opacity:.9;"></span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -15529,7 +15541,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
       </div>
       <div style="overflow-x:auto;max-height:calc(100vh - 300px);min-height:420px;overflow-y:auto;border-radius:5px;box-shadow:var(--ombre);margin-top:7px;">
         <table class="presence-table">
-          <thead><tr><th>ID</th><th class="th-das-ent" style="display:none;">Entreprise</th><th>Nom &amp; Prénom</th><th>Fonction</th><th>Contrat</th><th>Statut</th><th>🟢 Arrivée</th><th>🔴 Départ</th><th>Justification</th><th>Actions</th></tr></thead>
+          <thead><tr><th>ID</th><th class="th-das-ent" style="display:none;">Entreprise</th><th>Nom &amp; Prénom</th><th>Fonction</th><th>Contrat</th><th>Statut</th><th>🟢 Arrivée</th><th>🔴 Départ</th><th>Justification</th><th>Service</th><th>Actions</th></tr></thead>
           <tbody id="tPrz"></tbody>
         </table>
       </div>
@@ -15891,16 +15903,39 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
     <div id="kioskListe"></div>
   </div>
+  <div id="mKioskReveal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10030;align-items:center;justify-content:center;padding:16px;">
+    <div style="background:#fff;border-radius:12px;padding:20px;max-width:520px;width:100%;font-family:Nunito,sans-serif;border:1.5px solid #E2E8F0;">
+      <div style="font-weight:800;font-size:1rem;margin-bottom:10px;">✅ Kiosque créé — à configurer maintenant</div>
+      <div style="font-size:.7rem;color:#9A3412;background:#FFF7ED;border:1px solid #FDBA74;border-radius:8px;padding:8px;margin-bottom:12px;">⚠️ Le secret ne sera plus jamais réaffiché après fermeture de cette fenêtre. Configure l'appareil tout de suite.</div>
+      <div style="font-weight:700;font-size:.78rem;color:#374151;margin-bottom:4px;">ID du kiosque</div>
+      <div id="kioskRevealId" style="word-break:break-all;font-size:.75rem;font-family:'Roboto Mono',monospace;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px;margin-bottom:6px;"></div>
+      <div style="margin-bottom:10px;"><button class="btn" type="button" style="background:#0891B2;color:#fff;font-size:.7rem;" onclick="_kioskCopierId()">📋 Copier l'ID</button></div>
+      <div style="font-weight:700;font-size:.78rem;color:#374151;margin-bottom:4px;">Secret du kiosque</div>
+      <div id="kioskRevealSecret" style="word-break:break-all;font-size:.75rem;font-family:'Roboto Mono',monospace;background:#FFF7ED;border:1px solid #FDBA74;border-radius:8px;padding:8px;margin-bottom:6px;"></div>
+      <div style="margin-bottom:10px;"><button class="btn" type="button" style="background:#C2410C;color:#fff;font-size:.7rem;" onclick="_kioskCopierSecret()">📋 Copier le secret</button></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:.72rem;color:#374151;margin-bottom:10px;">
+        <div>🏢 Entreprise : <b id="kioskRevealEntreprise"></b></div>
+        <div>🟢 Statut : <b id="kioskRevealStatut"></b></div>
+        <div>📅 Créé : <b id="kioskRevealDate"></b></div>
+      </div>
+      <div style="font-weight:700;font-size:.78rem;color:#374151;margin-bottom:4px;">Lien du kiosque (à ouvrir sur l'appareil)</div>
+      <div id="kioskRevealLien" style="word-break:break-all;font-size:.72rem;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px;margin-bottom:10px;"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <button class="btn b-add" type="button" onclick="_kioskCopierLien()">📋 Copier le lien</button>
+      </div>
+      <button class="btn" type="button" style="width:100%;background:#E5E7EB;color:#111;" onclick="_kioskFermerReveal()">Fermer</button>
+    </div>
+  </div>
   <div class="settings-card" data-espace="entreprise">
     <div class="sec">👔 Comptes DRH</div>
-    <div style="font-size:.7rem;color:#666;margin:8px 0;">Ce compte voit le Tableau de bord, Présence, Employés, Congés, Équipage et la Corbeille, avec accès complet — rien d'autre (pas de Paramètres, IA, Historique, réservés à l'admin).</div>
+    <div style="font-size:.7rem;color:#666;margin:8px 0;">Ce compte voit le Tableau de bord, Présence, Employés, Congés, Équipage, la Corbeille, Paramètres et Absences, avec accès complet — IA et Historique restent réservés à l'admin.</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
       <input type="email" id="drhEmailInput" class="ci" placeholder="Email" style="max-width:240px;">
       <button class="btn b-add" onclick="ajouterDRH()">➕ Ajouter</button>
     </div>
     <div id="drhListe"></div>
   </div>
-  <div class="settings-card settings-card-wide">
+  <div class="settings-card settings-card-wide" id="cardGestionRolesAutorisations">
     <div class="sec">🔐 Gestion des rôles et autorisations</div>
     <div style="font-size:.7rem;color:#666;margin:8px 0;">Approuvez les demandes pour donner accès à l'application, attribuez le rôle, et gérez les comptes déjà approuvés.</div>
     <button class="hdr-icon-btn" id="btnEmployesRH" style="display:none;" onclick="rhOuvrirPanneauEmployes()" title="Actualiser les demandes d'accès">
@@ -15997,6 +16032,12 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
   <div class="settings-card settings-card-wide" data-espace="entreprise">
     <div class="sec">📱 Pointage QR mobile</div>
     <div style="background:linear-gradient(135deg,#ECFEFF,#CFFAFE);padding:10px;border-radius:6px;border:1.5px solid #67E8F9;">
+      <div style="margin-bottom:8px;">
+        <label for="punchKioskSelect" style="font-size:.7rem;font-weight:700;color:#0E7490;display:block;margin-bottom:3px;">📡 Kiosque à utiliser pour ce QR</label>
+        <select id="punchKioskSelect" class="ci" style="border:1px solid #67E8F9;max-width:280px;" onchange="_punchRenderQr()" data-testid="select-punch-kiosk">
+          <option value="">Aucun kiosque actif</option>
+        </select>
+      </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <div id="punchQrBox" style="width:130px;height:130px;background:#fff;border:1.5px solid #67E8F9;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
         <div style="flex:1;min-width:200px;">
@@ -16053,6 +16094,14 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
               <label style="font-size:.65rem;color:#155E75;">Sortie acceptable de<input type="time" id="horJourSortieDebut" class="ci" style="border:1px solid #67E8F9;margin-top:2px;"></label>
               <label style="font-size:.65rem;color:#155E75;">…jusqu'à<input type="time" id="horJourSortieFin" class="ci" style="border:1px solid #67E8F9;margin-top:2px;"></label>
               <label style="font-size:.65rem;color:#B7590A;font-weight:700;">🚨 Absent auto. si aucun scan avant<input type="time" id="horJourAbsenceApres" class="ci" style="border:1px solid #F5B041;margin-top:2px;"></label>
+              <div style="margin-top:4px;padding-top:6px;border-top:1px dashed #FCA5A5;">
+                <div style="font-size:.65rem;color:#B91C1C;font-weight:800;margin-bottom:3px;">⛔ Pointage interdit de</div>
+                <div style="display:flex;gap:4px;align-items:center;">
+                  <input type="time" id="horJourBlocageDebut" class="ci" style="border:1px solid #FCA5A5;">
+                  <span style="font-size:.65rem;color:#B91C1C;">à</span>
+                  <input type="time" id="horJourBlocageFin" class="ci" style="border:1px solid #FCA5A5;">
+                </div>
+              </div>
             </div>
           </div>
           <div style="background:#fff;border:1px solid #67E8F9;border-radius:6px;padding:8px;">
@@ -16064,6 +16113,15 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
               <label style="font-size:.65rem;color:#155E75;">Sortie acceptable de<input type="time" id="horNuitSortieDebut" class="ci" style="border:1px solid #67E8F9;margin-top:2px;"></label>
               <label style="font-size:.65rem;color:#155E75;">…jusqu'à<input type="time" id="horNuitSortieFin" class="ci" style="border:1px solid #67E8F9;margin-top:2px;"></label>
               <label style="font-size:.65rem;color:#B7590A;font-weight:700;">🚨 Absent auto. si aucun scan avant<input type="time" id="horNuitAbsenceApres" class="ci" style="border:1px solid #F5B041;margin-top:2px;"></label>
+              <div style="margin-top:4px;padding-top:6px;border-top:1px dashed #FCA5A5;">
+                <div style="font-size:.65rem;color:#B91C1C;font-weight:800;margin-bottom:3px;">⛔ Pointage interdit de</div>
+                <div style="display:flex;gap:4px;align-items:center;">
+                  <input type="time" id="horNuitBlocageDebut" class="ci" style="border:1px solid #FCA5A5;">
+                  <span style="font-size:.65rem;color:#B91C1C;">à</span>
+                  <input type="time" id="horNuitBlocageFin" class="ci" style="border:1px solid #FCA5A5;">
+                </div>
+                <div style="font-size:.58rem;color:#B91C1C;opacity:.8;margin-top:2px;">Traverse minuit si besoin (ex: 19:00 → 05:00).</div>
+              </div>
             </div>
           </div>
           <div style="background:#fff;border:1px solid #67E8F9;border-radius:6px;padding:8px;">
@@ -16074,6 +16132,15 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
               <label style="font-size:.65rem;color:#155E75;">Fin de service (le lendemain)<input type="time" id="hor24hFin" class="ci" style="border:1px solid #67E8F9;margin-top:2px;"></label>
               <label style="font-size:.65rem;color:#B7590A;font-weight:700;">🚨 Absent auto. si aucun scan avant<input type="time" id="hor24hAbsenceApres" class="ci" style="border:1px solid #F5B041;margin-top:2px;"></label>
               <div style="font-size:.6rem;color:#0E7490;opacity:.8;">💡 Départ accepté à n'importe quelle heure une fois le lendemain arrivé — pas de plage de sortie à régler.</div>
+              <div style="margin-top:4px;padding-top:6px;border-top:1px dashed #FCA5A5;">
+                <div style="font-size:.65rem;color:#B91C1C;font-weight:800;margin-bottom:3px;">⛔ Pointage interdit de</div>
+                <div style="display:flex;gap:4px;align-items:center;">
+                  <input type="time" id="hor24hBlocageDebut" class="ci" style="border:1px solid #FCA5A5;">
+                  <span style="font-size:.65rem;color:#B91C1C;">à</span>
+                  <input type="time" id="hor24hBlocageFin" class="ci" style="border:1px solid #FCA5A5;">
+                </div>
+                <div style="font-size:.58rem;color:#B91C1C;opacity:.8;margin-top:2px;">Laisser vide = aucun blocage (pas de règle 24h par défaut).</div>
+              </div>
             </div>
           </div>
         </div>
@@ -16107,7 +16174,7 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
     </div>
   </div>
 
-  <div class="settings-card">
+  <div class="settings-card" id="cardMotDePasseEntreprise">
     <div class="sec">🔐 Mot de passe</div>
     <div class="pwd-box">
       <div class="cf"><span class="cl" style="background:var(--violet);min-width:120px;">Ancien MDP</span><input type="password" id="pwdA" class="ci"></div>
@@ -16298,6 +16365,28 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
 <div class="toast" id="toast">📄 Changement de nom (design) (1).png chargé (167 Ko)</div>
 
 <script>
+// Jeton QR temporaire du kiosque (Étape 9) — doit être déclaré tout en haut
+// de ce script : startKiosk() le lit de façon synchrone dès bootstrap(),
+// donc un `let` déclaré plus bas (à sa place logique, près du reste du code
+// kiosque) reste en zone morte temporelle à ce moment-là et fait planter
+// tout bootstrap() avec "Cannot access before initialization" — l'écran de
+// scan s'affiche alors sans aucune validation du kiosque. Voir usages plus
+// bas (_kioskIdActuel / _kioskSecretActuel / startKiosk).
+let _kioskJetonTemp = null;
+// Même raison : état du kiosque, lu par _kioskLoadCfg() dès le premier appel
+// synchrone depuis bootstrap(). Un `let` déclaré plus bas (à sa place
+// logique, près du reste du code kiosque) reste en zone morte temporelle à
+// ce moment-là — "Cannot access '_kiosk' before initialization" à chaque
+// chargement d'un lien kiosque, avant même le premier appel réseau.
+let _kiosk = {
+  stream: null,
+  step: 'scan',       // scan | geo | selfie | done
+  empId: null,
+  emp: null,
+  geo: null,
+  selfieData: null,
+  rafId: null,
+};
 // ============================================================
 // COUCHE INDEXEDDB — stockage haute capacité (~5 Go au lieu de 5 Mo)
 // ============================================================
@@ -17585,6 +17674,10 @@ function _rhArreterPollPointages(){
       clearInterval(window._pointagesPollTimer);
       window._pointagesPollTimer = null;
     }
+    if(typeof window !== 'undefined' && window._syncGeneralPollTimer){
+      clearInterval(window._syncGeneralPollTimer);
+      window._syncGeneralPollTimer = null;
+    }
   }catch(_){}
 }
 function _rhInvaliderRealtimeDas(){
@@ -17988,7 +18081,12 @@ function _rhEstDas(){
   return !!rhEstAdmin;
 }
 function _pagesAutoriseesSession(){
-  if(_rhEstDas()) return ['pgDash','pgEmp','pgCon','pgBdg','pgBdgNum','pgPrz','pgEqu','pgMen','pgAbs','pgHab','pgAI','pgSet'];
+  // pgAbs retiré : page RH sans usage DAS légitime (aucune fonction DAS n'en
+  // dépend — vérifié). pgSet conservé : c'est la route de « Paramètres DAS »
+  // lui-même (mêmes cartes DAS que toujours), son contenu entreprise est
+  // désormais filtré par la règle CSS espace-das ci-dessus, pas par un blocage
+  // de la page entière (qui casserait les propres paramètres DAS).
+  if(_rhEstDas()) return ['pgDash','pgEmp','pgCon','pgBdg','pgBdgNum','pgPrz','pgEqu','pgMen','pgHab','pgAI','pgSet'];
   if(PAGES_AUTORISEES_PAR_ROLE[monRole]) return PAGES_AUTORISEES_PAR_ROLE[monRole];
   return ['pgDash','pgEmp','pgCon','pgBdg','pgPrz','pgEqu','pgMen','pgAbs','pgSet'];
 }
@@ -18065,6 +18163,12 @@ function _appliquerEspaceUi(){
   }
   const tabSet = document.getElementById('tabParametres');
   if(tabSet) tabSet.textContent = _rhEstDas() ? '⚙️ Paramètres DAS' : '⚙️ Paramètres';
+  // Absences (pgAbs) : visibilité du bouton alignée sur le même verrou que
+  // showPage() (_pagesAutoriseesSession()), plutôt qu'un simple masquage figé
+  // — évite qu'un état laissé par un contexte précédent (ex: DAS) ne reste
+  // collé pour un rôle qui a réellement droit à pgAbs (superviseur, DRH...).
+  const tabAbsEl = document.getElementById('tabAbs');
+  if(tabAbsEl) tabAbsEl.style.display = _pagesAutoriseesSession().includes('pgAbs') ? '' : 'none';
   const tabBdg = document.getElementById('tabBdg');
   if(tabBdg) tabBdg.textContent = '🪪 Badges';
   const tabBdgNum = document.getElementById('tabBdgNum');
@@ -18078,6 +18182,14 @@ function _appliquerEspaceUi(){
   if(btnDeco) btnDeco.style.display = _rhEstDas() ? '' : 'none';
   const hintIdent = document.getElementById('dasIdentiteHint');
   if(hintIdent) hintIdent.style.display = _rhEstDas() ? '' : 'none';
+  // Carte « Mot de passe » (compte RH/entreprise, changerMDP()) : DAS a déjà
+  // sa propre carte dédiée « Mon compte DAS » (_dasChangerMotDePasse()) plus
+  // haut sur cette même page — inutile et source de confusion de lui montrer
+  // aussi celle-ci. Non référencée par _appliquerRestrictionsSuperviseur(),
+  // donc un toggle à deux sens ici est sûr (aucun risque de conflit d'ordre
+  // d'exécution avec ce mécanisme, contrairement à tabAbs/tabParametres).
+  const cardMdp = document.getElementById('cardMotDePasseEntreprise');
+  if(cardMdp) cardMdp.style.display = _rhEstDas() ? 'none' : '';
   if(typeof updateHeaderTitle === 'function') updateHeaderTitle();
   if(typeof updateHeaderLogo === 'function') updateHeaderLogo();
   _dasMajSelecteursEtAlertes();
@@ -18166,10 +18278,17 @@ function _appliquerRestrictionsSuperviseur(){
   }
   if(monRole==='drh'){
     // Rôle DRH : accès COMPLET (lecture + écriture) à Tableau de bord,
-    // Présence, Employés, Congés, Équipage et la Corbeille. Paramètres, IA et
-    // Historique restent réservés à l'admin (l'utilisateur tient à garder ça
-    // pour lui, notamment pour gérer les mises à jour de l'app).
-    ['tabBdg','tabMen','tabAbs','tabIA','tabParametres','tabHab','menuHistorique'].forEach(id=>{
+    // Présence, Employés, Congés, Équipage, la Corbeille, Paramètres et
+    // Absences. IA et Historique restent réservés à l'admin (l'utilisateur
+    // tient à garder ça pour lui, notamment pour gérer les mises à jour de
+    // l'app) — voir aussi PAGES_AUTORISEES_PAR_ROLE.drh, le vrai verrou
+    // (celui-ci n'est qu'un confort d'affichage des boutons).
+    // La carte « Gestion des rôles et autorisations » (approbation des
+    // demandes d'accès) reste elle aussi réservée à l'admin/DAS : sa
+    // fonction rhOuvrirPanneauEmployes() n'est de toute façon jamais
+    // déclenchée pour DRH (voir rhAfficherBoutonAdmin, non modifiée), donc
+    // la carte s'affichait vide pour ce rôle — on la masque simplement.
+    ['tabBdg','tabMen','tabIA','tabHab','menuHistorique','cardGestionRolesAutorisations'].forEach(id=>{
       const el=document.getElementById(id);
       if(el) el.style.display='none';
     });
@@ -18186,7 +18305,7 @@ const PAGES_AUTORISEES_PAR_ROLE = {
   lecteur_presence: ['pgPrz'],
   gestion_equipage: ['pgEqu'],
   presence_equipage: ['pgPrz','pgEqu'],
-  drh: ['pgDash','pgPrz','pgEmp','pgCon','pgEqu'],
+  drh: ['pgDash','pgPrz','pgEmp','pgCon','pgEqu','pgSet','pgAbs'],
   superviseur: ['pgDash','pgEmp','pgCon','pgBdg','pgPrz','pgEqu','pgMen','pgAbs'],
 };
 // Rend la page Présence en lecture seule : retire les boutons d'action
@@ -18403,7 +18522,7 @@ async function ajouterDRH(){
     await _ecrireUtilisateurRhParametres({ email, role:'drh', zone:null });
     document.getElementById('drhEmailInput').value='';
     renderDRH();
-    toast(`✅ ${email} ajouté — accès DRH (Présence, Employés, Congés, Équipage)`,'ok');
+    toast(`✅ ${email} ajouté — accès DRH (Présence, Employés, Congés, Équipage, Paramètres, Absences)`,'ok');
   }catch(e){ toast('❌ Erreur : '+e.message,'err'); }
 }
 async function retirerDRH(email){
@@ -18428,7 +18547,7 @@ async function renderDRH(){
     }
     box.innerHTML = data.map(u=>`
       <div style="display:flex;justify-content:space-between;align-items:center;background:#F2F5F8;border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:.78rem;">
-        <div><b>${u.email}</b> <span style="color:#666;">— DRH : Présence, Employés, Congés, Équipage, Corbeille</span></div>
+        <div><b>${u.email}</b> <span style="color:#666;">— DRH : Présence, Employés, Congés, Équipage, Corbeille, Paramètres, Absences</span></div>
         <button class="btn" style="background:#e74c3c;color:#fff;font-size:.68rem;" onclick="retirerDRH('${u.email}')">🗑️ Retirer</button>
       </div>`).join('');
   }catch(e){ box.innerHTML = '<p style="font-size:.72rem;color:#e74c3c;">'+ (e && e.message ? e.message : 'Erreur de chargement') +'</p>'; }
@@ -21100,6 +21219,7 @@ async function rhDeconnexion(){
   _dasEntrepriseSelection = null;
   monEntrepriseId = null;
   try{ sessionStorage.removeItem(RH_DAS_CIBLE_KEY); }catch(_){}
+  _dasPurgerStockageCompteDas();
   if(typeof _dasViderDonneesTenant === 'function') _dasViderDonneesTenant();
   if(typeof _dasResetIdentiteLocale === 'function') _dasResetIdentiteLocale();
   if(typeof _arreterCycleAutoActualiserOptimiser === 'function') _arreterCycleAutoActualiserOptimiser();
@@ -23110,6 +23230,27 @@ async function rhEcouterChangementsEnLigne(){
         }
       }catch(e){ /* on retentera au prochain passage */ }
     }, 30000);
+  }
+  // Synchronisation générale de secours toutes les ~60s (Realtime déjà actif
+  // ci-dessus reste la voie principale, quasi instantanée — ce timer ne fait
+  // que rattraper les cas où un événement Realtime aurait été manqué, ex.
+  // canal temporairement déconnecté). Réutilise _rhRefreshSilencieux, déjà
+  // utilisé par Realtime : session revérifiée, aucune modification locale
+  // non sauvegardée écrasée (_rhOperationCritiqueEnCours), aucune exécution
+  // concurrente (_rhRefreshEnCours) — pas de deuxième moteur de données.
+  if(!window._syncGeneralPollTimer && !(typeof _rhEstDas === 'function' && _rhEstDas())){
+    window._syncGeneralPollTimer = setInterval(async ()=>{
+      if(!rhSessionActuelle) return;
+      try{
+        const r = await _rhRefreshSilencieux({ silencieux: true });
+        if(r && r.ok === true){
+          const pageActive = document.querySelector('.page.active');
+          const idActive = pageActive ? pageActive.id : '';
+          if (idActive==='pgPrz' && typeof chargerPresence === 'function') chargerPresence();
+          if (idActive==='pgDash' && typeof renderDashboard === 'function') renderDashboard();
+        }
+      }catch(e){ /* on retentera au prochain passage */ }
+    }, 60000);
   }
 }
 
@@ -27440,12 +27581,21 @@ function renderPresenceTable(date){
       celluleDepart+=`<br><span style="font-size:.6rem;opacity:.7;">${h}h${String(m).padStart(2,'0')} travaillées</span>`;
     }
 
-    const justifBadge=rec.justif||rec.motif?`<span style="font-size:.62rem;color:var(--or);font-weight:700;" title="${(rec.justif||'').replace(/"/g,'&quot;')}">📝 ${rec.motif||'Justifié'}</span>`:'';
+    // Motif réel choisi lors de la justification (liste de motifs concrets —
+    // Maladie, Urgence familiale, Accident... — voir #justifMotif), jamais un
+    // libellé générique. "—" uniquement quand aucune justification n'existe.
+    const justifBadge=(rec.justif||rec.motif)?`<span style="font-size:.62rem;color:var(--or);font-weight:700;" title="${(rec.justif||'').replace(/"/g,'&quot;')}">📝 ${rec.motif||rec.justif}</span>`:'—';
     const docLink=rec.doc?`<button class="btn-sm" style="background:#0891B2;color:#fff;font-size:.6rem;padding:2px 6px;border:none;border-radius:3px;cursor:pointer;" onclick="voirJustifDoc('${date}','${e.id}')" title="Voir le justificatif">📎</button>`:'';
     const selfieLink=rec.selfie?`<button class="btn-sm" style="background:#7C3AED;color:#fff;font-size:.6rem;padding:2px 6px;border:none;border-radius:3px;cursor:pointer;" onclick="voirSelfiePresence('${date}','${e.id}')" title="Voir le selfie de pointage">📸</button>`:'';
-    const SERVICE_BADGES={jour:{lbl:'☀️ Jour',bg:'#D97706'},nuit:{lbl:'🌙 Nuit',bg:'#1E3A8A'},'24h':{lbl:'🕛 24h',bg:'#6D28D9'}};
-    const svcInfo=rec.service?SERVICE_BADGES[rec.service]:null;
-    const serviceBadge=svcInfo?`<span style="background:${svcInfo.bg};color:#fff;border-radius:3px;padding:2px 6px;font-size:.62rem;font-weight:700;margin-left:2px;" title="Service choisi au scan">${svcInfo.lbl}</span>`:'';
+    const SERVICE_BADGES={jour:{lbl:'☀️ Jour',bg:'#D97706'},nuit:{lbl:'🌙 Nuit',bg:'#1E3A8A'},'24h':{lbl:'🕛 24h',bg:'#6D28D9'},repos:{lbl:'😴 Repos',bg:'#6B7280'}};
+    // Service effectif du jour (habituel, ou équipage/remplacement s'il y en
+    // a un programmé) — même règle déjà utilisée pour valider les pointages
+    // côté serveur (_serviceEffectifEmploye), affichée ici sans rien recalculer.
+    // Colonne indépendante de la Justification (Jour/Nuit/24h n'apparaissent
+    // plus que dans cette colonne).
+    const svcEffectif=_serviceEffectifEmploye(e.id, date);
+    const svcEffectifInfo=SERVICE_BADGES[svcEffectif]||null;
+    const celluleService=svcEffectifInfo?`<span style="background:${svcEffectifInfo.bg};color:#fff;border-radius:3px;padding:3px 8px;font-size:.68rem;font-weight:700;white-space:nowrap;" title="Service prévu ce jour-là">${svcEffectifInfo.lbl}</span>`:'—';
     const tr=document.createElement('tr');
     tr.innerHTML=`
       <td style="font-family:'Roboto Mono',monospace;font-weight:700;">${fmtMatricule(e.id)}</td>
@@ -27456,7 +27606,8 @@ function renderPresenceTable(date){
       <td class="${stClass}">${stTxt}</td>
       <td style="text-align:center;white-space:nowrap;">${celluleArrivee}</td>
       <td style="text-align:center;white-space:nowrap;">${celluleDepart}</td>
-      <td>${justifBadge} ${docLink} ${selfieLink} ${serviceBadge}</td>
+      <td>${justifBadge} ${docLink} ${selfieLink}</td>
+      <td style="text-align:center;">${celluleService}</td>
       <td style="min-width:170px;">
         <div style="display:flex;flex-wrap:wrap;gap:2px;">
         <button class="pres-btn-p" onclick="setPresence('${date}','${e.id}','Présent')">✅ P</button>
@@ -29281,11 +29432,22 @@ async function _espCalCharger(){
       const ligne=(data||[]).find(r=>r.date_jour===iso);
       let s='off';let h1='';let h2='';let note='';
       if(ligne&&ligne.data){
+        // Mêmes valeurs de statut que celles réellement écrites par la
+        // fonction serveur pointage et affichées côté admin
+        // (renderPresenceTable) : 'Présent'/'Absent'/'Justifié'/'À
+        // justifier'/'En congé' — jamais les valeurs anglaises minuscules
+        // ('absent'/'conge'/'retard') d'un ancien format jamais produit par
+        // l'application, qui faisaient que ce calendrier n'affichait jamais
+        // rien de correct malgré des pointages réels enregistrés.
         const pd=typeof ligne.data==='string'?JSON.parse(ligne.data):ligne.data;
-        if(pd.statut==='absent'||pd.absent){s='a';note=pd.motif||'Non justifié';}
-        else if(pd.statut==='conge'||pd.conge){s='c';note=pd.type_conge||'Congé';}
-        else if(pd.retard||pd.statut==='retard'){s='r';h1=pd.arrivee||pd.heure_arrivee||'';h2=pd.depart||pd.heure_depart||'';note=pd.retard_min?'Retard '+pd.retard_min+' min':'Retard';}
-        else{s='p';h1=pd.arrivee||pd.heure_arrivee||'';h2=pd.depart||pd.heure_depart||'';}
+        const fmtH=(iso)=>iso?new Date(iso).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Abidjan'}):'';
+        h1=fmtH(pd.punch_in); h2=fmtH(pd.punch_out);
+        if(pd.statut==='En congé'){s='c';note='Congé';}
+        else if(pd.statut==='Absent' && pd.retardTexte){s='r';note=pd.retardTexte;}
+        else if(pd.statut==='Absent'||pd.statut==='À justifier'){s='a';note='Non justifié';}
+        else if(pd.statut==='Justifié'){s='a';note=pd.motif||pd.justif||'Justifié';}
+        else if(pd.statut==='Présent'){s='p';}
+        else{s='off';h1='';h2='';}
       }else if(estFutur||estDim){s='off';}
       else if(!estFutur&&!ligne){s='off';}
       items.push({d,dow,s,h1,h2,note,iso});
@@ -29465,20 +29627,31 @@ function _sitesRender(){
     </div>`).join('');
 }
 // ===== Kiosques autorisés — sécurité du pointage (Étape 8) =====
+// Kiosques créés avant l'ajout de `creeLe` (voir kiosk-config) n'ont pas ce
+// champ — on l'affiche simplement comme non disponible, sans le fabriquer.
+function _kioskFormaterDate(iso){
+  if(!iso) return '—';
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('fr-FR');
+}
 function _kioskListe(){
   const box = document.getElementById('kioskListe');
   if(!box) return;
   if(!kiosquesAutorises.length){
     box.innerHTML = '<div style="font-size:.68rem;color:#0F6E56;opacity:.75;font-style:italic;">Aucun kiosque enregistré pour l\'instant — génère le premier ci-dessus.</div>';
+    if(typeof _punchMajSelectKiosque === 'function') _punchMajSelectKiosque();
     return;
   }
   box.innerHTML = kiosquesAutorises.map(k=>`
     <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #6EE7B7;border-radius:6px;padding:6px 10px;margin-bottom:4px;flex-wrap:wrap;">
       <span style="flex:1;font-size:.72rem;font-weight:700;color:${k.actif?'#0F6E56':'#999'};">${k.actif?'📱':'⛔'} ${k.nom||'(sans nom)'}</span>
       <span style="font-size:.6rem;color:#666;font-family:monospace;">${String(k.id||'').slice(0,8)}…</span>
+      <span style="font-size:.6rem;color:#888;">📅 ${_kioskFormaterDate(k.creeLe)}</span>
       <button class="btn" type="button" style="background:${k.actif?'rgba(220,38,38,.1)':'rgba(15,110,86,.1)'};color:${k.actif?'#DC2626':'#0F6E56'};border:1px solid ${k.actif?'#FCA5A5':'#6EE7B7'};font-size:.62rem;padding:4px 8px;" onclick="_kioskBasculerActif('${String(k.id).replace(/'/g,"\\'")}')">${k.actif?'⛔ Désactiver':'✅ Réactiver'}</button>
       <button class="btn" type="button" style="background:#DC2626;color:#fff;border:1px solid #B91C1C;font-size:.62rem;padding:4px 8px;" onclick="_kioskSupprimerDefinitivement('${String(k.id).replace(/'/g,"\\'")}')">🗑️ Supprimer définitivement</button>
     </div>`).join('');
+  if(typeof _punchMajSelectKiosque === 'function') _punchMajSelectKiosque();
 }
 async function genererNouveauKiosque(){
   if(typeof _rhEstDas === 'function' && _rhEstDas()){
@@ -29500,7 +29673,8 @@ async function genererNouveauKiosque(){
       return;
     }
     // Ne pas écraser rh_kiosques côté client (sinon secretVault serveur est perdu).
-    // Recharger la liste telle qu'écrite par kiosk-config (hash + vault).
+    // Recharger la liste telle qu'écrite par kiosk-config (hash + vault + creeLe).
+    let creeLe = null;
     try{
       const eid = (typeof _exigerEntreprise === 'function') ? _exigerEntreprise() : (monEntrepriseId || '');
       if(eid){
@@ -29513,6 +29687,8 @@ async function genererNouveauKiosque(){
         if(typeof kq === 'string'){ try{ kq = JSON.parse(kq); }catch(e){ kq = []; } }
         if(Array.isArray(kq) && kq.length){
           kiosquesAutorises = kq;
+          const kNouveau = kq.find(x=>String(x.id)===String(data.id));
+          if(kNouveau) creeLe = kNouveau.creeLe || null;
         } else {
           kiosquesAutorises.push({ id: data.id, nom, secretHash: await _sha256Hex(data.secret), actif:true });
         }
@@ -29524,10 +29700,52 @@ async function genererNouveauKiosque(){
     }
     _kioskListe();
     document.getElementById('kioskNomInput').value='';
-    alert(`✅ Kiosque "${nom}" créé.\n\nÀ CONFIGURER SUR L'APPAREIL MAINTENANT (ne sera plus jamais affiché) :\n\nID : ${data.id}\nSecret : ${data.secret}\n\nOuvre l'app sur cet appareil avec ce lien :\n${location.origin}${location.pathname}?mode=pointage&kioskId=${encodeURIComponent(data.id)}&kioskSecret=${encodeURIComponent(data.secret)}`);
+    _kioskAfficherReveal({ id: data.id, secret: data.secret, nom, creeLe });
   }catch(e){
     toast('❌ kiosk-config injoignable — création locale désactivée','err');
   }
+}
+// Révélation unique du secret après génération — jamais rechargé/réaffiché
+// depuis la liste ensuite (seul secretHash/secretVault sont stockés en base,
+// voir kiosk-config). Fermer cette fenêtre = secret perdu côté écran, comme
+// annoncé, exactement comme _dasBadgesCopierLien/_dasBadgesCopierSecret pour
+// le badge numérique.
+let _kioskRevealCourant = null;
+function _kioskLienPourKiosque(id, secret){
+  return `${location.origin}${location.pathname}?mode=pointage&kioskId=${encodeURIComponent(id)}&kioskSecret=${encodeURIComponent(secret)}`;
+}
+function _kioskAfficherReveal(info){
+  const lien = _kioskLienPourKiosque(info.id, info.secret);
+  _kioskRevealCourant = { id: info.id, secret: info.secret, lien };
+  const setTxt = (elId, txt) => { const el = document.getElementById(elId); if(el) el.textContent = txt; };
+  setTxt('kioskRevealId', info.id);
+  setTxt('kioskRevealSecret', info.secret);
+  setTxt('kioskRevealEntreprise', companyName || '—');
+  setTxt('kioskRevealStatut', 'Actif');
+  setTxt('kioskRevealDate', _kioskFormaterDate(info.creeLe || new Date().toISOString()));
+  setTxt('kioskRevealLien', lien);
+  const modal = document.getElementById('mKioskReveal');
+  if(modal) modal.style.display = 'flex';
+}
+function _kioskFermerReveal(){
+  const modal = document.getElementById('mKioskReveal');
+  if(modal) modal.style.display = 'none';
+  _kioskRevealCourant = null;
+}
+async function _kioskCopierId(){
+  if(!_kioskRevealCourant){ toast('Aucun kiosque à copier','warn'); return; }
+  try{ await navigator.clipboard.writeText(_kioskRevealCourant.id); toast('📋 ID copié','ok'); }
+  catch(e){ toast('Copie impossible','err'); }
+}
+async function _kioskCopierSecret(){
+  if(!_kioskRevealCourant){ toast('Aucun secret à copier','warn'); return; }
+  try{ await navigator.clipboard.writeText(_kioskRevealCourant.secret); toast('📋 Secret copié','ok'); }
+  catch(e){ toast('Copie impossible','err'); }
+}
+async function _kioskCopierLien(){
+  if(!_kioskRevealCourant){ toast('Aucun lien à copier','warn'); return; }
+  try{ await navigator.clipboard.writeText(_kioskRevealCourant.lien); toast('📋 Lien copié','ok'); }
+  catch(e){ toast('Copie impossible','err'); }
 }
 function _kioskBasculerActif(id){
   if(typeof _rhEstDas === 'function' && _rhEstDas()){
@@ -29612,6 +29830,13 @@ async function _punchLoadSettings(){
   f('horNuitArrivee', hor.nuit.arrivee); f('horNuitTolerance', hor.nuit.tolerance); f('horNuitFin', hor.nuit.finService);
   f('horNuitSortieDebut', hor.nuit.sortieDebut); f('horNuitSortieFin', hor.nuit.sortieFin); f('horNuitAbsenceApres', hor.nuit.absenceApres);
   f('hor24hArrivee', hor['24h'].arrivee); f('hor24hTolerance', hor['24h'].tolerance); f('hor24hFin', hor['24h'].finService); f('hor24hAbsenceApres', hor['24h'].absenceApres);
+  // Plages de blocage du pointage — jamais de valeur par défaut inventée ici
+  // (contrairement aux champs ci-dessus, absents de DEFAULT_HORAIRES) : un
+  // champ resté vide veut dire "aucun blocage pour ce service", pas "00:00".
+  const blocJour=(cfg.horaires||{}).jour||{}, blocNuit=(cfg.horaires||{}).nuit||{}, bloc24h=(cfg.horaires||{})['24h']||{};
+  f('horJourBlocageDebut', blocJour.blocageDebut||''); f('horJourBlocageFin', blocJour.blocageFin||'');
+  f('horNuitBlocageDebut', blocNuit.blocageDebut||''); f('horNuitBlocageFin', blocNuit.blocageFin||'');
+  f('hor24hBlocageDebut', bloc24h.blocageDebut||''); f('hor24hBlocageFin', bloc24h.blocageFin||'');
   _siteFormReset();
   await _sitesCharger();
 }
@@ -29628,6 +29853,10 @@ async function punchSaveSettings(){
       sortieDebut: document.getElementById('horJourSortieDebut').value || DEFAULT_HORAIRES.jour.sortieDebut,
       sortieFin: document.getElementById('horJourSortieFin').value || DEFAULT_HORAIRES.jour.sortieFin,
       absenceApres: document.getElementById('horJourAbsenceApres').value || DEFAULT_HORAIRES.jour.absenceApres,
+      // Champ vide = aucun blocage pour ce service, jamais de valeur par
+      // défaut inventée (contrairement aux champs ci-dessus).
+      blocageDebut: document.getElementById('horJourBlocageDebut').value || null,
+      blocageFin: document.getElementById('horJourBlocageFin').value || null,
     },
     nuit: {
       arrivee: document.getElementById('horNuitArrivee').value || DEFAULT_HORAIRES.nuit.arrivee,
@@ -29636,12 +29865,17 @@ async function punchSaveSettings(){
       sortieDebut: document.getElementById('horNuitSortieDebut').value || DEFAULT_HORAIRES.nuit.sortieDebut,
       sortieFin: document.getElementById('horNuitSortieFin').value || DEFAULT_HORAIRES.nuit.sortieFin,
       absenceApres: document.getElementById('horNuitAbsenceApres').value || DEFAULT_HORAIRES.nuit.absenceApres,
+      blocageDebut: document.getElementById('horNuitBlocageDebut').value || null,
+      blocageFin: document.getElementById('horNuitBlocageFin').value || null,
     },
     '24h': {
       arrivee: document.getElementById('hor24hArrivee').value || DEFAULT_HORAIRES['24h'].arrivee,
       tolerance: parseInt(document.getElementById('hor24hTolerance').value,10) || 0,
       finService: document.getElementById('hor24hFin').value || DEFAULT_HORAIRES['24h'].finService,
       absenceApres: document.getElementById('hor24hAbsenceApres').value || DEFAULT_HORAIRES['24h'].absenceApres,
+      // Pas de défaut d'usine pour 24h — aucune règle actuelle ne l'impose.
+      blocageDebut: document.getElementById('hor24hBlocageDebut').value || null,
+      blocageFin: document.getElementById('hor24hBlocageFin').value || null,
     },
   };
   const cfg = {
@@ -29838,29 +30072,117 @@ function _punchMapSyncFromInputs(){
   }
   _punchMapCircle.setRadius(radius);
 }
-// URL du pointage mobile : ce même fichier, avec ?mode=pointage
-function _punchScannerUrl(){
+// URL du pointage mobile : ce même fichier, avec ?mode=pointage&kioskId=...
+// Le secret PERMANENT du kiosque n'est JAMAIS inclus ici (ni dans le QR, ni
+// dans le lien copié). À la place, un jeton temporaire (60 s) est émis à la
+// volée par la Edge Function kiosk-qr (action=emit, avec la session admin
+// déjà connectée sur cette page) et embarqué en &kioskQr=... . Ce jeton est
+// vérifié côté serveur (kiosk-qr action=verify) au premier chargement sur le
+// téléphone — jamais stocké en localStorage, jamais persisté au-delà de la
+// session en cours (voir startKiosk). Le mécanisme du secret permanent
+// (Paramètres → Kiosques autorisés, provisioning d'un appareil dédié) reste
+// entièrement inchangé.
+async function _punchScannerUrl(){
   const u = new URL(window.location.href);
   u.search = '?mode=pointage';
   u.hash = '';
-  return u.toString();
+  const sel = document.getElementById('punchKioskSelect');
+  const kioskId = sel ? String(sel.value||'').trim() : '';
+  if(!kioskId) return { url: u.toString() };
+  if(!rhSessionActuelle) return { error: 'Connectez-vous pour générer ce lien' };
+  try{
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/kiosk-qr`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization': `Bearer ${rhSessionActuelle.access_token}` },
+      body: JSON.stringify({ action:'emit', kioskId }),
+    });
+    const data = await r.json().catch(()=>({}));
+    if(!r.ok || !data.token) return { error: (data && data.error) || ('kiosk-qr '+r.status) };
+    u.searchParams.set('kioskId', kioskId);
+    u.searchParams.set('kioskQr', data.token);
+    return { url: u.toString(), ttl: data.ttl_sec || 60 };
+  }catch(e){
+    return { error: 'kiosk-qr injoignable' };
+  }
 }
-function punchCopyLink(){
-  const url = _punchScannerUrl();
+async function punchCopyLink(){
+  punchToast('⏳ Génération du lien…', 1500);
+  const res = await _punchScannerUrl();
+  if(res.error || !res.url){ punchToast('❌ '+res.error, 4000); return; }
+  const url = res.url;
   navigator.clipboard.writeText(url).then(()=>punchToast('📋 Lien copié : '+url))
     .catch(()=>punchToast('📋 Lien : '+url, 4000));
 }
-function _punchRenderQr(){
+// Remplit le sélecteur de kiosques actifs — sélection auto s'il n'y en a
+// qu'un, conserve le choix courant s'il reste valide, sinon vide (force un
+// choix explicite). Toujours suivi d'un rafraîchissement du QR.
+function _punchMajSelectKiosque(){
+  const sel = document.getElementById('punchKioskSelect');
+  if(!sel) return;
+  const actifs = (kiosquesAutorises||[]).filter(k=>k && k.actif);
+  const valeurActuelle = sel.value;
+  if(!actifs.length){
+    sel.innerHTML = '<option value="">Aucun kiosque actif</option>';
+    sel.disabled = true;
+    sel.value = '';
+  } else {
+    sel.disabled = false;
+    sel.innerHTML = '<option value="">Sélectionnez un kiosque</option>' +
+      actifs.map(k=>`<option value="${String(k.id)}">${k.nom||k.id}</option>`).join('');
+    if(actifs.length === 1){
+      sel.value = String(actifs[0].id);
+    } else if(actifs.some(k=>String(k.id)===valeurActuelle)){
+      sel.value = valeurActuelle;
+    } else {
+      sel.value = '';
+    }
+  }
+  _punchRenderQr();
+}
+// Le QR est régénéré automatiquement un peu avant l'expiration du jeton
+// (60 s côté serveur) tant que ce panneau reste visible — offsetParent
+// devient null dès que l'onglet Paramètres/espace change, ce qui arrête la
+// boucle sans avoir besoin d'un hook de cycle de vie dédié.
+let _punchQrRefreshTimer = null;
+async function _punchRenderQr(){
+  if(_punchQrRefreshTimer){ clearTimeout(_punchQrRefreshTimer); _punchQrRefreshTimer = null; }
   const box = document.getElementById('punchQrBox');
+  const a = document.getElementById('punchScannerLink');
   if(!box) return;
-  box.innerHTML='';
+  const actifs = (kiosquesAutorises||[]).filter(k=>k && k.actif);
+  const sel = document.getElementById('punchKioskSelect');
+  const kioskId = sel ? String(sel.value||'').trim() : '';
+  if(!actifs.length){
+    box.innerHTML = '<span style="font-size:.62rem;color:#B45309;text-align:center;padding:6px;">Aucun kiosque actif</span>';
+    if(a){ a.removeAttribute('href'); a.style.opacity='.5'; a.style.pointerEvents='none'; }
+    return;
+  }
+  if(!kioskId){
+    box.innerHTML = '<span style="font-size:.62rem;color:#0E7490;text-align:center;padding:6px;">Sélectionnez un kiosque</span>';
+    if(a){ a.removeAttribute('href'); a.style.opacity='.5'; a.style.pointerEvents='none'; }
+    return;
+  }
+  box.innerHTML = '<span style="font-size:.6rem;color:#0E7490;">⏳…</span>';
+  const res = await _punchScannerUrl();
+  const selApres = document.getElementById('punchKioskSelect');
+  if(!selApres || String(selApres.value||'').trim() !== kioskId) return; // sélection changée pendant l'attente
+  if(res.error || !res.url){
+    box.innerHTML = `<span style="font-size:.58rem;color:#DC2626;text-align:center;padding:6px;">QR indispo : ${String(res.error||'erreur').slice(0,50)}</span>`;
+    if(a){ a.removeAttribute('href'); a.style.opacity='.5'; a.style.pointerEvents='none'; }
+    return;
+  }
+  box.innerHTML = '';
   try{
-    generateQR(box, _punchScannerUrl(), 128);
+    generateQR(box, res.url, 128);
   }catch(e){
     box.textContent = 'QR indispo';
   }
-  const a = document.getElementById('punchScannerLink');
-  if(a) a.href = _punchScannerUrl();
+  if(a){ a.href = res.url; a.style.opacity=''; a.style.pointerEvents=''; }
+  const delayMs = Math.max(5000, ((res.ttl||60) - 10) * 1000);
+  _punchQrRefreshTimer = setTimeout(()=>{
+    const boxEncore = document.getElementById('punchQrBox');
+    if(boxEncore && boxEncore.offsetParent !== null) _punchRenderQr();
+  }, delayMs);
 }
 
 // ---------- Distance GPS (formule haversine, en mètres) ----------
@@ -29967,7 +30289,8 @@ function pointageImporterFichier(input){
   window.updateSettingsInfo = async function(){
     try{ await old.apply(this, arguments); }catch{}
     _punchLoadSettings();
-    _punchRenderQr();
+    if(typeof _punchMajSelectKiosque === 'function') _punchMajSelectKiosque();
+    else _punchRenderQr();
   };
 })();
 
@@ -29976,15 +30299,20 @@ function pointageImporterFichier(input){
 // ============================================================
 // Activée par ?mode=pointage et/ou kioskId+kioskSecret (jamais ?inscription=).
 // Fonctionne dans CE même fichier HTML : pas d'autre page ni serveur à héberger.
-let _kiosk = {
-  stream: null,
-  step: 'scan',       // scan | geo | selfie | done
-  empId: null,
-  emp: null,
-  geo: null,
-  selfieData: null,
-  rafId: null,
-};
+// (déclaration de _kiosk tout en haut du script — voir commentaire là-bas,
+// sinon zone morte temporelle au moment où bootstrap() le lit.)
+
+// Session éphémère "Pointage QR mobile" (Étape 9) — jeton temporaire 60 s
+// vérifié par kiosk-qr, jamais persisté en localStorage. null tant qu'aucun
+// jeton temporaire n'a été validé sur cet appareil pour cette page.
+// (déclaration de _kioskJetonTemp tout en haut du script — voir commentaire
+// là-bas, sinon zone morte temporelle au moment où bootstrap() le lit.)
+function _kioskIdActuel(){
+  return (_kioskJetonTemp && _kioskJetonTemp.kioskId) || localStorage.getItem('rh_kiosk_id') || '';
+}
+function _kioskSecretActuel(){
+  return (_kioskJetonTemp && _kioskJetonTemp.token) || localStorage.getItem('rh_kiosk_secret') || '';
+}
 
 async function startKiosk(){
   // Verrou anti-réentrance — empêche toute exécution simultanée/répétée de
@@ -30005,22 +30333,66 @@ async function startKiosk(){
   // via un lien fourni par l'admin (?kioskId=...&kioskSecret=...), puis
   // conservés en localStorage. Sans ça, aucun pointage ne peut être envoyé —
   // affiche un écran de configuration au lieu du scanner, sans planter.
+  //
+  // Étape 9 — lien/QR "Pointage QR mobile" : un nouvel appareil qui l'ouvre
+  // n'a ni secret ni provisioning préalable. Il porte à la place un jeton
+  // temporaire (?kioskQr=..., 60 s) — jamais le secret permanent. Vérifié
+  // ici même côté serveur (kiosk-qr action=verify), puis gardé UNIQUEMENT en
+  // mémoire (_kioskJetonTemp, jamais en localStorage) pour la session en
+  // cours. Si le jeton expire pendant l'usage, les appels serveur suivants
+  // (kiosk-contexte / pointage) le rejettent avec un message clair — il faut
+  // alors rescanner un QR frais, ce n'est pas une régression.
   try{
     const params = new URLSearchParams(location.search);
     const idUrl = params.get('kioskId'), secretUrl = params.get('kioskSecret');
+    const qrUrl = params.get('kioskQr');
     if(idUrl && secretUrl){
       localStorage.setItem('rh_kiosk_id', idUrl);
       localStorage.setItem('rh_kiosk_secret', secretUrl);
       // Retire ces valeurs sensibles de l'URL affichée/historique, une fois enregistrées.
       // Conserve mode=pointage pour que le prochain chargement reste sur le kiosque
       // (et ne retombe pas sur le portail RH).
-      params.delete('kioskId'); params.delete('kioskSecret');
+      params.delete('kioskId'); params.delete('kioskSecret'); params.delete('kioskQr');
+      if(params.get('mode') !== 'pointage') params.set('mode', 'pointage');
+      const nouvelleUrl = location.pathname + '?' + params.toString() + location.hash;
+      history.replaceState(null, '', nouvelleUrl);
+    } else if(idUrl && qrUrl && !localStorage.getItem('rh_kiosk_secret')){
+      _kioskJetonTemp = { kioskId: idUrl, token: qrUrl };
+      params.delete('kioskId'); params.delete('kioskQr');
       if(params.get('mode') !== 'pointage') params.set('mode', 'pointage');
       const nouvelleUrl = location.pathname + '?' + params.toString() + location.hash;
       history.replaceState(null, '', nouvelleUrl);
     }
   }catch(_){}
-  if(!localStorage.getItem('rh_kiosk_id') || !localStorage.getItem('rh_kiosk_secret')){
+  if(_kioskJetonTemp){
+    try{
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/kiosk-qr`, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+        body: JSON.stringify({ action:'verify', kioskId: _kioskJetonTemp.kioskId, kioskQr: _kioskJetonTemp.token }),
+      });
+      const data = await r.json().catch(()=>({}));
+      if(!r.ok || !data.success){
+        const msg = (data && data.error) || 'QR de pointage expiré ou invalide';
+        _kioskJetonTemp = null;
+        document.getElementById('kioskApp').innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;text-align:center;padding:30px;gap:12px;">
+          <div style="font-size:3rem;">🔄</div>
+          <div style="font-size:1.1rem;font-weight:800;">${msg}</div>
+          <div style="font-size:.85rem;opacity:.85;max-width:320px;">Ce QR n'est valable que 60 secondes. Demande à l'administrateur de rouvrir Paramètres → Pointage QR mobile et rescanne le QR affiché.</div>
+        </div>`;
+        return;
+      }
+    }catch(e){
+      _kioskJetonTemp = null;
+      document.getElementById('kioskApp').innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;text-align:center;padding:30px;gap:12px;">
+        <div style="font-size:3rem;">📡</div>
+        <div style="font-size:1.1rem;font-weight:800;">Vérification impossible</div>
+        <div style="font-size:.85rem;opacity:.85;max-width:320px;">Réseau indisponible — réessaie dans un instant.</div>
+      </div>`;
+      return;
+    }
+  }
+  if(!_kioskJetonTemp && (!localStorage.getItem('rh_kiosk_id') || !localStorage.getItem('rh_kiosk_secret'))){
     document.getElementById('kioskApp').innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;text-align:center;padding:30px;gap:12px;">
       <div style="font-size:3rem;">🔒</div>
       <div style="font-size:1.1rem;font-weight:800;">Ce kiosque n'est pas configuré</div>
@@ -30033,7 +30405,36 @@ async function startKiosk(){
   // d'elles (réseau, config manquante...) ne doit jamais interrompre le
   // reste de l'initialisation ni faire remonter d'exception vers bootstrap()
   // (qui pourrait sinon perturber l'affichage déjà en place).
-  try{ await _kioskLoadCfg(); }catch(e){ console.warn('_kioskLoadCfg a échoué (kiosque quand même affiché) :', e); }
+  try{
+    await _kioskLoadCfg();
+  }catch(e){
+    // Deux causes très différentes finissent ici, à ne pas confondre :
+    // 1) le serveur a explicitement rejeté ce kioskId/kioskSecret (401/403 —
+    //    introuvable, désactivé, secret invalide) — ne jamais ouvrir le
+    //    scanner : kioskId seul (ou un secret faux/périmé) ne doit jamais
+    //    suffire.
+    // 2) un bug JS inattendu (ex. le crash "_kiosk before initialization"
+    //    déjà rencontré) — ce n'est PAS un rejet du serveur, l'afficher
+    //    comme tel ferait croire à un problème d'autorisation qui n'existe
+    //    pas et masquerait la vraie cause à corriger.
+    const rejetServeur = e && (e.status===401 || e.status===403);
+    if(rejetServeur){
+      console.warn('Kiosque refusé par le serveur :', e);
+      document.getElementById('kioskApp').innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;text-align:center;padding:30px;gap:12px;">
+        <div style="font-size:3rem;">⛔</div>
+        <div style="font-size:1.1rem;font-weight:800;">Kiosque non autorisé ou lien invalide.</div>
+        <div style="font-size:.85rem;opacity:.85;max-width:320px;">Ce kiosque a été désactivé, supprimé, ou le lien est incorrect. Contacte l'administrateur pour obtenir un lien valide (Paramètres → Kiosques autorisés).</div>
+      </div>`;
+    } else {
+      console.error('Erreur technique du kiosque (pas un rejet serveur) :', e);
+      document.getElementById('kioskApp').innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;text-align:center;padding:30px;gap:12px;">
+        <div style="font-size:3rem;">⚠️</div>
+        <div style="font-size:1.1rem;font-weight:800;">Erreur technique du kiosque.</div>
+        <div style="font-size:.85rem;opacity:.85;max-width:320px;">Une erreur inattendue a empêché le démarrage du scanner (pas un problème d'autorisation). Recharge la page ; si ça persiste, contacte l'administrateur.</div>
+      </div>`;
+    }
+    return;
+  }
   try{ _kioskChargerAnnuaire(); }catch(e){ console.warn('_kioskChargerAnnuaire a échoué :', e); } // annuaire public Supabase — fonctionne même sur un téléphone jamais connecté
   try{ _kioskFlusherPointagesEnAttente(); }catch(e){ console.warn('_kioskFlusherPointagesEnAttente a échoué :', e); }
   try{ _kioskDemarrerFlushPeriodique(); }catch(e){ console.warn('_kioskDemarrerFlushPeriodique a échoué :', e); }
@@ -30098,8 +30499,8 @@ async function _kioskAppelContexte(action, extra){
     headers:{ 'Content-Type':'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
     body: JSON.stringify(Object.assign({
       action,
-      kioskId: localStorage.getItem('rh_kiosk_id'),
-      kioskSecret: localStorage.getItem('rh_kiosk_secret'),
+      kioskId: _kioskIdActuel(),
+      kioskSecret: _kioskSecretActuel(),
     }, extra||{})),
   });
   const data = await r.json().catch(()=>({}));
@@ -30170,8 +30571,14 @@ async function _kioskLoadCfg(){
   }catch(e){
     console.warn('Contexte kiosque indisponible :', e);
     _kiosk.cfg.sites = [];
-    if(e && e.status===401){
-      _kioskSetMsg('❌ Kiosque non authentifié — configurez kioskId et kioskSecret.','err');
+    // 401/403 = le serveur a explicitement rejeté ce kioskId/kioskSecret
+    // (introuvable, désactivé, secret invalide) — on relance l'erreur pour
+    // que startKiosk() bloque l'écran de scan au lieu de l'afficher quand
+    // même. Une simple panne réseau (pas de e.status) reste tolérée : le
+    // kiosque garde son fonctionnement dégradé existant (annuaire en cache,
+    // file d'attente des pointages).
+    if(e && (e.status===401 || e.status===403)){
+      throw e;
     }
   }
 }
@@ -30239,14 +30646,46 @@ function _kioskShowStep(step){
 // de sa fiche), on le présélectionne automatiquement avec 60s pour confirmer
 // ou annuler — sans toucher au scan du badge lui-même, juste cette étape-ci.
 let _kioskAutoServiceInterval = null;
+// Service actuellement proposé par le compte à rebours — lu par le bouton
+// OUI (kioskConfirmerAutoService) pour appeler exactement la même fonction
+// que celle déjà déclenchée automatiquement à l'expiration des 60s.
+let _kioskAutoServiceProgramme = null;
+// Verrou anti-double-confirmation : les DEUX déclencheurs de cette
+// confirmation (bouton OUI et expiration des 60s) passent obligatoirement
+// par _kioskConfirmerAutoServiceUneSeuleFois — aucun des deux n'appelle
+// kioskChoisirService directement, pour qu'un double-clic ou un OUI juste
+// avant l'expiration ne puisse jamais déclencher deux confirmations.
+let _kioskAutoServiceConfirme = false;
 function _kioskDemarrerAutoService(){
   const box = document.getElementById('kioskAutoServiceBox');
+  const boxManuel = document.getElementById('kioskManualServiceBox');
   if(!box) return;
-  const service = _kiosk.emp && _kiosk.emp.serviceHabituel;
+  // Source du service proposé : en priorité la programmation d'équipage
+  // trouvée par kioskConfirmBadge pour CE scan (_kiosk.serviceEquipageProgramme,
+  // toujours fraîchement recalculée, jamais mémorisée d'un scan précédent —
+  // voir kioskConfirmBadge et kioskRestart). À défaut, repli inchangé sur le
+  // service habituel de la fiche, comme avant cette étape.
+  const serviceEquipage = _kiosk.serviceEquipageProgramme;
+  const service = (serviceEquipage && ['jour','nuit','24h'].includes(serviceEquipage))
+    ? serviceEquipage
+    : (_kiosk.emp && _kiosk.emp.serviceHabituel);
   clearInterval(_kioskAutoServiceInterval);
-  if(!service || !['jour','nuit','24h'].includes(service)){ box.style.display='none'; return; }
-  const labels = {jour:'☀️ le Service Jour', nuit:'🌙 le Service Nuit', '24h':'🕛 le Service 24h'};
+  _kioskAutoServiceConfirme = false; // nouvel employé/scan : verrou réinitialisé
+  if(!service || !['jour','nuit','24h'].includes(service)){
+    _kioskAutoServiceProgramme=null;
+    box.style.display='none';
+    if(boxManuel) boxManuel.style.display='block'; // aucun service programmé : sélecteur manuel affiché directement
+    return;
+  }
+  _kioskAutoServiceProgramme = service;
+  const labels = {jour:'☀️ SERVICE JOUR', nuit:'🌙 SERVICE NUIT', '24h':'🕛 SERVICE 24H'};
+  const labelsBtn = {jour:'JOUR', nuit:'NUIT', '24h':'24H'};
   document.getElementById('kioskAutoServiceLbl').textContent = labels[service];
+  const lblBtn = document.getElementById('kioskAutoServiceLblBtn');
+  if(lblBtn) lblBtn.textContent = labelsBtn[service];
+  // Parcours séquentiel (pas les deux écrans en même temps) : le sélecteur
+  // manuel ne réapparaît que si l'employé refuse (NON) — voir kioskAnnulerAutoService.
+  if(boxManuel) boxManuel.style.display='none';
   box.style.display='block';
   let secondes = 60;
   const compte = document.getElementById('kioskAutoServiceCompte');
@@ -30259,14 +30698,38 @@ function _kioskDemarrerAutoService(){
     barre.style.width = (secondes/60*100)+'%';
     if(secondes<=0){
       clearInterval(_kioskAutoServiceInterval);
-      kioskChoisirService(service);
+      _kioskConfirmerAutoServiceUneSeuleFois(service);
     }
   }, 1000);
+}
+// Verrou unique : seul point d'entrée qui a le droit d'appeler
+// kioskChoisirService pour cette confirmation automatique. Le premier
+// appelant (OUI ou expiration du minuteur, peu importe lequel) l'exécute ;
+// tout appel suivant (double-clic, ou l'autre déclencheur arrivant après)
+// est ignoré (retourne false sans rien faire de plus).
+function _kioskConfirmerAutoServiceUneSeuleFois(service){
+  if(_kioskAutoServiceConfirme) return false;
+  _kioskAutoServiceConfirme = true;
+  clearInterval(_kioskAutoServiceInterval);
+  const box = document.getElementById('kioskAutoServiceBox');
+  if(box) box.style.display = 'none';
+  kioskChoisirService(service);
+  return true;
+}
+// Bouton OUI — confirmation immédiate, passe par le verrou unique ci-dessus.
+function kioskConfirmerAutoService(){
+  const service = _kioskAutoServiceProgramme;
+  if(!service) return;
+  _kioskConfirmerAutoServiceUneSeuleFois(service);
 }
 function kioskAnnulerAutoService(){
   clearInterval(_kioskAutoServiceInterval);
   const box = document.getElementById('kioskAutoServiceBox');
   if(box) box.style.display='none';
+  // NON : seulement à ce moment-là le sélecteur manuel Jour/Nuit/24h apparaît
+  // (parcours séquentiel, jamais affiché en même temps que la confirmation).
+  const boxManuel = document.getElementById('kioskManualServiceBox');
+  if(boxManuel) boxManuel.style.display='block';
 }
 // Indicateur "Badge → Position → Selfie" en haut de l'écran, pour savoir où
 // on en est dans le pointage. Masqué sur l'écran d'attente et l'écran final.
@@ -30298,6 +30761,11 @@ function _kioskMajIndicateurEtapes(step){
 
 function kioskRestart(){
   _kiosk.empId=null; _kiosk.emp=null; _kiosk.geo=null; _kiosk.selfieData=null; _kiosk.actionChoisie=null; _kiosk.serviceChoisi=null; _kiosk.curRecord=null;
+  // Défense en profondeur (même principe que qrNom/qrPrenom juste en dessous) :
+  // le service programmé d'équipage d'un scan précédent ne doit jamais être
+  // réutilisé pour l'employé du scan suivant — kioskConfirmBadge le réinitialise
+  // déjà systématiquement, ceci est une sécurité supplémentaire.
+  _kiosk.serviceEquipageProgramme=null;
   // Défense en profondeur : évite qu'un nom/prénom capturé lors d'un scan
   // précédent (rejeté via "Ce n'est pas moi") ne puisse jamais être transmis
   // avec un empId différent défini par un futur chemin d'appel qui
@@ -30305,6 +30773,30 @@ function kioskRestart(){
   _kiosk.qrNom=null; _kiosk.qrPrenom=null;
   const warnEl = document.getElementById('kioskActionWarn'); if(warnEl) warnEl.style.display='none';
   _kioskShowStep('scan');
+}
+
+// CAS C (site GPS identifié sans rayon configuré) : grand écran plein
+// jaune/danger, aucun pointage n'est jamais tenté, retour automatique au
+// scanner après lecture — même mécanisme que les écrans de blocage kiosque
+// (voir startKiosk), mais réversible via kioskRestart() plutôt que définitif.
+function _kioskAfficherDangerRayonManquant(nomSite){
+  const app = document.getElementById('kioskApp');
+  if(!app) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'kioskDangerRayon';
+  overlay.style.cssText = 'position:absolute;inset:0;z-index:500;background:#F5B301;color:#1A1400;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;gap:14px;';
+  overlay.innerHTML = `
+    <div style="font-size:4rem;">⚠️</div>
+    <div style="font-size:1.6rem;font-weight:900;letter-spacing:.05em;">DANGER</div>
+    <div style="font-size:1.05rem;font-weight:700;max-width:420px;">Aucun rayon GPS n'est défini pour ce site${nomSite?(' ('+nomSite+')'):''}.</div>
+    <div style="font-size:.95rem;font-weight:700;">Le pointage ne peut pas être effectué.</div>
+    <div style="font-size:.8rem;opacity:.8;margin-top:6px;">Contacte l'administrateur pour configurer le rayon de ce site (Paramètres → Sites GPS).</div>
+  `;
+  app.appendChild(overlay);
+  setTimeout(()=>{
+    overlay.remove();
+    kioskRestart();
+  }, 4500);
 }
 
 // ---- Étape 1 : scan du badge (caméra arrière + jsQR) ----
@@ -30481,8 +30973,8 @@ async function _kioskOnBadgeDetected(id){
         body: JSON.stringify({
           action:'resolve',
           badgeToken: _kiosk.badgeToken,
-          kioskId: localStorage.getItem('rh_kiosk_id'),
-          kioskSecret: localStorage.getItem('rh_kiosk_secret'),
+          kioskId: _kioskIdActuel(),
+          kioskSecret: _kioskSecretActuel(),
         }),
       });
       const data = await reponse.json().catch(()=>({}));
@@ -30720,9 +31212,24 @@ async function kioskConfirmBadge(){
   // pointage — il continue normalement, comme pour n'importe quel autre
   // poste. Le service reste simplement "non déterminé" dans ce cas (aucun
   // service inventé), sans bloquer qui que ce soit.
+  //
+  // Travailleur/Superviseur (règle définitive) : si une programmation
+  // équipage valide existe pour aujourd'hui, elle devient le service
+  // effectif — exactement comme Chauffeur/Éboueur, aucun choix libre.
+  // Sinon, comportement STRICTEMENT inchangé : écran de choix manuel,
+  // prérempli avec serviceHabituel (jamais le repli "null" de
+  // Chauffeur/Éboueur, réservé à ce dernier — voir Ne jamais écraser
+  // serviceHabituel). heureFinEquipage et la règle du samedi restent
+  // exclusivement liés à estChauffeurOuEboueur, non touchés ici.
   const fonctionAgent = (_kiosk.emp.fonc || '').toLowerCase();
   const estChauffeurOuEboueur = fonctionAgent.includes('chauffeur') || fonctionAgent.includes('éboueur') || fonctionAgent.includes('eboueur');
-  if(estChauffeurOuEboueur){
+  const roleApp = _kiosk.emp.roleApplication || '';
+  const estTravailleurOuSuperviseur = roleApp==='Travailleur' || roleApp==='Superviseur';
+  // Toujours réinitialisé ICI, à chaque scan, avant toute autre logique — la
+  // seule source de vérité est la programmation d'équipage relue ci-dessous
+  // pour CET employé précis ; jamais une valeur restée d'un scan précédent.
+  _kiosk.serviceEquipageProgramme = null;
+  if(estChauffeurOuEboueur || estTravailleurOuSuperviseur){
     const today = _dateCIAujourdhui();
     const cle = String(_kiosk.emp.id);
     let serviceProgramme = null;
@@ -30733,14 +31240,24 @@ async function kioskConfirmBadge(){
       console.warn('Vérification de la programmation équipage échouée (pointage tout de même accepté, comme pour tout autre poste) :', e);
     }
     if(serviceProgramme && ['jour','nuit','24h'].includes(serviceProgramme)){
-      // Programmé : le service est imposé directement, aucun choix libre.
-      _kiosk.serviceChoisi = serviceProgramme;
+      // Programmé : proposé pour confirmation (OUI/NON) au lieu d'être imposé
+      // silencieusement — même donnée fraîchement recalculée (serviceProgramme,
+      // via _kioskObtenirCarteServices qui relit toujours Supabase), passée à
+      // l'écran de confirmation existant. NON reste possible : bascule vers le
+      // choix manuel Jour/Nuit/24h déjà existant, sans rien inventer.
+      _kiosk.serviceEquipageProgramme = serviceProgramme;
+      _kioskAfficherInfoServices();
+      _kioskShowStep('choixService');
+      return;
+    }
+    if(estChauffeurOuEboueur){
+      _kiosk.serviceChoisi = null;
       _kioskShowStep('geo');
       return;
     }
-    _kiosk.serviceChoisi = null;
-    _kioskShowStep('geo');
-    return;
+    // Travailleur/Superviseur sans programmation équipage valide : on
+    // continue ci-dessous vers l'écran de choix manuel habituel, sans rien
+    // changer (repli sur serviceHabituel, comme avant cette règle).
   }
   _kioskAfficherInfoServices();
   _kioskShowStep('choixService');
@@ -30823,14 +31340,24 @@ function _kioskStartGeo(){
         modeStrict = true;
         plusProche = siteAttendu;
         dist = _haversineM(pos.coords.latitude,pos.coords.longitude, siteAttendu.lat, siteAttendu.lng);
-        inZone = dist <= (siteAttendu.radius_m||200);
       } else {
         sites.forEach(s=>{
           const d = _haversineM(pos.coords.latitude,pos.coords.longitude, s.lat, s.lng);
           if(plusProche===null || d<dist){ plusProche=s; dist=d; }
         });
-        inZone = dist <= (plusProche.radius_m||200);
       }
+      // CAS C — site identifié mais AUCUN rayon configuré pour lui (radius_m
+      // absent, pas juste "petit"). Ne jamais fusionner avec CAS A/B : avant,
+      // (plusProche.radius_m||200) traitait silencieusement l'absence de
+      // rayon comme "200 m", donc comme une zone valide — un site mal
+      // configuré pouvait ainsi accepter n'importe quelle position proche.
+      // Ici : blocage explicite, écran plein, AUCUNE écriture, retour scan.
+      if(plusProche && plusProche.radius_m==null){
+        document.getElementById('kioskGeoSpinner').style.display='none';
+        _kioskAfficherDangerRayonManquant(plusProche.nom);
+        return;
+      }
+      inZone = dist <= plusProche.radius_m;
     }
     _kiosk.geo = {lat:pos.coords.latitude, lng:pos.coords.longitude, dist, inZone, site: plusProche?plusProche.nom:null, siteId: plusProche?plusProche.id:null, strict: modeStrict};
 
@@ -30845,7 +31372,7 @@ function _kioskStartGeo(){
         coordsBox.style.border = ok ? '1.5px solid #22C55E' : '1.5px solid #EF4444';
         coordsBox.style.color = ok ? '#4ADE80' : '#F87171';
         const libelleSite = modeStrict ? 'Votre zone assignée' : 'Site le plus proche';
-        coordsBox.innerHTML = `Lat : ${latTxt}<br>Lng : ${lngTxt}<br>${libelleSite} : <b>${plusProche.nom}</b><br>Distance : <b>${Math.round(dist)} m</b> (rayon autorisé : ${plusProche.radius_m||200} m)`;
+        coordsBox.innerHTML = `Lat : ${latTxt}<br>Lng : ${lngTxt}<br>${libelleSite} : <b>${plusProche.nom}</b><br>Distance : <b>${Math.round(dist)} m</b> (rayon autorisé : ${plusProche.radius_m} m)`;
       } else {
         coordsBox.style.background = 'rgba(255,255,255,.08)';
         coordsBox.style.border = '1.5px solid rgba(255,255,255,.25)';
@@ -30929,7 +31456,7 @@ function kioskRetakeSelfie(){ _kioskShowStep('selfie'); }
 // (aucun horaire imposé, aucun retard/absence possible) ou 'autre'
 // (travailleur hors équipage : départ accepté à partir de 12h00 le samedi
 // uniquement, sans limite supérieure).
-function _kioskVerifierHoraire(service, action, nowDate, heureFinEquipage, contexteSamedi){
+function _kioskVerifierHoraire(service, action, nowDate, heureFinEquipage, contexteSamedi, roleApplication){
   // Un Chauffeur/Éboueur sans service trouvé (pas dans un équipage, ou
   // vérification impossible) n'est plus dispensé de toute règle horaire —
   // le retard doit être détecté pour tout le monde, sans exception. Repli
@@ -30979,12 +31506,51 @@ function _kioskVerifierHoraire(service, action, nowDate, heureFinEquipage, conte
       }
       return { ok:true };
     }
+    // Exemption Superviseur (règle 17h30, service Jour uniquement) — miroir
+    // exact de verifierHoraire côté serveur, même condition, même portée.
+    if(serviceEffectifPourHoraire==='jour' && roleApplication==='Superviseur'){
+      return { ok:true };
+    }
     const debut=_hmToMin(hor.sortieDebut), fin=_hmToMin(hor.sortieFin);
     if(nowMin < debut || nowMin > fin){
       return { ok:false, message:`Départ hors plage horaire (${hhmm}, plage acceptable ${hor.sortieDebut}–${hor.sortieFin}).` };
     }
     return { ok:true };
   }
+}
+// Miroir client (retour immédiat, sans attendre le serveur) de la même
+// plage de blocage vérifiée côté pointage (Edge Function) — même algorithme
+// exact (traversée de minuit gérée pareil), aucune règle inventée ici :
+// le serveur reste seul juge final, ce contrôle n'est qu'un confort d'UX
+// pour éviter un aller-retour réseau inutile quand le blocage est évident.
+function _kioskVerifierPlageBloquee(service, nowDate){
+  const serviceEffectifPourHoraire = service===null ? 'jour' : service;
+  const hor = ((_kiosk.cfg && _kiosk.cfg.horaires) || {})[serviceEffectifPourHoraire] || {};
+  const debut = hor.blocageDebut, fin = hor.blocageFin;
+  if(!debut || !fin) return { bloque:false };
+  const hhmm = _heureCI(nowDate);
+  const nowMin = _hmToMin(hhmm);
+  const dMin = _hmToMin(debut), fMin = _hmToMin(fin);
+  const dansPlage = dMin<=fMin ? (nowMin>=dMin && nowMin<fMin) : (nowMin>=dMin || nowMin<fMin);
+  return { bloque:dansPlage, debut, fin };
+}
+const _KIOSK_LABEL_SERVICE = { jour:'Jour', nuit:'Nuit', '24h':'24h' };
+function _kioskAfficherPointageInterdit(service, debut, fin){
+  const app = document.getElementById('kioskApp');
+  if(!app) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'kioskPlageBloquee';
+  overlay.style.cssText = 'position:absolute;inset:0;z-index:500;background:#111827;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;gap:12px;';
+  const lbl = _KIOSK_LABEL_SERVICE[service] || service;
+  overlay.innerHTML = `
+    <div style="font-size:3.2rem;">⚠️</div>
+    <div style="font-size:1.3rem;font-weight:900;letter-spacing:.04em;">POINTAGE NON AUTORISÉ</div>
+    <div style="font-size:1rem;font-weight:700;max-width:420px;">Le pointage du service ${lbl} est actuellement bloqué.</div>
+    <div style="font-size:.9rem;opacity:.9;">Plage de blocage :<br><b>${debut} → ${fin}</b></div>
+    <div style="font-size:.85rem;opacity:.85;margin-top:6px;">Veuillez revenir pendant la plage autorisée.</div>
+  `;
+  app.appendChild(overlay);
+  setTimeout(()=>{ overlay.remove(); kioskRestart(); }, 4500);
 }
 
 // ---- Étape 4 : enregistrement dans "presences" ----
@@ -31033,8 +31599,8 @@ async function _kioskEnvoyerPointageAvecReessai(dateEcriture, cle, rec, now, ten
           // Identité du kiosque (Étape 8) — vérifiée AVANT tout le reste côté
           // serveur, empêche un appel externe direct (curl/Postman) muni
           // seulement de la clé anon publique.
-          kioskId: localStorage.getItem('rh_kiosk_id'),
-          kioskSecret: localStorage.getItem('rh_kiosk_secret'),
+          kioskId: _kioskIdActuel(),
+          kioskSecret: _kioskSecretActuel(),
           // Nom/prénom extraits du QR (badges déjà imprimés, EIDA1) —
           // vérification supplémentaire optionnelle contre empId envoyé
           // manuellement : null si badge ancien format ou saisie manuelle,
@@ -31230,7 +31796,7 @@ async function kioskValider(){
       contexteSamedi = (_kiosk.emp && _kiosk.emp.roleApplication==='Administration') ? 'administration' : 'autre';
     }
   }
-  const horaireCheck = _kioskVerifierHoraire(service, action, nowDate, heureFinEquipage, contexteSamedi);
+  const horaireCheck = _kioskVerifierHoraire(service, action, nowDate, heureFinEquipage, contexteSamedi, (_kiosk.emp && _kiosk.emp.roleApplication) || '');
   // Si l'employé pointe en dehors de la tolérance (arrivée) ou de la plage
   // acceptable (départ), le pointage reste enregistré (heure réelle gardée),
   // mais le statut passe à "Absent" — comme un vrai absent, il reste dans la
@@ -31239,6 +31805,15 @@ async function kioskValider(){
   if(horsZone){
     _kioskSetMsg('❌ Hors rayon — pointage refusé, aucune écriture.','err');
     setTimeout(kioskRestart, 3500);
+    return;
+  }
+  // Plage horaire de blocage (Paramètres) — miroir client du contrôle
+  // obligatoire côté serveur (Edge Function pointage) : celui-ci reste seul
+  // juge final, ce contrôle n'évite qu'un aller-retour réseau inutile quand
+  // le blocage est déjà évident ici. Aucune écriture, aucun appel serveur.
+  const plageBloquee = _kioskVerifierPlageBloquee(service, nowDate);
+  if(plageBloquee.bloque){
+    _kioskAfficherPointageInterdit(service, plageBloquee.debut, plageBloquee.fin);
     return;
   }
   if(!_kiosk.selfieData || typeof _kiosk.selfieData!=='string' || !_kiosk.selfieData.startsWith('data:image/')){
