@@ -14593,15 +14593,174 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
 </div>
 
 <!-- Connexion badge numérique (employé) — distincte du DAS et de l'activation -->
-<div id="mEspaceEmployeLogin" style="display:none;position:fixed;inset:0;z-index:10055;background:rgba(7,24,39,.72);align-items:center;justify-content:center;padding:16px;font-family:Nunito,sans-serif;">
-  <div style="background:#fff;border-radius:14px;padding:22px;max-width:380px;width:100%;border:1.5px solid #E2E8F0;">
-    <div style="font-weight:800;font-size:1.05rem;color:#0B1F33;margin-bottom:4px;">🪪 Espace Employé</div>
-    <p style="font-size:.78rem;color:#64748B;margin:0 0 14px;line-height:1.45;">Connectez-vous avec votre matricule et le mot de passe créé lors de l'activation du badge.</p>
-    <input type="text" id="espaceLoginIdentifiant" class="ci" placeholder="Identifiant / matricule (ex. EMP-00005)" autocomplete="username" style="width:100%;margin-bottom:8px;" onkeydown="if(event.key==='Enter') espaceEmployeConnexion()">
-    <input type="password" id="espaceLoginMdp" class="ci" placeholder="Mot de passe" autocomplete="current-password" style="width:100%;margin-bottom:12px;" onkeydown="if(event.key==='Enter') espaceEmployeConnexion()">
-    <button class="btn b-add" type="button" id="espaceLoginBtn" style="width:100%;justify-content:center;" onclick="espaceEmployeConnexion()">Se connecter</button>
-    <div id="espaceLoginMsg" style="font-size:.75rem;margin-top:10px;color:#B91C1C;"></div>
-    <button type="button" class="btn" style="width:100%;justify-content:center;margin-top:10px;background:#F1F5F9;color:#334155;" onclick="dasQuitterBadgeVersPortail()">← Retour</button>
+<style>
+#mEspaceEmployeLogin{display:none;position:fixed;inset:0;z-index:10055;background:#F8FAFC;font-family:'Nunito',sans-serif;overflow:auto;}
+.esplogin-left{flex:0 0 45%;background:linear-gradient(160deg,#0F172A 0%,#132038 55%,#1B2C4C 100%);color:#fff;padding:44px 44px;display:flex;align-items:center;position:relative;min-height:100vh;box-sizing:border-box;}
+.esplogin-left-inner{position:relative;z-index:2;max-width:460px;margin:0 auto;animation:esplogin-fade-up .6s ease both;}
+.esplogin-brand{font-weight:800;font-size:1rem;letter-spacing:.4px;color:#93C5FD;margin-bottom:20px;display:flex;align-items:center;gap:8px;}
+.esplogin-brand:before{content:"🏢";font-size:1.05rem;}
+.esplogin-welcome{font-size:1.9rem;line-height:1.28;font-weight:800;margin:0 0 14px;color:#fff;}
+.esplogin-welcome .esplogin-accent{color:#60A5FA;}
+.esplogin-sub{font-size:.92rem;line-height:1.6;color:#B9C3D6;margin:0 0 22px;max-width:380px;}
+.esplogin-features{display:flex;flex-direction:column;gap:10px;margin-bottom:22px;}
+.esplogin-feature{display:flex;gap:13px;align-items:flex-start;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 16px;transition:background .2s;}
+.esplogin-feature-main{background:rgba(59,130,246,.14);border-color:rgba(96,165,250,.35);padding:18px 18px;}
+.esplogin-feature-icon{font-size:1.3rem;line-height:1;flex:0 0 auto;width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;}
+.esplogin-feature-main .esplogin-feature-icon{background:rgba(96,165,250,.25);font-size:1.5rem;width:44px;height:44px;}
+.esplogin-feature-title{font-weight:800;font-size:.88rem;color:#fff;margin-bottom:2px;}
+.esplogin-feature-main .esplogin-feature-title{font-size:1rem;}
+.esplogin-feature-desc{font-size:.76rem;color:#AAB6CC;line-height:1.45;}
+.esplogin-illu{position:relative;width:100%;max-width:320px;height:215px;margin:0 auto;}
+.esplogin-illu-glow{position:absolute;inset:0;background:radial-gradient(circle at 62% 40%,rgba(96,165,250,.35),transparent 60%);filter:blur(6px);}
+.esplogin-illu svg{position:relative;z-index:2;width:100%;height:100%;}
+.esplogin-illu-note{position:absolute;left:-6px;bottom:8px;z-index:3;background:rgba(255,255,255,.96);color:#0F172A;font-weight:700;font-size:.66rem;line-height:1.35;padding:8px 11px;border-radius:9px;max-width:150px;box-shadow:0 6px 16px rgba(0,0,0,.25);animation:esplogin-float 3.2s ease-in-out infinite;}
+.esplogin-right{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 24px;background:#F8FAFC;min-height:100vh;box-sizing:border-box;}
+.esplogin-card{background:#fff;border-radius:16px;padding:38px 34px 30px;max-width:500px;width:100%;box-shadow:0 10px 40px rgba(15,23,42,.08);border:1px solid #F1F5F9;animation:esplogin-fade-up .6s ease .08s both;}
+.esplogin-card-icon{width:52px;height:52px;border-radius:50%;background:#DBEAFE;color:#2563EB;font-size:1.5rem;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
+.esplogin-card-title{font-size:1.3rem;font-weight:800;color:#0F172A;text-align:center;margin:0 0 6px;}
+.esplogin-card-sub{font-size:.82rem;color:#64748B;text-align:center;margin:0 0 26px;line-height:1.5;}
+.esplogin-label{display:block;font-size:.76rem;font-weight:700;color:#334155;margin:0 0 6px;}
+.esplogin-field{margin-bottom:16px;}
+.esplogin-input-wrap{position:relative;display:flex;align-items:center;}
+.esplogin-input-icon{position:absolute;left:14px;font-size:.95rem;color:#94A3B8;pointer-events:none;}
+.esplogin-input{width:100%;height:50px;box-sizing:border-box;border:1.5px solid #E2E8F0;border-radius:11px;padding:0 14px 0 40px;font-family:'Nunito',sans-serif;font-size:.9rem;color:#0F172A;background:#fff;transition:border-color .18s,box-shadow .18s;}
+.esplogin-input::placeholder{color:#94A3B8;}
+.esplogin-input:focus{outline:none;border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.12);}
+.esplogin-input-pwd{padding-right:42px;}
+.esplogin-eye{position:absolute;right:6px;background:none;border:none;cursor:pointer;font-size:1rem;padding:8px;line-height:1;color:#94A3B8;border-radius:8px;}
+.esplogin-eye:hover{color:#475569;background:#F1F5F9;}
+.esplogin-forgot{text-align:right;margin:-6px 0 18px;}
+.esplogin-forgot a{color:#2563EB;font-size:.78rem;font-weight:700;text-decoration:none;cursor:pointer;}
+.esplogin-forgot a:hover{text-decoration:underline;}
+.esplogin-submit{width:100%;height:50px;border-radius:11px;background:#2563EB;color:#fff;border:none;font-family:'Nunito',sans-serif;font-weight:800;font-size:.92rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .18s,transform .12s,box-shadow .18s;box-shadow:0 6px 16px rgba(37,99,235,.28);}
+.esplogin-submit:after{content:"→";font-size:1rem;}
+.esplogin-submit:hover:not(:disabled){background:#1D4ED8;box-shadow:0 8px 20px rgba(37,99,235,.34);}
+.esplogin-submit:active:not(:disabled){transform:translateY(1px);}
+.esplogin-submit:focus-visible{outline:2px solid #93C5FD;outline-offset:2px;}
+.esplogin-submit:disabled{background:#93B4EE;cursor:not-allowed;box-shadow:none;}
+.esplogin-msg{font-size:.78rem;margin-top:12px;color:#DC2626;min-height:1px;text-align:center;}
+.esplogin-back{width:100%;justify-content:center;margin-top:14px;background:none;border:none;color:#64748B;font-family:'Nunito',sans-serif;font-weight:700;font-size:.8rem;cursor:pointer;padding:8px;border-radius:8px;transition:background .15s,color .15s;}
+.esplogin-back:hover{background:#F1F5F9;color:#334155;}
+.esplogin-secure{text-align:center;font-size:.72rem;color:#94A3B8;margin-top:18px;}
+@keyframes esplogin-fade-up{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+@keyframes esplogin-float{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+@media(max-width:900px){
+  /* Le JS existant applique style.display='flex' en ligne pour afficher ce
+     panneau (inline style, jamais modifié ici) — !important est nécessaire
+     pour que l'empilement mobile prenne le dessus sans toucher au JS. */
+  #mEspaceEmployeLogin{display:block!important;}
+  .esplogin-left{flex:none;min-height:0;padding:32px 22px 26px;}
+  .esplogin-left-inner{margin:0;}
+  .esplogin-welcome{font-size:1.5rem;}
+  .esplogin-features{display:none;}
+  .esplogin-illu{height:190px;max-width:280px;margin-top:14px;}
+  .esplogin-right{min-height:0;padding:22px 20px 34px;}
+  .esplogin-card{padding:28px 22px 24px;max-width:100%;margin:0 auto;}
+}
+@media(max-width:420px){
+  .esplogin-illu{height:170px;}
+}
+</style>
+<div id="mEspaceEmployeLogin">
+  <div class="esplogin-left">
+    <div class="esplogin-left-inner">
+      <div class="esplogin-brand">MonEntreprise</div>
+      <h1 class="esplogin-welcome">Bienvenue dans votre<br><span class="esplogin-accent">espace employé</span></h1>
+      <p class="esplogin-sub">Accédez simplement à vos informations, documents et services RH.</p>
+      <div class="esplogin-features">
+        <div class="esplogin-feature esplogin-feature-main">
+          <div class="esplogin-feature-icon">🪪</div>
+          <div>
+            <div class="esplogin-feature-title">Badge numérique</div>
+            <div class="esplogin-feature-desc">Votre badge professionnel toujours accessible depuis votre téléphone.</div>
+          </div>
+        </div>
+        <div class="esplogin-feature">
+          <div class="esplogin-feature-icon">📄</div>
+          <div>
+            <div class="esplogin-feature-title">Documents</div>
+            <div class="esplogin-feature-desc">Retrouvez vos bulletins, contrats et attestations.</div>
+          </div>
+        </div>
+        <div class="esplogin-feature">
+          <div class="esplogin-feature-icon">🗂️</div>
+          <div>
+            <div class="esplogin-feature-title">Services RH</div>
+            <div class="esplogin-feature-desc">Gérez vos demandes, congés et informations personnelles.</div>
+          </div>
+        </div>
+      </div>
+      <div class="esplogin-illu" aria-hidden="true">
+        <div class="esplogin-illu-glow"></div>
+        <svg viewBox="0 0 360 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="150" cy="235" rx="120" ry="14" fill="#0B1526"/>
+          <path d="M60 260 C60 165 95 120 150 120 C205 120 240 165 240 260 Z" fill="#1E3A8A"/>
+          <circle cx="150" cy="78" r="46" fill="#A9714B"/>
+          <path d="M108 92 Q150 128 192 92 L198 118 Q150 150 102 118 Z" fill="#F8FAFC"/>
+          <path d="M118 108 L150 128 L182 108 L190 150 Q150 168 110 150 Z" fill="#1E3A8A"/>
+          <path d="M138 108 L150 122 L162 108 L155 100 L145 100 Z" fill="#F8FAFC"/>
+          <path d="M60 260 C64 205 78 168 96 150 L118 168 C102 190 92 222 92 260 Z" fill="#16234A"/>
+          <g transform="translate(206,132) rotate(-8)">
+            <rect x="0" y="0" width="98" height="150" rx="16" fill="#0F172A"/>
+            <rect x="6" y="10" width="86" height="130" rx="9" fill="#fff"/>
+            <text x="49" y="26" text-anchor="middle" font-size="7" font-weight="700" fill="#0F172A" font-family="Nunito,sans-serif">Mon badge numérique</text>
+            <circle cx="49" cy="44" r="11" fill="#CBD5E1"/>
+            <rect x="27" y="59" width="44" height="5" rx="2.5" fill="#0F172A"/>
+            <rect x="33" y="67" width="32" height="4" rx="2" fill="#94A3B8"/>
+            <rect x="16" y="80" width="26" height="9" rx="4.5" fill="#DCFCE7"/>
+            <text x="29" y="87" text-anchor="middle" font-size="5.4" font-weight="800" fill="#16A34A" font-family="Nunito,sans-serif">Actif</text>
+            <g>
+              <rect x="24" y="97" width="50" height="34" rx="3" fill="#F8FAFC" stroke="#E2E8F0"/>
+              <rect x="28" y="101" width="8" height="8" fill="#0F172A"/>
+              <rect x="62" y="101" width="8" height="8" fill="#0F172A"/>
+              <rect x="28" y="119" width="8" height="8" fill="#0F172A"/>
+              <rect x="40" y="101" width="4" height="4" fill="#0F172A"/>
+              <rect x="48" y="105" width="4" height="4" fill="#0F172A"/>
+              <rect x="56" y="109" width="4" height="4" fill="#0F172A"/>
+              <rect x="44" y="113" width="4" height="4" fill="#0F172A"/>
+              <rect x="52" y="119" width="4" height="4" fill="#0F172A"/>
+              <rect x="60" y="123" width="4" height="4" fill="#0F172A"/>
+              <rect x="44" y="123" width="4" height="4" fill="#0F172A"/>
+            </g>
+          </g>
+        </svg>
+        <div class="esplogin-illu-note">👉 Votre badge numérique, toujours avec vous !</div>
+      </div>
+    </div>
+  </div>
+  <div class="esplogin-right">
+    <div class="esplogin-card">
+      <div class="esplogin-card-icon">👤</div>
+      <div class="esplogin-card-title">Espace Employé</div>
+      <p class="esplogin-card-sub">Connectez-vous avec votre matricule et votre mot de passe.</p>
+
+      <div class="esplogin-field">
+        <label class="esplogin-label" for="espaceLoginIdentifiant">Identifiant / matricule</label>
+        <div class="esplogin-input-wrap">
+          <span class="esplogin-input-icon">👤</span>
+          <input type="text" id="espaceLoginIdentifiant" class="esplogin-input" placeholder="Ex. EMP-00005" autocomplete="username" onkeydown="if(event.key==='Enter') espaceEmployeConnexion()">
+        </div>
+      </div>
+
+      <div class="esplogin-field">
+        <label class="esplogin-label" for="espaceLoginMdp">Mot de passe</label>
+        <div class="esplogin-input-wrap">
+          <span class="esplogin-input-icon">🔒</span>
+          <input type="password" id="espaceLoginMdp" class="esplogin-input esplogin-input-pwd" placeholder="Entrez votre mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter') espaceEmployeConnexion()">
+          <button type="button" class="esplogin-eye" id="espaceLoginEyeBtn" onclick="_espaceLoginToggleMdp()" aria-label="Afficher ou masquer le mot de passe">👁️</button>
+        </div>
+      </div>
+
+      <div class="esplogin-forgot"><a onclick="ouvrirMdpOublie()">Mot de passe oublié ?</a></div>
+
+      <button class="esplogin-submit" type="button" id="espaceLoginBtn" onclick="espaceEmployeConnexion()">Se connecter</button>
+
+      <div id="espaceLoginMsg" class="esplogin-msg"></div>
+
+      <button type="button" class="esplogin-back" onclick="dasQuitterBadgeVersPortail()">← Retour</button>
+
+      <div class="esplogin-secure">🔒 Vos données sont protégées et sécurisées.</div>
+    </div>
   </div>
 </div>
 
@@ -22349,6 +22508,17 @@ function dasFermerEspaceEmployeLogin(){
     if(i1) i1.value = '';
     if(i2) i2.value = '';
   }catch(_){}
+}
+
+// Affichage/masquage purement visuel du mot de passe — ne touche jamais à
+// la valeur transmise par espaceEmployeConnexion(), seulement type/icône.
+function _espaceLoginToggleMdp(){
+  const i = document.getElementById('espaceLoginMdp');
+  const b = document.getElementById('espaceLoginEyeBtn');
+  if(!i) return;
+  const masque = i.type === 'password';
+  i.type = masque ? 'text' : 'password';
+  if(b) b.textContent = masque ? '🙈' : '👁️';
 }
 
 function dasOuvrirEspaceEmploye(){
