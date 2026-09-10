@@ -16006,14 +16006,6 @@ textarea.ai-input{resize:vertical;font-family:'Nunito',sans-serif;}
   </div>
 
   <div class="abs-notes-card" style="margin-top:10px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
-      <div style="font-size:.74rem;font-weight:800;color:#1A3A5C;">📈 Évolution mensuelle des absences</div>
-      <div style="font-size:.62rem;color:#888;">Tous les mois disponibles — respecte le service/la recherche, pas le filtre "Période"</div>
-    </div>
-    <div id="absGraphique"></div>
-  </div>
-
-  <div class="abs-notes-card">
     <div class="abs-notes-row">
       <div class="cf">
         <span class="cl nrh">📝 Notes RH</span>
@@ -27309,47 +27301,6 @@ function renderAbsences(){
   document.getElementById('abPctAbs').textContent=pctAbs+'%';
 
   document.getElementById('absInfo').innerHTML=`Période : <b>${periodeLbl}</b> — ${list.length} employé(s) au total — ${finalList.length} affiché(s)${dept?` — Service : <b>${dept}</b>`:''}`;
-
-  // Graphique d'évolution : réutilise 'enriched' quand aucune période n'est
-  // filtrée (déjà calculé sur tout l'historique, pas de travail en double) ;
-  // sinon recalcule spécifiquement sans le filtre période pour le graphique —
-  // voir l'évolution dans le temps est tout l'intérêt, même si le tableau, lui,
-  // reste bloqué sur le mois choisi.
-  const listPourGraphique = periode
-    ? list.map(e=>({emp:e, abs:_absCalcEmp(e,'',periodesConnues).abs}))
-    : enriched;
-  _renderGraphiqueAbsences(listPourGraphique);
-}
-// Petit graphique en barres (SVG/HTML pur, pas de librairie externe — même
-// logique que pour les QR : éviter toute dépendance CDN qui peut casser) :
-// nombre total d'absences par mois, sur toute la période disponible, pour la
-// liste d'employés déjà filtrée (service/recherche).
-function _renderGraphiqueAbsences(list){
-  const conteneur = document.getElementById('absGraphique');
-  if(!conteneur) return;
-  const compteurs = {}; // 'YYYY-MM' -> nombre d'absences ce mois-là
-  list.forEach(x=>{
-    (x.abs||[]).forEach(item=>{ compteurs[item.key] = (compteurs[item.key]||0)+1; });
-  });
-  const mois = Object.keys(compteurs).sort();
-  if(!mois.length){
-    conteneur.innerHTML = '<p style="text-align:center;color:#888;font-style:italic;padding:16px 0;font-size:.75rem;">Pas encore assez de données pour un graphique.</p>';
-    return;
-  }
-  const moisNomsCourt=['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
-  const valeurs = mois.map(k=>compteurs[k]);
-  const max = Math.max(...valeurs, 1);
-  const barresHTML = mois.map((k,i)=>{
-    const [y,m] = k.split('-');
-    const label = `${moisNomsCourt[parseInt(m)-1]} ${y.slice(2)}`;
-    const hauteurPct = Math.max((valeurs[i]/max)*100, 4);
-    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:26px;" title="${label} : ${valeurs[i]} absence(s)">
-      <div style="font-size:.62rem;font-weight:800;color:#1A3A5C;margin-bottom:2px;">${valeurs[i]}</div>
-      <div style="width:65%;background:linear-gradient(180deg,#F87171,#DC2626);border-radius:4px 4px 0 0;height:${hauteurPct}%;transition:height .3s;"></div>
-      <div style="font-size:.6rem;color:#666;margin-top:4px;white-space:nowrap;">${label}</div>
-    </div>`;
-  }).join('');
-  conteneur.innerHTML = `<div style="display:flex;align-items:flex-end;gap:3px;height:130px;padding:8px 6px 2px;overflow-x:auto;">${barresHTML}</div>`;
 }
 
 // ============================================================
