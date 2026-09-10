@@ -33531,7 +33531,7 @@ async function _kioskOnBadgeDetected(id){
       _kiosk.empSource = 'badge numérique (serveur)';
       _kioskSetMsg('');
       _kioskRenderEmpCard();
-      _kioskAfficherActionPrevue();
+      await _kioskAfficherActionPrevue();
       _kioskShowStep('confirmBadge');
       return;
     }catch(e){
@@ -33562,7 +33562,7 @@ async function _kioskOnBadgeDetected(id){
   }
   _kioskSetMsg('');
   _kioskRenderEmpCard();
-  _kioskAfficherActionPrevue();
+  await _kioskAfficherActionPrevue();
   if(!_kiosk.emp){
     let tentative = 0;
     const NB_TENTATIVES = 6;
