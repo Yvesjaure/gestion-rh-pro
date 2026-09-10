@@ -17480,7 +17480,9 @@ const _logoParEntreprise = {};
 const _identiteBadgeParEntreprise = {};
 let _identiteBadgeChargement = {};
 function _logoEstValideEntreprise(src){
-  return !!(src && typeof src === 'string' && String(src).length > 8 && src !== 'null' && src !== 'undefined');
+  // Étape I : jamais le logo DAS comme logo d'entreprise — même exclusion
+  // que logoLeger() côté serveur (activer-compte-employe/index.ts).
+  return !!(src && typeof src === 'string' && String(src).length > 8 && src !== 'null' && src !== 'undefined' && src.indexOf('assets/das/') === -1);
 }
 function _logoEidActif(){
   try{
