@@ -24988,13 +24988,16 @@ function nouveauID(){
     return;
   }
   viderForm();
-  // Le simple max(matricule)+1 peut proposer un ID déjà utilisé si un trou
-  // existe dans la séquence (suppression, import, ID hérité non numérique) :
-  // on vérifie explicitement que le candidat n'est utilisé par AUCUNE fiche
-  // actuelle (comparaison en texte, comme l'ID est stocké), et on avance
-  // au suivant tant que ce n'est pas le cas.
+  // Règle : proposer le plus petit entier libre à partir de 1 (comble les
+  // trous laissés par une suppression), pas seulement max(matricule)+1 —
+  // qui ne redescendait jamais chercher un numéro déjà libéré en dessous du
+  // maximum. On vérifie explicitement que le candidat n'est utilisé par
+  // AUCUNE fiche actuelle (comparaison en texte, comme l'ID est stocké),
+  // et on avance au suivant tant que ce n'est pas le cas — un ID hérité non
+  // numérique (parseMatricule()->null) n'entre jamais en jeu ici, seule la
+  // présence textuelle dans idsUtilises est vérifiée.
   const idsUtilises=new Set(employes.map(e=>String(e.id)));
-  let candidat=Math.max(0,...employes.map(e=>parseMatricule(e.id)||0))+1;
+  let candidat=1;
   while(idsUtilises.has(String(candidat))) candidat++;
   document.getElementById('fID').value=candidat;
   empOuvrirPanneau(null, {nouveau:true});
