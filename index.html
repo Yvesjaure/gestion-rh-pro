@@ -20321,6 +20321,12 @@ function _dasParcRendreStatut(row){
   } else if(row.statut === 'approuve'){
     actions = '<button class="btn" style="background:#B91C1C;color:#fff;" onclick="_dasTraiterDemandeParc(\'desactiver\')">🔴 Désactiver</button>';
   }
+  // Action dangereuse et distincte des précédentes (irréversible, contrairement
+  // à "Désactiver" qui n'est qu'un changement de statut) — toujours proposée
+  // dès qu'une ligne existe, quel que soit son statut, pour permettre de
+  // nettoyer définitivement une demande refusée/en_attente/désactivée aussi
+  // bien qu'un compte approuvé.
+  actions += '<button class="btn" style="background:#7F1D1D;color:#fff;border:1.5px solid #450A0A;" onclick="_dasSupprimerCompteParcDefinitivement()">🗑️ Supprimer définitivement le compte</button>';
   box.innerHTML = `
     <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;">
       <div><span class="cl" style="display:block;">Email</span><b>${_dasEscHtml(row.email)}</b></div>
@@ -20401,6 +20407,43 @@ async function _dasCreerAuthParc(){
   }catch(e){
     if(msg){ msg.style.color = '#DC2626'; msg.textContent = (e && e.message) || String(e); }
     toast('❌ ' + ((e && e.message) || 'Échec de la création du compte de connexion'), 'err');
+  }
+}
+// Anti double-clic (même principe que _dasApprobationNouvelleEnCours) — le
+// serveur est de toute façon idempotent (ligne déjà supprimée => 'deja_supprime'
+// sans effet de bord), ceci évite juste deux appels réseau concurrents inutiles.
+const _dasSuppressionParcEnCours = new Set();
+// Action IRRÉVERSIBLE et distincte de "Désactiver" (_dasTraiterDemandeParc) :
+// supprime définitivement la ligne rh_parc_comptes ET le compte Auth associé,
+// via l'action serveur dédiée 'parc_supprimer_compte_definitivement'
+// (das-demandes-rh) — jamais un DELETE direct depuis le client (aucune policy
+// DELETE n'existe sur rh_parc_comptes, et la suppression Auth nécessite de
+// toute façon service_role, indisponible côté navigateur).
+async function _dasSupprimerCompteParcDefinitivement(){
+  const msg = document.getElementById('dasParcMsg');
+  if(msg){ msg.style.color = ''; msg.textContent = ''; }
+  const row = window._dasParcRowCourant;
+  if(!row || !row.id){ if(msg){ msg.style.color = '#DC2626'; msg.textContent = 'Aucun compte à supprimer.'; } return; }
+  if(_dasSuppressionParcEnCours.has(row.id)) return;
+  if(!confirm('⚠️ Supprimer DÉFINITIVEMENT le compte Gestionnaire de parc ('+(row.email||'')+') ?\n\nCette action est irréversible : le compte de connexion et la demande associée seront totalement supprimés. L\'entreprise, les employés, les véhicules et toutes les autres données RH ne sont pas affectés.')) return;
+  if(!confirm('Confirmez une seconde fois : supprimer définitivement ce compte ?')) return;
+  _dasSuppressionParcEnCours.add(row.id);
+  try{
+    const { data, error } = await supabaseRH.functions.invoke('das-demandes-rh', {
+      body: { action: 'parc_supprimer_compte_definitivement', demande_id: row.id }
+    });
+    const corps = _dasCorpsReponse(data);
+    if(error || corps.ok !== true){
+      throw new Error(_dasMessageMetier(error, data, corps.raison || 'Échec de la suppression définitive.'));
+    }
+    toast('✅ Compte Gestionnaire de parc supprimé définitivement', 'ok');
+    if(msg){ msg.style.color = '#15803D'; msg.textContent = 'Compte supprimé définitivement.'; }
+  }catch(e){
+    if(msg){ msg.style.color = '#DC2626'; msg.textContent = (e && e.message) || String(e); }
+    toast('❌ ' + ((e && e.message) || 'Échec de la suppression définitive'), 'err');
+  }finally{
+    _dasSuppressionParcEnCours.delete(row.id);
+    _dasChargerCompteParcPourCible();
   }
 }
 async function _dasApprouverDemande(email){
@@ -24945,8 +24988,15 @@ function nouveauID(){
     return;
   }
   viderForm();
-  const ids=employes.map(e=>parseMatricule(e.id)||0);
-  document.getElementById('fID').value=ids.length?Math.max(...ids)+1:1;
+  // Le simple max(matricule)+1 peut proposer un ID déjà utilisé si un trou
+  // existe dans la séquence (suppression, import, ID hérité non numérique) :
+  // on vérifie explicitement que le candidat n'est utilisé par AUCUNE fiche
+  // actuelle (comparaison en texte, comme l'ID est stocké), et on avance
+  // au suivant tant que ce n'est pas le cas.
+  const idsUtilises=new Set(employes.map(e=>String(e.id)));
+  let candidat=Math.max(0,...employes.map(e=>parseMatricule(e.id)||0))+1;
+  while(idsUtilises.has(String(candidat))) candidat++;
+  document.getElementById('fID').value=candidat;
   empOuvrirPanneau(null, {nouveau:true});
 }
 function lireForm(){
@@ -33722,6 +33772,24 @@ async function kioskConfirmBadge(){
   // seule source de vérité est la programmation d'équipage relue ci-dessous
   // pour CET employé précis ; jamais une valeur restée d'un scan précédent.
   _kiosk.serviceEquipageProgramme = null;
+  // PRIORITÉ 1 — présence du jour déjà enregistrée (arrivée déjà pointée
+  // aujourd'hui, ou correction manuelle) : c'est la source de vérité la
+  // plus fraîche, elle ne doit JAMAIS être remplacée par un recalcul de
+  // programmation/rotation (qui peut légitimement diverger — ex. chaîne 24h
+  // recalculée différemment aujourd'hui). _kiosk.curRecord vient d'être
+  // rempli par _kioskAfficherActionPrevue() juste avant, pour ce même scan.
+  // Réutilise exactement le même écran de confirmation que la programmation
+  // d'équipage (_kiosk.serviceEquipageProgramme + choixService) — aucune
+  // nouvelle UI. Si aucune présence valide n'existe, on retombe
+  // intégralement sur le comportement précédent (programmation d'équipage,
+  // inchangé) : PRIORITÉ 2.
+  const servicePresence = String((_kiosk.curRecord && _kiosk.curRecord.service) || '').toLowerCase();
+  if(['jour','nuit','24h'].includes(servicePresence)){
+    _kiosk.serviceEquipageProgramme = servicePresence;
+    _kioskAfficherInfoServices();
+    _kioskShowStep('choixService');
+    return;
+  }
   if(estChauffeurOuEboueur || estTravailleurOuSuperviseur){
     const today = _dateCIAujourdhui();
     const cle = String(_kiosk.emp.id);
