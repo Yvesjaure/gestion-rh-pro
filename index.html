@@ -31805,9 +31805,35 @@ async function _espCalCharger(){
   const entId=String(_espaceCompte.entreprise_id||'').trim();
   if(!empId||!entId)return;
   const debut=cle+'-01';
-  const fin=cle+'-31';
+  const finBrute=new Date(_espCalAn,_espCalMoisIdx+1,0);
+  const fin=cle+'-'+String(finBrute.getDate()).padStart(2,'0');
   try{
-    const{data}=await supabaseRH.from('rh_pointages').select('date_jour,data').eq('emp_id',empId).eq('entreprise_id',entId).gte('date_jour',debut).lte('date_jour',fin);
+    // J2 : le parcours matricule/PIN (session_token applicatif, voir audits
+    // J1 BIS/J2) n'a jamais de vraie session Supabase Auth — une lecture
+    // directe .from('rh_pointages') y serait bloquée par RLS (aucune ligne).
+    // Dans ce cas, passer par l'Edge Function calendrier-employe, qui
+    // valide le session_token côté serveur et résout emp_id/entreprise_id
+    // depuis le compte trouvé — jamais depuis les valeurs envoyées ici.
+    // Si aucun session_token n'est présent (connexion par email, vraie
+    // session Supabase Auth — ex. RH/DAS), le chemin direct existant reste
+    // inchangé et est désormais protégé par la policy J1.
+    const sessionBadge=String(_espaceCompte.session_token||'').trim();
+    let data;
+    if(sessionBadge){
+      const inv=await supabaseRH.functions.invoke('calendrier-employe', {
+        body:{ session_token:sessionBadge, employe_id:empId, date_debut:debut, date_fin:fin }
+      });
+      const corps=(typeof _dasCorpsReponse==='function')?_dasCorpsReponse(inv.data):(inv.data||{});
+      if(inv.error || !corps.success){
+        console.warn('espCal (calendrier-employe)', corps.error||inv.error);
+        data=[];
+      } else {
+        data=(corps.jours||[]).map(j=>({ date_jour:j.date_jour, data:{ statut:j.statut, punch_in:j.punch_in, punch_out:j.punch_out, retardTexte:j.retardTexte, motif:j.motif } }));
+      }
+    } else {
+      const r=await supabaseRH.from('rh_pointages').select('date_jour,data').eq('emp_id',empId).eq('entreprise_id',entId).gte('date_jour',debut).lte('date_jour',fin);
+      data=r.data;
+    }
     const items=[];
     const nJours=new Date(_espCalAn,_espCalMoisIdx+1,0).getDate();
     const auj=new Date();
